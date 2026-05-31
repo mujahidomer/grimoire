@@ -1,0 +1,24 @@
+{
+  "name": "grimoire",
+  "version": "1.0.0",
+  "description": "Personal AI skills library — auto-saves, categorizes, and retrieves Claude skills from any source",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@mozilla/readability": "^0.5.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.0",
+    "googleapis": "^137.0.0",
+    "jsdom": "^24.0.0",
+    "node-telegram-bot-api": "^0.64.0",
+    "youtube-transcript": "^1.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
