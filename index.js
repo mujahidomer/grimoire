@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const { extractFromUrl } = require('./lib/extractor');
-const { processContent } = require('./lib/classifier');
+const { processContent, researchUrl } = require('./lib/classifier');
 const { saveToGrimoire } = require('./lib/drive');
 const { addToRegistry } = require('./lib/sheets');
 const { initialize } = require('./lib/setup');
@@ -21,6 +21,18 @@ initialize()
   .catch(err => console.error('❌ Grimoire init failed:', err.message));
 
 // ─── Core Pipeline ───────────────────────────────────────────────────────────
+async function researchAndSave(sourceUrl) {
+  const items = await researchUrl(sourceUrl);
+  if (!items || items.length === 0) return [];
+  const saved = [];
+  for (const item of items) {
+    const fileResult = await saveToGrimoire(item, grimoire);
+    await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
+    saved.push(item);
+  }
+  return saved;
+}
+
 async function runPipeline(rawText, sourceUrl) {
   const items = await processContent(rawText, sourceUrl);
   if (!items || items.length === 0) return [];
@@ -86,10 +98,15 @@ bot.on('message', async (msg) => {
       const extracted = await extractFromUrl(url);
 
       if (!extracted.text) {
-        return bot.sendMessage(chatId,
-          `⚠️ This video has no transcript available.\n\n` +
-          `Paste the transcript or skill name as text and I'll process it.`
-        );
+        await bot.sendMessage(chatId, '🔍 Can\'t scrape this URL directly. Researching it instead...');
+        const saved = await researchAndSave(url);
+        if (saved.length === 0) {
+          return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
+        }
+        const summary = saved.map(item =>
+          `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}`
+        ).join('\n\n');
+        return bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
       }
 
       await bot.sendMessage(chatId, '🧠 Analyzing with Claude...');
