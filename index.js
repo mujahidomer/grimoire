@@ -104,7 +104,7 @@ bot.on('message', async (msg) => {
           return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
         }
         const summary = saved.map(item =>
-          `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}`
+          `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
         ).join('\n\n');
         return bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
       }
@@ -117,7 +117,7 @@ bot.on('message', async (msg) => {
       }
 
       const summary = saved.map(item =>
-        `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}`
+        `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
       ).join('\n\n');
 
       bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
@@ -132,7 +132,7 @@ bot.on('message', async (msg) => {
       }
 
       const summary = saved.map(item =>
-        `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}`
+        `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
       ).join('\n\n');
 
       bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
