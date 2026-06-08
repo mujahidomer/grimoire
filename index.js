@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const { extractFromUrl } = require('./lib/extractor');
+const { extractContent } = require('./lib/extractor');
 const { processContent, researchUrl } = require('./lib/classifier');
 const { saveToGrimoire } = require('./lib/drive');
 const { addToRegistry } = require('./lib/sheets');
@@ -95,7 +95,7 @@ bot.on('message', async (msg) => {
       const url = text.trim();
       await bot.sendMessage(chatId, '🔗 Extracting content...');
 
-      const extracted = await extractFromUrl(url);
+      const extracted = await extractContent(url);
 
       if (!extracted.text) {
         await bot.sendMessage(chatId, '🔍 Can\'t scrape this URL directly. Researching it instead...');
@@ -158,7 +158,7 @@ app.post('/process-url', async (req, res) => {
   if (!grimoire) return res.status(503).json({ error: 'Grimoire is still initializing' });
 
   try {
-    const extracted = await extractFromUrl(url);
+    const extracted = await extractContent(url);
     if (!extracted.text) return res.json({ success: false, error: 'no_transcript', message: 'No transcript available — paste text manually' });
 
     const saved = await runPipeline(extracted.text, url);
