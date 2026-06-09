@@ -104,7 +104,7 @@ bot.on('message', async (msg) => {
           return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
         }
         const summary = saved.map(item =>
-          `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
+          `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
         ).join('\n\n');
         return bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
       }
@@ -117,7 +117,7 @@ bot.on('message', async (msg) => {
       }
 
       const summary = saved.map(item =>
-        `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
+        `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
       ).join('\n\n');
 
       bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
@@ -128,11 +128,11 @@ bot.on('message', async (msg) => {
       const saved = await runPipeline(text, 'manual');
 
       if (saved.length === 0) {
-        return bot.sendMessage(chatId, '🤔 Nothing extractable found. Try being more specific about the skill or technique.');
+        return bot.sendMessage(chatId, '🤔 Nothing extractable found. Try pasting the content directly.');
       }
 
       const summary = saved.map(item =>
-        `${typeEmoji(item.type)} *${item.skillName}*\n   ${item.type} / ${item.category}\n   ${item.description}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
+        `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
       ).join('\n\n');
 
       bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
@@ -145,7 +145,7 @@ bot.on('message', async (msg) => {
 });
 
 function typeEmoji(type) {
-  const map = { skill: '⚙️', markdown: '📝', agent: '🤖', insight: '💡' };
+  const map = { Video: '🎬', Article: '📄' };
   return map[type] || '📌';
 }
 
@@ -162,7 +162,7 @@ app.post('/process-url', async (req, res) => {
     if (!extracted.text) return res.json({ success: false, error: 'no_transcript', message: 'No transcript available — paste text manually' });
 
     const saved = await runPipeline(extracted.text, url);
-    res.json({ success: true, count: saved.length, items: saved.map(i => ({ name: i.skillName, type: i.type, category: i.category })) });
+    res.json({ success: true, count: saved.length, items: saved.map(i => ({ title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -175,7 +175,7 @@ app.post('/process-text', async (req, res) => {
 
   try {
     const saved = await runPipeline(text, source || 'manual');
-    res.json({ success: true, count: saved.length, items: saved.map(i => ({ name: i.skillName, type: i.type, category: i.category })) });
+    res.json({ success: true, count: saved.length, items: saved.map(i => ({ title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
