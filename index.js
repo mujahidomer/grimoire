@@ -33,8 +33,8 @@ async function researchAndSave(sourceUrl) {
   return saved;
 }
 
-async function runPipeline(rawText, sourceUrl) {
-  const items = await processContent(rawText, sourceUrl);
+async function runPipeline(rawText, sourceUrl, hashtags) {
+  const items = await processContent(rawText, sourceUrl, hashtags);
   if (!items || items.length === 0) return [];
 
   const saved = [];
@@ -110,7 +110,7 @@ bot.on('message', async (msg) => {
       }
 
       await bot.sendMessage(chatId, '🧠 Analyzing with Claude...');
-      const saved = await runPipeline(extracted.text, url);
+      const saved = await runPipeline(extracted.text, url, extracted.hashtags);
 
       if (saved.length === 0) {
         return bot.sendMessage(chatId, '🤔 No skills or insights found in this content. Try a different source.');
@@ -161,7 +161,7 @@ app.post('/process-url', async (req, res) => {
     const extracted = await extractContent(url);
     if (!extracted.text) return res.json({ success: false, error: 'no_transcript', message: 'No transcript available — paste text manually' });
 
-    const saved = await runPipeline(extracted.text, url);
+    const saved = await runPipeline(extracted.text, url, extracted.hashtags);
     res.json({ success: true, count: saved.length, items: saved.map(i => ({ title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
