@@ -82,8 +82,10 @@ async function appendToEntry(chatId, entry, url) {
 
   // Clean + classify before appending so we don't dump raw nav/footer/image noise
   const processed = await processLinkedResource(extracted?.text || '', extracted?.title);
-  await appendLinkedResource(entry.fileId, url, processed);
-  await bot.sendMessage(chatId, `✅ Added to original entry: ${entry.title}`);
+  const result = await appendLinkedResource(entry.fileId, url, processed);
+  await bot.sendMessage(chatId, result.replaced
+    ? `🔄 Updated linked resource in ${entry.title}`
+    : `🔗 Added to ${entry.title}`);
 }
 
 // ─── Telegram Handlers ───────────────────────────────────────────────────────
