@@ -3,8 +3,8 @@ const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const { extractContent } = require('./lib/extractor');
 const { processContent, researchUrl } = require('./lib/classifier');
-const { saveToGrimoire } = require('./lib/drive');
-const { addToRegistry } = require('./lib/sheets');
+const { saveToGrimoire, appendLinkedResource } = require('./lib/drive');
+const { addToRegistry, setConfirmationMessageId, findEntryByMessageId, findEntryBySourceUrl } = require('./lib/sheets');
 const { initialize } = require('./lib/setup');
 
 const app = express();
@@ -26,9 +26,10 @@ async function researchAndSave(sourceUrl) {
   if (!items || items.length === 0) return [];
   const saved = [];
   for (const item of items) {
+    item.sourceUrl = sourceUrl;
     const fileResult = await saveToGrimoire(item, grimoire);
-    await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
-    saved.push(item);
+    const rowNumber = await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
+    saved.push({ ...item, fileResult, rowNumber });
   }
   return saved;
 }
@@ -39,11 +40,48 @@ async function runPipeline(rawText, sourceUrl, hashtags) {
 
   const saved = [];
   for (const item of items) {
+    item.sourceUrl = sourceUrl;
     const fileResult = await saveToGrimoire(item, grimoire);
-    await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
-    saved.push({ ...item, fileResult });
+    const rowNumber = await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
+    saved.push({ ...item, fileResult, rowNumber });
   }
   return saved;
+}
+
+// Send the "Saved" confirmation, then record its message_id in the Sheet so
+// later replies can be matched back to these entries (survives restarts).
+async function sendSavedConfirmation(chatId, saved) {
+  const summary = saved.map(item =>
+    `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
+  ).join('\n\n');
+
+  let text = `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`;
+  if (saved.some(item => item.has_lead_magnet_cta)) {
+    text += `\n\n⚠️ This post has a 'comment for link' CTA — when you receive the link, reply to this message with it and I'll attach it to this entry.`;
+  }
+
+  const confirmMsg = await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+
+  try {
+    await setConfirmationMessageId(grimoire.sheetId, saved.map(i => i.rowNumber), confirmMsg.message_id);
+  } catch (err) {
+    console.error('Failed to record confirmation message_id:', err.message);
+  }
+}
+
+// Append a follow-up link's content to an already-saved entry's Drive file
+async function appendToEntry(chatId, entry, url) {
+  await bot.sendMessage(chatId, '🔗 Extracting linked resource...');
+
+  let extracted = null;
+  try {
+    extracted = await extractContent(url);
+  } catch (err) {
+    console.error('Linked resource extraction failed:', err.message);
+  }
+
+  await appendLinkedResource(entry.fileId, url, extracted);
+  await bot.sendMessage(chatId, `✅ Added to original entry: ${entry.title}`);
 }
 
 // ─── Telegram Handlers ───────────────────────────────────────────────────────
@@ -89,6 +127,27 @@ bot.on('message', async (msg) => {
   }
 
   try {
+    const urls = text.match(/https?:\/\/\S+/g) || [];
+
+    // Reply to a "Saved" confirmation → append the link to the original entry
+    if (msg.reply_to_message && urls.length >= 1) {
+      const entry = await findEntryByMessageId(grimoire.sheetId, msg.reply_to_message.message_id);
+      if (entry) {
+        return await appendToEntry(chatId, entry, urls[0]);
+      }
+      await bot.sendMessage(chatId, `⚠️ Couldn't find the original entry for that message — saving as a new entry instead.`);
+    }
+
+    // Two-URL fallback: one URL matches an existing entry's source → append the other
+    if (urls.length === 2) {
+      const [entryA, entryB] = await Promise.all([
+        findEntryBySourceUrl(grimoire.sheetId, urls[0]),
+        findEntryBySourceUrl(grimoire.sheetId, urls[1])
+      ]);
+      if (entryA && !entryB) return await appendToEntry(chatId, entryA, urls[1]);
+      if (entryB && !entryA) return await appendToEntry(chatId, entryB, urls[0]);
+    }
+
     const isUrl = /^https?:\/\//i.test(text.trim());
 
     if (isUrl) {
@@ -103,10 +162,7 @@ bot.on('message', async (msg) => {
         if (saved.length === 0) {
           return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
         }
-        const summary = saved.map(item =>
-          `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
-        ).join('\n\n');
-        return bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
+        return await sendSavedConfirmation(chatId, saved);
       }
 
       await bot.sendMessage(chatId, '🧠 Analyzing with Claude...');
@@ -116,11 +172,7 @@ bot.on('message', async (msg) => {
         return bot.sendMessage(chatId, '🤔 No skills or insights found in this content. Try a different source.');
       }
 
-      const summary = saved.map(item =>
-        `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
-      ).join('\n\n');
-
-      bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
+      await sendSavedConfirmation(chatId, saved);
 
     } else {
       // Manual text input
@@ -131,11 +183,7 @@ bot.on('message', async (msg) => {
         return bot.sendMessage(chatId, '🤔 Nothing extractable found. Try pasting the content directly.');
       }
 
-      const summary = saved.map(item =>
-        `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
-      ).join('\n\n');
-
-      bot.sendMessage(chatId, `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`, { parse_mode: 'Markdown' });
+      await sendSavedConfirmation(chatId, saved);
     }
 
   } catch (err) {
