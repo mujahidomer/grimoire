@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const { extractContent } = require('./lib/extractor');
-const { processContent, researchUrl } = require('./lib/classifier');
+const { processContent, researchUrl, processLinkedResource } = require('./lib/classifier');
 const { saveToGrimoire, appendLinkedResource } = require('./lib/drive');
 const { addToRegistry, setConfirmationMessageId, findEntryByMessageId, findEntryBySourceUrl } = require('./lib/sheets');
 const { initialize } = require('./lib/setup');
@@ -80,7 +80,9 @@ async function appendToEntry(chatId, entry, url) {
     console.error('Linked resource extraction failed:', err.message);
   }
 
-  await appendLinkedResource(entry.fileId, url, extracted);
+  // Clean + classify before appending so we don't dump raw nav/footer/image noise
+  const processed = await processLinkedResource(extracted?.text || '', extracted?.title);
+  await appendLinkedResource(entry.fileId, url, processed);
   await bot.sendMessage(chatId, `✅ Added to original entry: ${entry.title}`);
 }
 
