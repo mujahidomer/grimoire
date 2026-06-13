@@ -5,6 +5,7 @@ const { extractContent } = require('./lib/extractor');
 const { processContent, researchUrl, processLinkedResource } = require('./lib/classifier');
 const { saveToGrimoire, appendLinkedResource } = require('./lib/drive');
 const { addToRegistry, setConfirmationMessageId, findEntryByMessageId, findEntryBySourceUrl } = require('./lib/sheets');
+const { normalizeTags } = require('./lib/tags');
 const { initialize } = require('./lib/setup');
 
 const app = express();
@@ -21,12 +22,35 @@ initialize()
   .catch(err => console.error('❌ Grimoire init failed:', err.message));
 
 // ─── Core Pipeline ───────────────────────────────────────────────────────────
+// Normalize an item's tags against the canonical Tag Registry before saving.
+// Resilient by design: any failure leaves the original tags untouched so the
+// file still saves. Populates item.tagReview (flagged tags) + item.pendingTagReview.
+async function normalizeItemTags(item) {
+  item.tagReview = [];
+  item.pendingTagReview = false;
+  if (!Array.isArray(item.tags) || item.tags.length === 0) return;
+
+  try {
+    const results = await normalizeTags(item.tags, grimoire.sheetId);
+    if (results.length > 0) {
+      item.tags = results.map(r => r.final);
+      item.tagReview = results
+        .filter(r => r.status === 'flagged')
+        .map(r => ({ tag: r.final, closest: r.closest, score: r.score }));
+      item.pendingTagReview = item.tagReview.length > 0;
+    }
+  } catch (err) {
+    console.error('Tag normalization failed:', err.message);
+  }
+}
+
 async function researchAndSave(sourceUrl) {
   const items = await researchUrl(sourceUrl);
   if (!items || items.length === 0) return [];
   const saved = [];
   for (const item of items) {
     item.sourceUrl = sourceUrl;
+    await normalizeItemTags(item);
     const fileResult = await saveToGrimoire(item, grimoire);
     const rowNumber = await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
     saved.push({ ...item, fileResult, rowNumber });
@@ -41,6 +65,7 @@ async function runPipeline(rawText, sourceUrl, hashtags) {
   const saved = [];
   for (const item of items) {
     item.sourceUrl = sourceUrl;
+    await normalizeItemTags(item);
     const fileResult = await saveToGrimoire(item, grimoire);
     const rowNumber = await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
     saved.push({ ...item, fileResult, rowNumber });
@@ -66,6 +91,22 @@ async function sendSavedConfirmation(chatId, saved) {
     await setConfirmationMessageId(grimoire.sheetId, saved.map(i => i.rowNumber), confirmMsg.message_id);
   } catch (err) {
     console.error('Failed to record confirmation message_id:', err.message);
+  }
+}
+
+// Informational, non-blocking: one message per low-confidence ('?') tag. The
+// file has already been saved regardless of whether these messages succeed.
+async function sendTagReviewNotifications(chatId, saved) {
+  for (const item of saved) {
+    for (const review of item.tagReview || []) {
+      const text = `🏷️ Saved: ${item.title}. Low confidence tag: ${review.tag}. ` +
+        `Closest match: ${review.closest} (${review.score}%). Reply with canonical tag or ignore.`;
+      try {
+        await bot.sendMessage(chatId, text);
+      } catch (err) {
+        console.error('Tag review notification failed:', err.message);
+      }
+    }
   }
 }
 
@@ -173,7 +214,8 @@ bot.on('message', async (msg) => {
         if (saved.length === 0) {
           return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
         }
-        return await sendSavedConfirmation(chatId, saved);
+        await sendSavedConfirmation(chatId, saved);
+        return await sendTagReviewNotifications(chatId, saved);
       }
 
       await bot.sendMessage(chatId, '🧠 Analyzing with Claude...');
@@ -184,6 +226,7 @@ bot.on('message', async (msg) => {
       }
 
       await sendSavedConfirmation(chatId, saved);
+      await sendTagReviewNotifications(chatId, saved);
 
     } else {
       // Manual text input
@@ -195,6 +238,7 @@ bot.on('message', async (msg) => {
       }
 
       await sendSavedConfirmation(chatId, saved);
+      await sendTagReviewNotifications(chatId, saved);
     }
 
   } catch (err) {
