@@ -3,9 +3,11 @@ const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const { extractContent } = require('./lib/extractor');
 const { processContent, researchUrl, processLinkedResource } = require('./lib/classifier');
-const { saveToGrimoire, appendLinkedResource } = require('./lib/drive');
-const { addToRegistry, setConfirmationMessageId, findEntryByMessageId, findEntryBySourceUrl } = require('./lib/sheets');
-const { normalizeTags } = require('./lib/tags');
+const { saveToGrimoire, appendLinkedResource, resolveTagInFile } = require('./lib/drive');
+const { addToRegistry, setConfirmationMessageId, findEntryByMessageId, findEntryBySourceUrl,
+  findRegistryRowByFileId, setPendingTagReview, recordTagReview, findTagReviewByMessageId,
+  markTagReviewResolved } = require('./lib/sheets');
+const { normalizeTags, addOrIncrementTag } = require('./lib/tags');
 const { initialize } = require('./lib/setup');
 
 const app = express();
@@ -96,18 +98,67 @@ async function sendSavedConfirmation(chatId, saved) {
 
 // Informational, non-blocking: one message per low-confidence ('?') tag. The
 // file has already been saved regardless of whether these messages succeed.
+// Each sent message id is persisted so a user's reply can be matched back to the
+// file + flagged tag and resolved (see handleTagReviewReply).
 async function sendTagReviewNotifications(chatId, saved) {
   for (const item of saved) {
     for (const review of item.tagReview || []) {
       const text = `🏷️ Saved: ${item.title}. Low confidence tag: ${review.tag}. ` +
         `Closest match: ${review.closest} (${review.score}%). Reply with canonical tag or ignore.`;
       try {
-        await bot.sendMessage(chatId, text);
+        const sent = await bot.sendMessage(chatId, text);
+        await recordTagReview(grimoire.sheetId, {
+          messageId: sent.message_id,
+          fileId: item.fileResult?.id || '',
+          flaggedTag: review.tag
+        });
       } catch (err) {
         console.error('Tag review notification failed:', err.message);
       }
     }
   }
+}
+
+// Pull the canonical tag the user typed in their reply. Tags are single-token
+// kebab-case; take the first token, drop a leading '#' and any trailing '?'/','.
+function extractCanonicalTag(text) {
+  const firstLine = (text || '').trim().split('\n')[0].trim();
+  const token = firstLine.split(/\s+/)[0] || '';
+  return token.replace(/^#+/, '').replace(/[?,]+$/g, '').trim();
+}
+
+// Handle a reply to a tag-notification message: replace the flagged tag in the
+// Drive file with the user's canonical tag, update the Tag Registry, and clear
+// the Pending Tag Review flag once no '?' tags remain.
+async function handleTagReviewReply(chatId, review, replyText) {
+  if (review.resolved) {
+    return bot.sendMessage(chatId, '✅ That tag was already updated.');
+  }
+  if (!review.fileId) {
+    return bot.sendMessage(chatId, '⚠️ I lost track of which file that tag belongs to.');
+  }
+
+  const canonical = extractCanonicalTag(replyText);
+  if (!canonical) {
+    return bot.sendMessage(chatId, '⚠️ I couldn\'t read a tag from that reply. Send just the canonical tag, e.g. "claude-ai".');
+  }
+
+  const { changed, remainingFlagged } = await resolveTagInFile(review.fileId, review.flaggedTag, canonical);
+
+  if (!changed) {
+    await markTagReviewResolved(grimoire.sheetId, review.reviewRowNumber);
+    return bot.sendMessage(chatId, `ℹ️ ${review.flaggedTag} was no longer in the file — nothing to change.`);
+  }
+
+  await addOrIncrementTag(grimoire.sheetId, canonical);
+  await markTagReviewResolved(grimoire.sheetId, review.reviewRowNumber);
+
+  if (remainingFlagged.length === 0) {
+    const rowNumber = await findRegistryRowByFileId(grimoire.sheetId, review.fileId);
+    if (rowNumber) await setPendingTagReview(grimoire.sheetId, rowNumber, false);
+  }
+
+  await bot.sendMessage(chatId, `🏷️ Tag updated: ${review.flaggedTag} → ${canonical}`);
 }
 
 // Append one or more follow-up links' content to an already-saved entry's Drive file.
@@ -180,6 +231,16 @@ bot.on('message', async (msg) => {
 
   try {
     const urls = text.match(/https?:\/\/\S+/g) || [];
+
+    // Reply to a tag-notification → resolve the flagged tag (NOT a new URL/entry).
+    // Must be checked before the URL/append logic since the reply is usually a
+    // bare tag with no URL, which would otherwise fall through to manual processing.
+    if (msg.reply_to_message) {
+      const review = await findTagReviewByMessageId(grimoire.sheetId, msg.reply_to_message.message_id);
+      if (review) {
+        return await handleTagReviewReply(chatId, review, text);
+      }
+    }
 
     // Reply to a "Saved" confirmation → append the link to the original entry
     if (msg.reply_to_message && urls.length >= 1) {
