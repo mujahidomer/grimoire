@@ -3,12 +3,13 @@ const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const { extractContent } = require('./lib/extractor');
 const { processContent, researchUrl, processLinkedResource } = require('./lib/classifier');
-const { saveToGrimoire, appendLinkedResource, resolveTagInFile } = require('./lib/drive');
-const { addToRegistry, setConfirmationMessageId, findEntryByMessageId, findEntryBySourceUrl,
-  findRegistryRowByFileId, setPendingTagReview, recordTagReview, findTagReviewByMessageId,
-  markTagReviewResolved } = require('./lib/sheets');
-const { normalizeTags, addOrIncrementTag } = require('./lib/tags');
-const { initialize } = require('./lib/setup');
+const { normalizeTagsPg } = require('./lib/tags-pg');
+const {
+  upsertItem, upsertItemTags, upsertLinkedResource, findItemBySourceUrl
+} = require('./lib/repository');
+const { embedAndStoreItem } = require('./lib/embeddings');
+const { registerApiRoutes } = require('./lib/routes');
+const { defaultUserId } = require('./lib/supabase');
 
 const app = express();
 app.use(express.json());
@@ -16,70 +17,67 @@ app.use(express.json());
 // ─── Telegram Bot ────────────────────────────────────────────────────────────
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
-// ─── Grimoire State ──────────────────────────────────────────────────────────
-let grimoire = null;
+// The single hardcoded capture user for the testing phase (Doc A §Auth). The
+// schema is multi-user from day one; this is just whose library Telegram fills.
+const USER_ID = (() => {
+  try { return defaultUserId(); }
+  catch (err) { console.error('⚠️', err.message); return null; }
+})();
 
-initialize()
-  .then(g => { grimoire = g; })
-  .catch(err => console.error('❌ Grimoire init failed:', err.message));
+// In-memory map: confirmation Telegram message_id → { itemId, title }. Lets a
+// reply to a "Saved" message append a linked resource to the right item. The
+// Sheets-backed persistence (which survived restarts) is retired along with the
+// Sheets registry; this transitional map is fine while Telegram is just the
+// capture method (Doc A item 2).
+const confirmationIndex = new Map();
 
-// ─── Core Pipeline ───────────────────────────────────────────────────────────
-// Normalize an item's tags against the canonical Tag Registry before saving.
-// Resilient by design: any failure leaves the original tags untouched so the
-// file still saves. Populates item.tagReview (flagged tags) + item.pendingTagReview.
-async function normalizeItemTags(item) {
-  item.tagReview = [];
-  item.pendingTagReview = false;
-  if (!Array.isArray(item.tags) || item.tags.length === 0) return;
+// ─── Core Pipeline (writes to Postgres, not Drive/Sheets) ─────────────────────
+// Normalize tags against the canonical `tags` table, persist the item + tags +
+// any linked resources, then embed it. Returns a lightweight saved record.
+async function saveItem(item, sourceUrl) {
+  item.sourceUrl = sourceUrl;
+
+  let finalTags = Array.isArray(item.tags) ? item.tags : [];
+  finalTags = await normalizeTagsPg(finalTags, USER_ID);
+  item.tags = finalTags;
+
+  const itemId = await upsertItem(item, { userId: USER_ID, source: item.source || 'telegram' });
+  await upsertItemTags(itemId, USER_ID, finalTags);
+
+  for (const lr of Array.isArray(item.linked_resources) ? item.linked_resources : []) {
+    if (typeof lr === 'string') await upsertLinkedResource(itemId, USER_ID, { source_url: lr });
+    else await upsertLinkedResource(itemId, USER_ID, lr);
+  }
 
   try {
-    const results = await normalizeTags(item.tags, grimoire.sheetId);
-    if (results.length > 0) {
-      item.tags = results.map(r => r.final);
-      item.tagReview = results
-        .filter(r => r.status === 'flagged')
-        .map(r => ({ tag: r.final, closest: r.closest, score: r.score }));
-      item.pendingTagReview = item.tagReview.length > 0;
-    }
+    await embedAndStoreItem(item, itemId, USER_ID);
   } catch (err) {
-    console.error('Tag normalization failed:', err.message);
+    console.error('Embedding failed (item still saved):', err.message);
   }
+
+  return { itemId, title: item.title, category: item.category, type: item.type,
+    summary: item.summary, has_lead_magnet_cta: item.has_lead_magnet_cta };
 }
 
 async function researchAndSave(sourceUrl) {
   const items = await researchUrl(sourceUrl);
   if (!items || items.length === 0) return [];
   const saved = [];
-  for (const item of items) {
-    item.sourceUrl = sourceUrl;
-    await normalizeItemTags(item);
-    const fileResult = await saveToGrimoire(item, grimoire);
-    const rowNumber = await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
-    saved.push({ ...item, fileResult, rowNumber });
-  }
+  for (const item of items) saved.push(await saveItem(item, sourceUrl));
   return saved;
 }
 
 async function runPipeline(rawText, sourceUrl, hashtags, parts = {}) {
   const items = await processContent(rawText, sourceUrl, hashtags, parts);
   if (!items || items.length === 0) return [];
-
   const saved = [];
-  for (const item of items) {
-    item.sourceUrl = sourceUrl;
-    await normalizeItemTags(item);
-    const fileResult = await saveToGrimoire(item, grimoire);
-    const rowNumber = await addToRegistry(item, sourceUrl, fileResult, grimoire.sheetId);
-    saved.push({ ...item, fileResult, rowNumber });
-  }
+  for (const item of items) saved.push(await saveItem(item, sourceUrl));
   return saved;
 }
 
-// Send the "Saved" confirmation, then record its message_id in the Sheet so
-// later replies can be matched back to these entries (survives restarts).
 async function sendSavedConfirmation(chatId, saved) {
   const summary = saved.map(item =>
-    `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary}${item.fileResult?.webViewLink ? `\n   [Open in Drive](${item.fileResult.webViewLink})` : ''}`
+    `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary || ''}`
   ).join('\n\n');
 
   let text = `✅ Saved ${saved.length} item(s) to Grimoire:\n\n${summary}`;
@@ -89,80 +87,13 @@ async function sendSavedConfirmation(chatId, saved) {
 
   const confirmMsg = await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
 
-  try {
-    await setConfirmationMessageId(grimoire.sheetId, saved.map(i => i.rowNumber), confirmMsg.message_id);
-  } catch (err) {
-    console.error('Failed to record confirmation message_id:', err.message);
+  // Remember which item(s) this confirmation refers to, so a reply can append.
+  if (saved.length === 1) {
+    confirmationIndex.set(confirmMsg.message_id, { itemId: saved[0].itemId, title: saved[0].title });
   }
 }
 
-// Informational, non-blocking: one message per low-confidence ('?') tag. The
-// file has already been saved regardless of whether these messages succeed.
-// Each sent message id is persisted so a user's reply can be matched back to the
-// file + flagged tag and resolved (see handleTagReviewReply).
-async function sendTagReviewNotifications(chatId, saved) {
-  for (const item of saved) {
-    for (const review of item.tagReview || []) {
-      const text = `🏷️ Saved: ${item.title}. Low confidence tag: ${review.tag}. ` +
-        `Closest match: ${review.closest} (${review.score}%). Reply with canonical tag or ignore.`;
-      try {
-        const sent = await bot.sendMessage(chatId, text);
-        await recordTagReview(grimoire.sheetId, {
-          messageId: sent.message_id,
-          fileId: item.fileResult?.id || '',
-          flaggedTag: review.tag
-        });
-      } catch (err) {
-        console.error('Tag review notification failed:', err.message);
-      }
-    }
-  }
-}
-
-// Pull the canonical tag the user typed in their reply. Tags are single-token
-// kebab-case; take the first token, drop a leading '#' and any trailing '?'/','.
-function extractCanonicalTag(text) {
-  const firstLine = (text || '').trim().split('\n')[0].trim();
-  const token = firstLine.split(/\s+/)[0] || '';
-  return token.replace(/^#+/, '').replace(/[?,]+$/g, '').trim();
-}
-
-// Handle a reply to a tag-notification message: replace the flagged tag in the
-// Drive file with the user's canonical tag, update the Tag Registry, and clear
-// the Pending Tag Review flag once no '?' tags remain.
-async function handleTagReviewReply(chatId, review, replyText) {
-  if (review.resolved) {
-    return bot.sendMessage(chatId, '✅ That tag was already updated.');
-  }
-  if (!review.fileId) {
-    return bot.sendMessage(chatId, '⚠️ I lost track of which file that tag belongs to.');
-  }
-
-  const canonical = extractCanonicalTag(replyText);
-  if (!canonical) {
-    return bot.sendMessage(chatId, '⚠️ I couldn\'t read a tag from that reply. Send just the canonical tag, e.g. "claude-ai".');
-  }
-
-  const { changed, remainingFlagged } = await resolveTagInFile(review.fileId, review.flaggedTag, canonical);
-
-  if (!changed) {
-    await markTagReviewResolved(grimoire.sheetId, review.reviewRowNumber);
-    return bot.sendMessage(chatId, `ℹ️ ${review.flaggedTag} was no longer in the file — nothing to change.`);
-  }
-
-  await addOrIncrementTag(grimoire.sheetId, canonical);
-  await markTagReviewResolved(grimoire.sheetId, review.reviewRowNumber);
-
-  if (remainingFlagged.length === 0) {
-    const rowNumber = await findRegistryRowByFileId(grimoire.sheetId, review.fileId);
-    if (rowNumber) await setPendingTagReview(grimoire.sheetId, rowNumber, false);
-  }
-
-  await bot.sendMessage(chatId, `🏷️ Tag updated: ${review.flaggedTag} → ${canonical}`);
-}
-
-// Append one or more follow-up links' content to an already-saved entry's Drive file.
-// All URLs land in the same Drive file + Sheets entry — one combined entry, never separate files.
+// Append one or more follow-up links to an already-saved item as linked_resources.
 async function appendToEntry(chatId, entry, urls) {
   const urlList = Array.isArray(urls) ? urls : [urls];
 
@@ -178,12 +109,14 @@ async function appendToEntry(chatId, entry, urls) {
       console.error('Linked resource extraction failed:', err.message);
     }
 
-    // Clean + classify before appending so we don't dump raw nav/footer/image noise
     const processed = await processLinkedResource(extracted?.text || '', extracted?.title);
-    const result = await appendLinkedResource(entry.fileId, url, processed);
-    await bot.sendMessage(chatId, result.replaced
-      ? `🔄 Updated linked resource in ${entry.title}`
-      : `🔗 Added to ${entry.title}`);
+    await upsertLinkedResource(entry.itemId, USER_ID, {
+      source_url: url,
+      title: processed.title,
+      type: processed.resource_type,
+      body_content: processed.content
+    });
+    await bot.sendMessage(chatId, `🔗 Added to ${entry.title}`);
   }
 }
 
@@ -194,71 +127,50 @@ bot.onText(/\/start/, (msg) => {
     `Send me:\n` +
     `• A YouTube or article URL to auto-extract skills\n` +
     `• Any text (transcript, skill name, notes) to process manually\n\n` +
-    `Commands:\n` +
-    `/help — Show this message\n` +
-    `/status — Check if Grimoire is ready`
+    `Commands:\n/help — Show this message\n/status — Check if Grimoire is ready`
   );
 });
 
 bot.onText(/\/help/, (msg) => {
   bot.sendMessage(msg.chat.id,
     `📖 How to use Grimoire:\n\n` +
-    `*URLs*: Paste any YouTube or article link. I'll extract the content, identify all skills and insights, and save them to your Google Drive library.\n\n` +
+    `*URLs*: Paste any YouTube or article link. I'll extract the content, identify all skills and insights, and save them to your library.\n\n` +
     `*Text*: Paste a transcript, skill name, or any notes. I'll categorize and save everything.\n\n` +
-    `*Multiple skills*: One message can contain many skills — I'll extract them all.\n\n` +
-    `Everything lands in your Google Drive + Registry sheet automatically.`,
+    `*Follow-up links*: Reply to a "Saved" message with a link to attach it as a linked resource.`,
     { parse_mode: 'Markdown' }
   );
 });
 
 bot.onText(/\/status/, (msg) => {
-  if (grimoire) {
-    bot.sendMessage(msg.chat.id, '✅ Grimoire is ready and connected to Google Drive.');
-  } else {
-    bot.sendMessage(msg.chat.id, '⏳ Grimoire is still initializing. Try again in a moment.');
-  }
+  bot.sendMessage(msg.chat.id, USER_ID
+    ? '✅ Grimoire is ready (writing to Postgres).'
+    : '⚠️ GRIMOIRE_USER_ID is not configured — saves will fail.');
 });
 
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
-
   if (!text || text.startsWith('/')) return;
-
-  if (!grimoire) {
-    return bot.sendMessage(chatId, '⏳ Still initializing. Try again in 30 seconds.');
-  }
+  if (!USER_ID) return bot.sendMessage(chatId, '⚠️ GRIMOIRE_USER_ID is not configured.');
 
   try {
     const urls = text.match(/https?:\/\/\S+/g) || [];
 
-    // Reply to a tag-notification → resolve the flagged tag (NOT a new URL/entry).
-    // Must be checked before the URL/append logic since the reply is usually a
-    // bare tag with no URL, which would otherwise fall through to manual processing.
-    if (msg.reply_to_message) {
-      const review = await findTagReviewByMessageId(grimoire.sheetId, msg.reply_to_message.message_id);
-      if (review) {
-        return await handleTagReviewReply(chatId, review, text);
-      }
-    }
-
-    // Reply to a "Saved" confirmation → append the link to the original entry
+    // Reply to a "Saved" confirmation → append the link to the original item.
     if (msg.reply_to_message && urls.length >= 1) {
-      const entry = await findEntryByMessageId(grimoire.sheetId, msg.reply_to_message.message_id);
-      if (entry) {
-        return await appendToEntry(chatId, entry, urls);
-      }
+      const entry = confirmationIndex.get(msg.reply_to_message.message_id);
+      if (entry) return await appendToEntry(chatId, entry, urls);
       await bot.sendMessage(chatId, `⚠️ Couldn't find the original entry for that message — saving as a new entry instead.`);
     }
 
-    // Two-URL fallback: one URL matches an existing entry's source → append the other
+    // Two-URL fallback: one URL matches an existing item's source → append the other.
     if (urls.length === 2) {
-      const [entryA, entryB] = await Promise.all([
-        findEntryBySourceUrl(grimoire.sheetId, urls[0]),
-        findEntryBySourceUrl(grimoire.sheetId, urls[1])
+      const [a, b] = await Promise.all([
+        findItemBySourceUrl(USER_ID, urls[0]),
+        findItemBySourceUrl(USER_ID, urls[1])
       ]);
-      if (entryA && !entryB) return await appendToEntry(chatId, entryA, urls[1]);
-      if (entryB && !entryA) return await appendToEntry(chatId, entryB, urls[0]);
+      if (a && !b) return await appendToEntry(chatId, { itemId: a.id, title: a.title }, urls[1]);
+      if (b && !a) return await appendToEntry(chatId, { itemId: b.id, title: b.title }, urls[0]);
     }
 
     const isUrl = /^https?:\/\//i.test(text.trim());
@@ -266,42 +178,26 @@ bot.on('message', async (msg) => {
     if (isUrl) {
       const url = text.trim();
       await bot.sendMessage(chatId, '🔗 Extracting content...');
-
       const extracted = await extractContent(url);
 
       if (!extracted.text) {
         await bot.sendMessage(chatId, '🔍 Can\'t scrape this URL directly. Researching it instead...');
         const saved = await researchAndSave(url);
-        if (saved.length === 0) {
-          return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
-        }
-        await sendSavedConfirmation(chatId, saved);
-        return await sendTagReviewNotifications(chatId, saved);
+        if (saved.length === 0) return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
+        return await sendSavedConfirmation(chatId, saved);
       }
 
       await bot.sendMessage(chatId, '🧠 Analyzing with Claude...');
       const saved = await runPipeline(extracted.text, url, extracted.hashtags, { caption: extracted.caption, transcript: extracted.transcript });
-
-      if (saved.length === 0) {
-        return bot.sendMessage(chatId, '🤔 No skills or insights found in this content. Try a different source.');
-      }
-
+      if (saved.length === 0) return bot.sendMessage(chatId, '🤔 No skills or insights found in this content. Try a different source.');
       await sendSavedConfirmation(chatId, saved);
-      await sendTagReviewNotifications(chatId, saved);
 
     } else {
-      // Manual text input
       await bot.sendMessage(chatId, '🧠 Processing...');
       const saved = await runPipeline(text, 'manual');
-
-      if (saved.length === 0) {
-        return bot.sendMessage(chatId, '🤔 Nothing extractable found. Try pasting the content directly.');
-      }
-
+      if (saved.length === 0) return bot.sendMessage(chatId, '🤔 Nothing extractable found. Try pasting the content directly.');
       await sendSavedConfirmation(chatId, saved);
-      await sendTagReviewNotifications(chatId, saved);
     }
-
   } catch (err) {
     console.error('Pipeline error:', err);
     bot.sendMessage(chatId, `❌ Error: ${err.message}`);
@@ -309,24 +205,26 @@ bot.on('message', async (msg) => {
 });
 
 function typeEmoji(type) {
-  const map = { Video: '🎬', Article: '📄' };
-  return map[type] || '📌';
+  const map = { video: '🎬', article: '📄' };
+  return map[String(type || '').toLowerCase()] || '📌';
 }
 
-// ─── REST API (optional, for iOS Shortcut) ───────────────────────────────────
-app.get('/health', (req, res) => res.json({ status: 'ok', grimoire: !!grimoire }));
+// ─── REST API ─────────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => res.json({ status: 'ok', user: !!USER_ID }));
 
+// Retrieval + chat API (Doc A item 5): GET /api/items, GET /api/items/:id, POST /api/chat.
+registerApiRoutes(app);
+
+// Legacy capture endpoints (iOS Shortcut), now writing to Postgres.
 app.post('/process-url', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'url is required' });
-  if (!grimoire) return res.status(503).json({ error: 'Grimoire is still initializing' });
-
+  if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
   try {
     const extracted = await extractContent(url);
     if (!extracted.text) return res.json({ success: false, error: 'no_transcript', message: 'No transcript available — paste text manually' });
-
     const saved = await runPipeline(extracted.text, url, extracted.hashtags, { caption: extracted.caption, transcript: extracted.transcript });
-    res.json({ success: true, count: saved.length, items: saved.map(i => ({ title: i.title, category: i.category, type: i.type })) });
+    res.json({ success: true, count: saved.length, items: saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -335,11 +233,10 @@ app.post('/process-url', async (req, res) => {
 app.post('/process-text', async (req, res) => {
   const { text, source } = req.body;
   if (!text) return res.status(400).json({ error: 'text is required' });
-  if (!grimoire) return res.status(503).json({ error: 'Grimoire is still initializing' });
-
+  if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
   try {
     const saved = await runPipeline(text, source || 'manual');
-    res.json({ success: true, count: saved.length, items: saved.map(i => ({ title: i.title, category: i.category, type: i.type })) });
+    res.json({ success: true, count: saved.length, items: saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
