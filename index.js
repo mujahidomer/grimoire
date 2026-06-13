@@ -69,23 +69,30 @@ async function sendSavedConfirmation(chatId, saved) {
   }
 }
 
-// Append a follow-up link's content to an already-saved entry's Drive file
-async function appendToEntry(chatId, entry, url) {
-  await bot.sendMessage(chatId, '🔗 Extracting linked resource...');
+// Append one or more follow-up links' content to an already-saved entry's Drive file.
+// All URLs land in the same Drive file + Sheets entry — one combined entry, never separate files.
+async function appendToEntry(chatId, entry, urls) {
+  const urlList = Array.isArray(urls) ? urls : [urls];
 
-  let extracted = null;
-  try {
-    extracted = await extractContent(url);
-  } catch (err) {
-    console.error('Linked resource extraction failed:', err.message);
+  for (const url of urlList) {
+    await bot.sendMessage(chatId, urlList.length > 1
+      ? `🔗 Extracting linked resource (${urlList.indexOf(url) + 1}/${urlList.length})...`
+      : '🔗 Extracting linked resource...');
+
+    let extracted = null;
+    try {
+      extracted = await extractContent(url);
+    } catch (err) {
+      console.error('Linked resource extraction failed:', err.message);
+    }
+
+    // Clean + classify before appending so we don't dump raw nav/footer/image noise
+    const processed = await processLinkedResource(extracted?.text || '', extracted?.title);
+    const result = await appendLinkedResource(entry.fileId, url, processed);
+    await bot.sendMessage(chatId, result.replaced
+      ? `🔄 Updated linked resource in ${entry.title}`
+      : `🔗 Added to ${entry.title}`);
   }
-
-  // Clean + classify before appending so we don't dump raw nav/footer/image noise
-  const processed = await processLinkedResource(extracted?.text || '', extracted?.title);
-  const result = await appendLinkedResource(entry.fileId, url, processed);
-  await bot.sendMessage(chatId, result.replaced
-    ? `🔄 Updated linked resource in ${entry.title}`
-    : `🔗 Added to ${entry.title}`);
 }
 
 // ─── Telegram Handlers ───────────────────────────────────────────────────────
@@ -137,7 +144,7 @@ bot.on('message', async (msg) => {
     if (msg.reply_to_message && urls.length >= 1) {
       const entry = await findEntryByMessageId(grimoire.sheetId, msg.reply_to_message.message_id);
       if (entry) {
-        return await appendToEntry(chatId, entry, urls[0]);
+        return await appendToEntry(chatId, entry, urls);
       }
       await bot.sendMessage(chatId, `⚠️ Couldn't find the original entry for that message — saving as a new entry instead.`);
     }
