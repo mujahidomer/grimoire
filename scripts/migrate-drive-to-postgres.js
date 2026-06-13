@@ -49,6 +49,15 @@ async function resolveSheetId(drive) {
   return res.data.files[0].id;
 }
 
+// Recover a Drive file id from a "Drive File Link" cell when the dedicated ID
+// column is empty (older registry rows only have the link, with the id embedded:
+// https://drive.google.com/file/d/<ID>/view?...).
+function fileIdFromLink(link) {
+  if (!link) return null;
+  const m = String(link).match(/\/d\/([A-Za-z0-9_-]+)/) || String(link).match(/[?&]id=([A-Za-z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
 async function downloadFile(drive, fileId) {
   const res = await drive.files.get({ fileId, alt: 'media' });
   return typeof res.data === 'string' ? res.data : String(res.data);
@@ -71,8 +80,10 @@ async function main() {
 
   for (const row of rows) {
     if (migrated >= LIMIT) break;
-    const driveFileId = row[8];
+    // Prefer the dedicated Drive File ID column; fall back to the id embedded in
+    // the Drive File Link (older rows only have the link).
     const driveFileLink = row[7];
+    const driveFileId = row[8] || fileIdFromLink(driveFileLink);
     if (!driveFileId) { skipped++; continue; }
 
     try {
@@ -80,16 +91,19 @@ async function main() {
       const parsed = parseMarkdown(content);
       const fm = parsed.frontMatter || {};
 
-      const sourceUrl = fm.source_url || row[5];
-      if (!sourceUrl) { console.warn(`  ⚠️ no source_url for ${driveFileId} — skipping`); skipped++; continue; }
+      // The MD front-matter is the source of truth — the registry sheet's column
+      // layout varies between schema generations, so positional cell fallbacks
+      // are unsafe. Only the title falls back to col 0 (stable across schemas).
+      const sourceUrl = fm.source_url;
+      if (!sourceUrl) { console.warn(`  ⚠️ no source_url in front-matter for ${driveFileId} — skipping`); skipped++; continue; }
 
       const input = {
-        title: fm.title || row[0],
-        category: fm.category || row[1] || 'Other',
-        type: fm.type || row[3],
+        title: fm.title || row[0] || 'Untitled',
+        category: fm.category || 'Other',
+        type: fm.type || 'article',
         source_url: sourceUrl,
-        date_saved: fm.date_saved || row[6],
-        summary: parsed.summary || row[4] || null,
+        date_saved: fm.date_saved || null,
+        summary: parsed.summary || null,
         key_takeaways: parsed.keyTakeaways,
         transcript: parsed.transcript || null,
         caption: parsed.caption || null,
