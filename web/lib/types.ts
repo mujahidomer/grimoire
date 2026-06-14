@@ -1,5 +1,12 @@
 // Shapes mirror the verified backend (Doc A). Do not invent fields here.
 
+// keyTakeaways is a free-form JSON value the classifier invents per item:
+// a string, an array, or a nested object. Legacy items hold a string[].
+export type TakeawayValue =
+  | string
+  | TakeawayValue[]
+  | { [key: string]: TakeawayValue };
+
 export interface Tag {
   name: string;
   confidence_pending: boolean;
@@ -32,7 +39,7 @@ export interface Item {
   created_at: string;
   source: string;
   summary: string | null;
-  key_takeaways: string[];
+  key_takeaways: TakeawayValue;
   transcript: string | null;
   caption: string | null;
   artifact_type: string; // skill | tool | resource | person | concept | none

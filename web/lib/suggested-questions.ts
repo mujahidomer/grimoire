@@ -1,5 +1,18 @@
-import type { Item } from "@/lib/types";
+import type { Item, TakeawayValue } from "@/lib/types";
 import { truncate } from "@/lib/utils";
+
+// Collect every string leaf from the free-form keyTakeaways value so the
+// question builder can work regardless of whether it's a string, array, or
+// nested object.
+function takeawayStrings(value: TakeawayValue): string[] {
+  if (value == null) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(takeawayStrings);
+  if (typeof value === "object") {
+    return Object.values(value).flatMap(takeawayStrings);
+  }
+  return [];
+}
 
 const DEFAULT_QUESTIONS = [
   "Save a link, then ask me to turn it into next steps",
@@ -95,7 +108,9 @@ function categoryQuestions(item: Item, title: string, tag?: string): string[] {
 }
 
 function takeawayQuestion(item: Item): string | null {
-  const takeaway = item.key_takeaways.find((t) => t.trim().length > 12);
+  const takeaway = takeawayStrings(item.key_takeaways).find(
+    (t) => t.trim().length > 12,
+  );
   if (!takeaway) return null;
   return `How do I actually do this: ${truncate(takeaway, TAKEAWAY_MAX)}`;
 }
