@@ -154,6 +154,46 @@ export async function saveUrl(url: string): Promise<SaveResponse> {
   return data;
 }
 
+// Public Supabase Storage bucket that uploaded PDFs/images land in. The backend
+// detects these object URLs and routes them to the PDF / image pipelines.
+const UPLOAD_BUCKET =
+  process.env.NEXT_PUBLIC_SUPABASE_UPLOAD_BUCKET ?? "uploads";
+
+// Upload a file straight to Supabase Storage (bytes never touch Railway) and
+// return its public URL. The Supabase client sends the raw file with the right
+// multipart content-type itself — we deliberately do not attach our JSON auth
+// headers here.
+export async function uploadFile(file: File): Promise<string> {
+  const supabase = createBrowserClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const ext = file.name.includes(".") ? file.name.split(".").pop() : "";
+  const safeExt = ext ? `.${ext.toLowerCase()}` : "";
+  const prefix = user?.id ? `${user.id}/` : "";
+  const path = `${prefix}${Date.now()}-${crypto.randomUUID()}${safeExt}`;
+
+  const { error } = await supabase.storage
+    .from(UPLOAD_BUCKET)
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+  if (error) {
+    throw new Error(error.message || "Upload failed.");
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(UPLOAD_BUCKET).getPublicUrl(path);
+  if (!publicUrl) throw new Error("Couldn't resolve the uploaded file URL.");
+
+  return publicUrl;
+}
+
 export async function deleteItem(id: string): Promise<void> {
   const res = await fetch(`${BASE}/api/items/${id}`, {
     method: "DELETE",

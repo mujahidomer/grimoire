@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, MessageCircle, Plus } from "lucide-react";
-import { saveUrl } from "@/lib/api";
+import { useRef, useState } from "react";
+import { Loader2, MessageCircle, Paperclip, Plus } from "lucide-react";
+import { saveUrl, uploadFile } from "@/lib/api";
 import { useSaveLinkProgress } from "@/lib/save-link-progress";
 import { showToast } from "@/lib/toast";
 import { useSuggestedQuestions } from "@/lib/use-suggested-questions";
@@ -28,6 +28,7 @@ export function CommandBar({
   const [saveOpen, setSaveOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { stepIndex } = useSaveLinkProgress(saving);
   const suggestedQuestions = useSuggestedQuestions();
 
@@ -89,6 +90,38 @@ export function CommandBar({
     }
   }
 
+  // Upload a PDF/image straight to Supabase Storage, then run the existing
+  // saveUrl() flow against the returned public URL. The same `saving` state
+  // covers both the upload and the save so the UI shows one loading run.
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // let the user re-pick the same file after an error
+    if (!file || saving) return;
+    setSaving(true);
+    try {
+      const publicUrl = await uploadFile(file);
+      const res = await saveUrl(publicUrl);
+      closeSaveMode();
+      const savedIds =
+        res.items?.map((item) => item.id).filter(Boolean) ??
+        (res.id ? [res.id] : []);
+      onSaved?.({ savedIds });
+      showToast(
+        res.title ? `Saved "${res.title}"` : "File saved to your library",
+        "success",
+      );
+    } catch (err) {
+      showToast(
+        err instanceof Error && err.message
+          ? err.message
+          : "Couldn't upload that file. Try again.",
+        "error",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:absolute lg:z-40 lg:px-6 lg:pb-6">
       <div className="pointer-events-auto w-full max-w-2xl">
@@ -109,6 +142,26 @@ export function CommandBar({
                 className="h-9 min-w-0 flex-1 basis-full bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/40 focus:outline-none disabled:opacity-60 sm:basis-auto"
               />
               <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={handleFile}
+                  disabled={saving}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={saving}
+                  aria-label="Upload a PDF or image"
+                  title="Upload a PDF or image"
+                >
+                  <Paperclip className="h-4 w-4" />
+                  <span className="hidden sm:inline">Upload file</span>
+                </Button>
                 <Button type="submit" size="sm" disabled={saving || !url.trim()}>
                   {saving ? (
                     <>
