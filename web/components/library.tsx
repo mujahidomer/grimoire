@@ -5,17 +5,41 @@ import { Loader2, Plus } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { fetchItems } from "@/lib/api";
 import { useLibraryFilters } from "@/lib/library-context";
-import { ActivityFeed, RecentSaves } from "@/components/activity-feed";
+import {
+  ActivityFeed,
+  RecentSaves,
+  type LibraryViewMode,
+} from "@/components/activity-feed";
+import { LibraryViewToggle } from "@/components/library-view-toggle";
 import { MainHeader } from "@/components/main-header";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const VIEW_STORAGE_KEY = "grimoire-library-view";
+
+function readStoredView(): LibraryViewMode {
+  if (typeof window === "undefined") return "list";
+  const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
+  return stored === "grid" ? "grid" : "list";
+}
 
 export function Library({ initialItems }: { initialItems: Item[] }) {
   const { query, category } = useLibraryFilters();
   const [items, setItems] = useState<Item[]>(initialItems);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<LibraryViewMode>("list");
 
   const reqId = useRef(0);
+
+  useEffect(() => {
+    setView(readStoredView());
+  }, []);
+
+  function handleViewChange(next: LibraryViewMode) {
+    setView(next);
+    window.localStorage.setItem(VIEW_STORAGE_KEY, next);
+  }
 
   const load = useCallback(async (q: string, cat: string | null) => {
     const id = ++reqId.current;
@@ -61,14 +85,22 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
   );
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
+    <div
+      className={cn(
+        "mx-auto px-4 py-6 lg:px-8 lg:py-10",
+        view === "grid" ? "max-w-5xl" : "max-w-3xl",
+      )}
+    >
       <MainHeader
         title={title}
         actions={
-          <Button size="sm">
-            <Plus className="h-4 w-4" />
-            Quick save
-          </Button>
+          <div className="flex items-center gap-2">
+            <LibraryViewToggle view={view} onChange={handleViewChange} />
+            <Button size="sm">
+              <Plus className="h-4 w-4" />
+              Quick save
+            </Button>
+          </div>
         }
       />
 
@@ -92,7 +124,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
         </div>
       ) : (
         <div className={loading ? "opacity-60" : ""}>
-          <ActivityFeed items={sorted} />
+          <ActivityFeed items={sorted} view={view} />
         </div>
       )}
     </div>

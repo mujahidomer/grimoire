@@ -1,4 +1,10 @@
-import type { ChatResponse, Item, LinkedResource, SaveResponse } from "./types";
+import type {
+  ChatResponse,
+  Item,
+  LinkedResource,
+  LinkPreview,
+  SaveResponse,
+} from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -44,6 +50,24 @@ export async function fetchItems(query: ItemsQuery = {}): Promise<Item[]> {
   });
   const data = await json<{ count: number; items: Item[] }>(res);
   return data.items;
+}
+
+export function previewImageUrl(imageUrl: string): string {
+  if (/^https?:\/\/(?:img\.youtube\.com|i\.ytimg\.com)\//i.test(imageUrl)) {
+    return imageUrl;
+  }
+  const params = new URLSearchParams({ url: imageUrl });
+  return `${BASE}/api/link-preview/image?${params}`;
+}
+
+export async function fetchLinkPreview(url: string): Promise<LinkPreview> {
+  const params = new URLSearchParams({ url });
+  const res = await fetch(`${BASE}/api/link-preview?${params}`, {
+    headers: headers(),
+    cache: "no-store",
+  });
+  const data = await json<{ preview: LinkPreview }>(res);
+  return data.preview;
 }
 
 export async function fetchItem(id: string): Promise<Item> {

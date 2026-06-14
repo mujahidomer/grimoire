@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Loader2, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
 import { askChat } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { ChatMarkdown } from "@/components/chat-markdown";
+import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
 
 interface Turn {
   question: string;
@@ -90,7 +89,11 @@ export function ChatPanel({
 
   return (
     <aside className="app-chat-sidebar">
-      <div className="flex items-center justify-between border-b border-eco-border-light px-4 py-4">
+      <div className="flex justify-center pt-2 lg:hidden" aria-hidden>
+        <div className="h-1 w-10 rounded-full bg-black/10" />
+      </div>
+
+      <div className="flex items-center justify-between border-b border-eco-border-light px-4 py-3 lg:py-4">
         <span className="font-display text-lg font-normal text-eco-heading">
           Ask Grimoire
         </span>
@@ -110,40 +113,9 @@ export function ChatPanel({
         )}
 
         {turns.map((turn, i) => (
-          <div key={i} className="space-y-3">
-            <p className="font-sans text-body-md font-medium text-eco-heading">
-              {turn.question}
-            </p>
-
-            {turn.empty ? (
-              <p className="prose-reading text-body-md text-eco-foreground/50">
-                I don&apos;t have anything saved on that. Save some links on
-                this topic and ask again.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                <ChatMarkdown content={turn.answer} />
-                {turn.sources.length > 0 && (
-                  <div className="space-y-1.5 border-t border-black/[0.06] pt-3">
-                    <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50">
-                      Sources
-                    </p>
-                    <ul className="space-y-1">
-                      {turn.sources.map((s) => (
-                        <li key={s.id}>
-                          <Link
-                            href={`/item/${s.id}`}
-                            className="font-sans text-body-md text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
-                          >
-                            {s.title}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
+          <div key={i}>
+            {i > 0 && <ChatTurnDivider />}
+            <ChatTurn turn={turn} />
           </div>
         ))}
 
@@ -157,7 +129,7 @@ export function ChatPanel({
 
       <form
         onSubmit={send}
-        className="flex items-center gap-2 border-t border-eco-border-light px-4 py-4"
+        className="flex items-center gap-2 border-t border-eco-border-light px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:py-4 lg:pb-4"
       >
         <input
           value={input}

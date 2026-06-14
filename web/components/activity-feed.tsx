@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import type { Item } from "@/lib/types";
-import { formatTime, formatType } from "@/lib/utils";
+import { formatDate, formatTime, formatType, truncate } from "@/lib/utils";
+import { SourceThumbnail } from "@/components/source-thumbnail";
+
+export type LibraryViewMode = "grid" | "list";
 
 function groupByDay(items: Item[]): { label: string; items: Item[] }[] {
   const map = new Map<string, Item[]>();
@@ -20,13 +23,71 @@ function groupByDay(items: Item[]): { label: string; items: Item[] }[] {
   return Array.from(map.entries()).map(([label, group]) => ({ label, items: group }));
 }
 
-function itemIcon(type: string) {
-  if (type === "video") return "▶";
-  if (type === "article") return "📄";
-  return "📌";
+function LibraryListRow({ item }: { item: Item }) {
+  return (
+    <Link
+      href={`/item/${item.id}`}
+      className="group flex items-start gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-black/[0.03]"
+    >
+      <SourceThumbnail
+        url={item.source_url}
+        className="mt-0.5 h-14 w-[4.5rem] shrink-0 rounded-lg"
+        iconClassName="h-4 w-4"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-sans text-body-md font-medium text-eco-heading group-hover:text-eco-primary">
+          {item.title}
+        </p>
+        <p className="mt-0.5 truncate font-sans text-label-md text-eco-foreground/50">
+          {item.category} · {formatType(item.type)}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2 pt-0.5">
+        <Lock className="h-3 w-3 text-eco-foreground/25" />
+        <span className="font-sans text-label-md tabular-nums text-eco-foreground/40">
+          {formatTime(item.date_saved)}
+        </span>
+      </div>
+    </Link>
+  );
 }
 
-export function ActivityFeed({ items }: { items: Item[] }) {
+function LibraryGridCard({ item }: { item: Item }) {
+  return (
+    <Link
+      href={`/item/${item.id}`}
+      className="group block overflow-hidden rounded-xl border border-black/[0.06] bg-white shadow-eco-sm transition-shadow duration-eco hover:shadow-eco"
+    >
+      <SourceThumbnail url={item.source_url} className="aspect-video w-full" />
+      <div className="space-y-2 p-4">
+        <div className="flex items-center justify-between gap-2 font-sans text-label-md text-eco-foreground/50">
+          <span className="truncate">
+            {item.category} · {formatType(item.type)}
+          </span>
+          <span className="shrink-0 whitespace-nowrap">
+            {formatDate(item.date_saved)}
+          </span>
+        </div>
+        <h3 className="line-clamp-2 font-display text-lg font-light leading-snug text-eco-heading transition-colors duration-eco group-hover:text-eco-primary">
+          {item.title}
+        </h3>
+        {item.summary && (
+          <p className="line-clamp-2 prose-reading text-body-md text-eco-foreground/60">
+            {truncate(item.summary, 100)}
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+export function ActivityFeed({
+  items,
+  view = "list",
+}: {
+  items: Item[];
+  view?: LibraryViewMode;
+}) {
   const groups = groupByDay(items);
 
   if (groups.length === 0) return null;
@@ -38,34 +99,23 @@ export function ActivityFeed({ items }: { items: Item[] }) {
           <h2 className="mb-4 font-sans text-label-md font-medium text-eco-foreground/45">
             {group.label}
           </h2>
-          <ul className="space-y-1">
-            {group.items.map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={`/item/${item.id}`}
-                  className="group flex items-start gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-black/[0.03]"
-                >
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-eco-primary/15 text-sm">
-                    {itemIcon(item.type)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-sans text-body-md font-medium text-eco-heading group-hover:text-eco-primary">
-                      {item.title}
-                    </p>
-                    <p className="mt-0.5 truncate font-sans text-label-md text-eco-foreground/50">
-                      {item.category} · {formatType(item.type)}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2 pt-0.5">
-                    <Lock className="h-3 w-3 text-eco-foreground/25" />
-                    <span className="font-sans text-label-md tabular-nums text-eco-foreground/40">
-                      {formatTime(item.date_saved)}
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {view === "grid" ? (
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {group.items.map((item) => (
+                <li key={item.id}>
+                  <LibraryGridCard item={item} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <ul className="space-y-1">
+              {group.items.map((item) => (
+                <li key={item.id}>
+                  <LibraryListRow item={item} />
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       ))}
     </div>
@@ -94,9 +144,11 @@ export function RecentSaves({ items }: { items: Item[] }) {
                 href={`/item/${item.id}`}
                 className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors hover:bg-black/[0.02]"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-eco-primary/15 text-xs font-medium text-eco-primary">
-                  {item.category.charAt(0)}
-                </span>
+                <SourceThumbnail
+                  url={item.source_url}
+                  className="h-12 w-16 shrink-0 rounded-lg"
+                  iconClassName="h-4 w-4"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-sans text-body-md font-medium text-eco-heading">
                     {item.title}
@@ -106,7 +158,7 @@ export function RecentSaves({ items }: { items: Item[] }) {
                   </p>
                 </div>
                 <span className="shrink-0 font-sans text-label-md text-eco-foreground/40">
-                  Today
+                  {formatDate(item.date_saved)}
                 </span>
               </Link>
             </li>

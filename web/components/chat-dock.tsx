@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Loader2, MessageCircle, Send, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
 import { askChat } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { ChatMarkdown } from "@/components/chat-markdown";
+import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
 
 interface Turn {
   question: string;
@@ -101,41 +100,9 @@ export function ChatDock() {
               )}
 
               {turns.map((turn, i) => (
-                <div key={i} className="space-y-3">
-                  <p className="font-sans text-body-md font-medium text-eco-secondary">
-                    {turn.question}
-                  </p>
-
-                  {turn.empty ? (
-                    <p className="prose-reading text-body-md text-eco-text/50">
-                      I don&apos;t have anything saved on that. Save some links
-                      on this topic and ask again.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      <ChatMarkdown content={turn.answer} />
-                      {turn.sources.length > 0 && (
-                        <div className="space-y-1.5 border-t border-eco-border/40 pt-3">
-                          <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-text/50">
-                            Sources
-                          </p>
-                          <ul className="space-y-1">
-                            {turn.sources.map((s) => (
-                              <li key={s.id}>
-                                <Link
-                                  href={`/item/${s.id}`}
-                                  onClick={close}
-                                  className="font-sans text-body-md text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
-                                >
-                                  {s.title}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                <div key={i}>
+                  {i > 0 && <ChatTurnDivider />}
+                  <ChatTurn turn={turn} onSourceNavigate={close} />
                 </div>
               ))}
 

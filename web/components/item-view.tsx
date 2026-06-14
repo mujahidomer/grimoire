@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { artifactEmoji, formatDate, formatType, truncate } from "@/lib/utils";
 import { RawMarkdownButton } from "@/components/raw-markdown";
 import { AddLinkedResource } from "@/components/add-linked-resource";
+import { LinkPreviewCard } from "@/components/link-preview-card";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -32,7 +33,7 @@ export function ItemView({ item }: { item: Item }) {
   const hasTranscript = !!(item.transcript && item.transcript.trim());
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
       <Link
         href="/"
         className="mb-6 inline-flex items-center gap-1.5 font-sans text-body-md text-eco-foreground/70 transition-colors duration-eco hover:text-eco-primary"
@@ -42,6 +43,15 @@ export function ItemView({ item }: { item: Item }) {
       </Link>
 
       <article>
+        {item.source_url && (
+          <LinkPreviewCard
+            url={item.source_url}
+            fallbackTitle={item.title}
+            fallbackDescription={item.summary}
+            type={item.type}
+          />
+        )}
+
         <h1 className="font-display text-[2rem] font-normal leading-tight text-eco-heading">
           {item.title}
         </h1>
@@ -52,19 +62,6 @@ export function ItemView({ item }: { item: Item }) {
           <span>{formatType(item.type)}</span>
           <span aria-hidden>·</span>
           <span>{formatDate(item.date_saved)}</span>
-          {item.source_url && (
-            <>
-              <span aria-hidden>·</span>
-              <a
-                href={item.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
-              >
-                Source <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            </>
-          )}
         </div>
 
         {item.tags.length > 0 && (
