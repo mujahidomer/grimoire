@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Gloock, Inter } from "next/font/google";
+import { Gloock, Inter, Noto_Naskh_Arabic } from "next/font/google";
 import { AuthAwareShell } from "@/components/auth-aware-shell";
 import "./globals.css";
 
@@ -14,6 +14,13 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
   variable: "--font-inter",
+  display: "swap",
+});
+
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-arabic",
   display: "swap",
 });
 
@@ -35,8 +42,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${gloock.variable} ${inter.variable}`}>
-      <body className={`${gloock.variable} ${inter.variable}`}>
+    <html lang="en" className={`${gloock.variable} ${inter.variable} ${notoNaskhArabic.variable}`}>
+      <body className={`${gloock.variable} ${inter.variable} ${notoNaskhArabic.variable}`}>
         <AuthAwareShell>{children}</AuthAwareShell>
       </body>
     </html>

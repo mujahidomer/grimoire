@@ -44,6 +44,13 @@
     line-height: 20px;
     color: color-mix(in srgb, var(--eco-text) 90%, transparent);
   }
+  .prose-arabic {
+    font-family: var(--font-arabic), "Traditional Arabic", "Segoe UI", serif;
+    line-height: 2;
+    font-size: 22px;
+    color: var(--eco-heading);
+    white-space: pre-wrap;
+  }
 }
 
 @layer components {

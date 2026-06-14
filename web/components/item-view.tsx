@@ -10,9 +10,14 @@ import {
 } from "lucide-react";
 import type { Item, LinkedResource, TakeawayValue } from "@/lib/types";
 import {
+  isArabicTextKey,
+  isPassagesKey,
   isRecipeStepsKey,
   isRecipeTakeaways,
+  isSacredPassage,
+  isSacredTextTakeaways,
   orderRecipeEntries,
+  orderSacredTextEntries,
 } from "@/lib/takeaway-formats";
 import { Badge } from "@/components/ui/badge";
 import { artifactEmoji, formatDate, formatType, truncate } from "@/lib/utils";
@@ -85,6 +90,59 @@ function cellText(v: TakeawayValue): string {
     .join("; ");
 }
 
+function formatSacredType(type: unknown): string | null {
+  if (typeof type !== "string" || !type.trim()) return null;
+  return type.replace(/[_-]/g, " ");
+}
+
+function SacredPassageCard({ passage }: { passage: PlainObject }) {
+  const arabic = passage.arabic ?? passage.arabic_text;
+  const typeLabel = formatSacredType(passage.type);
+  const translation = passage.translation;
+  const transliteration = passage.transliteration;
+  const source = passage.source;
+
+  return (
+    <div className="rounded-xl border border-black/[0.06] bg-white p-5 shadow-eco-sm">
+      {typeLabel && (
+        <p className="mb-3 font-sans text-label-md font-medium uppercase tracking-wide text-eco-foreground/50">
+          {typeLabel}
+        </p>
+      )}
+      {typeof arabic === "string" && arabic.trim() && (
+        <p dir="rtl" lang="ar" className="prose-arabic">
+          {arabic.trim()}
+        </p>
+      )}
+      {typeof transliteration === "string" && transliteration.trim() && (
+        <p className="mt-3 font-sans text-body-md italic text-eco-foreground/70">
+          {transliteration.trim()}
+        </p>
+      )}
+      {typeof translation === "string" && translation.trim() && (
+        <p className="mt-3 prose-reading text-base">
+          {translation.trim()}
+        </p>
+      )}
+      {typeof source === "string" && source.trim() && (
+        <p className="mt-2 font-sans text-label-md text-eco-foreground/50">
+          {source.trim()}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SacredPassageList({ items }: { items: PlainObject[] }) {
+  return (
+    <div className="space-y-4">
+      {items.map((passage, i) => (
+        <SacredPassageCard key={i} passage={passage} />
+      ))}
+    </div>
+  );
+}
+
 // Rule 4: array of uniform objects → table (column headers = keys).
 function TakeawayTable({ rows }: { rows: PlainObject[] }) {
   const cols = Object.keys(rows[0]);
@@ -149,6 +207,9 @@ function renderArray(
   if (items.length === 0) return null;
 
   if (isArrayOfObjects(items)) {
+    if (isPassagesKey(keyName) && items.every(isSacredPassage)) {
+      return <SacredPassageList items={items} />;
+    }
     return sharesColumns(items) ? (
       <TakeawayTable rows={items} />
     ) : (
@@ -180,7 +241,15 @@ function renderValue(
   if (value == null) return null;
   if (isPrimitive(value)) {
     const text = String(value).trim();
-    return text ? <p className="prose-reading text-base">{text}</p> : null;
+    if (!text) return null;
+    if (isArabicTextKey(keyName)) {
+      return (
+        <p dir="rtl" lang="ar" className="prose-arabic">
+          {text}
+        </p>
+      );
+    }
+    return <p className="prose-reading text-base">{text}</p>;
   }
   if (depth >= MAX_TAKEAWAY_DEPTH) {
     return <p className="prose-reading text-base">{cellText(value)}</p>;
@@ -194,11 +263,14 @@ function renderObject(
   obj: PlainObject,
   depth: number,
   recipeMode = false,
+  sacredMode = false,
 ): React.ReactNode {
   const entries =
     recipeMode && depth === 0
       ? orderRecipeEntries(obj)
-      : Object.entries(obj).filter(([, v]) => !isEmptyTakeaways(v));
+      : sacredMode && depth === 0
+        ? orderSacredTextEntries(obj)
+        : Object.entries(obj).filter(([, v]) => !isEmptyTakeaways(v));
   if (entries.length === 0) return null;
 
   const topLevel = depth === 0;
@@ -237,7 +309,8 @@ function renderTakeaways(
   }
   if (Array.isArray(value)) return renderArray(value, "", 0);
   const recipeMode = isRecipeTakeaways(value, category);
-  return renderObject(value, 0, recipeMode);
+  const sacredMode = !recipeMode && isSacredTextTakeaways(value);
+  return renderObject(value, 0, recipeMode, sacredMode);
 }
 
 export function ItemView({ item }: { item: Item }) {
