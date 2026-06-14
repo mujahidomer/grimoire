@@ -116,6 +116,8 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
   const isFiltered = !!query || !!category;
   const title = category ?? (isFiltered ? "Search results" : "Library");
   const sorted = sortItems(items);
+  const recentItems = isFiltered ? [] : sorted.slice(0, 3);
+  const feedItems = isFiltered ? sorted : sorted.slice(recentItems.length);
 
   return (
     <div
@@ -131,7 +133,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
         }
       />
 
-      {!isFiltered && <RecentSaves items={sorted} />}
+      {recentItems.length > 0 && <RecentSaves items={recentItems} />}
 
       {loading && items.length === 0 ? (
         <div className="flex items-center justify-center py-24 text-eco-foreground/50">
@@ -151,7 +153,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
         </div>
       ) : (
         <div className={loading ? "opacity-60" : ""}>
-          <ActivityFeed items={sorted} view={view} />
+          <ActivityFeed items={feedItems} view={view} />
         </div>
       )}
     </div>
