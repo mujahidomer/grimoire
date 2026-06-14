@@ -1,16 +1,36 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PanelLeft } from "lucide-react";
+import { MessageCircle, PanelLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { LibraryProvider } from "@/lib/library-context";
 import { Sidebar } from "@/components/sidebar";
 import { CommandBar } from "@/components/command-bar";
 import { ChatPanel } from "@/components/chat-panel";
 import { Toaster } from "@/components/toaster";
 
+const DESKTOP_MQ = "(min-width: 1024px)";
+
+function isDesktopViewport() {
+  return window.matchMedia(DESKTOP_MQ).matches;
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (!isDesktopViewport()) setSidebarOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_MQ);
+    const onChange = () => {
+      if (!mq.matches) setSidebarOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -20,8 +40,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (isDesktopViewport() || (!sidebarOpen && !chatOpen)) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [sidebarOpen, chatOpen]);
+
   const handleAsk = useCallback((question: string) => {
     setChatOpen(true);
+    if (!isDesktopViewport()) setSidebarOpen(false);
     window.dispatchEvent(
       new CustomEvent("grimoire:ask", { detail: { question } }),
     );
@@ -29,14 +59,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const handleOpenChat = useCallback(() => {
     setChatOpen(true);
+    if (!isDesktopViewport()) setSidebarOpen(false);
   }, []);
 
   const handleToggleChat = useCallback(() => {
-    setChatOpen((open) => !open);
+    setChatOpen((open) => {
+      if (!open && !isDesktopViewport()) setSidebarOpen(false);
+      return !open;
+    });
   }, []);
 
   const handleToggleSidebar = useCallback(() => {
-    setSidebarOpen((open) => !open);
+    setSidebarOpen((open) => {
+      if (!open && !isDesktopViewport()) setChatOpen(false);
+      return !open;
+    });
+  }, []);
+
+  const handleSidebarNavigate = useCallback(() => {
+    if (!isDesktopViewport()) setSidebarOpen(false);
+  }, []);
+
+  const handleCloseChat = useCallback(() => {
+    setChatOpen(false);
   }, []);
 
   const handleSaved = useCallback(() => {
@@ -46,23 +91,68 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <LibraryProvider>
       <div className="app-shell">
+        {sidebarOpen && (
+          <div
+            className="app-overlay-backdrop"
+            onClick={handleToggleSidebar}
+            aria-hidden
+          />
+        )}
+        {chatOpen && (
+          <div
+            className="app-overlay-backdrop"
+            onClick={handleCloseChat}
+            aria-hidden
+          />
+        )}
+
         <Sidebar
           open={sidebarOpen}
           onToggleSidebar={handleToggleSidebar}
           onToggleChat={handleToggleChat}
+          onNavigate={handleSidebarNavigate}
           chatOpen={chatOpen}
         />
+
         <div className="app-main">
+          <header className="flex shrink-0 items-center justify-between border-b border-black/[0.06] bg-eco-main px-3 py-2.5 lg:hidden">
+              <button
+                type="button"
+                onClick={handleToggleSidebar}
+                className="rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+                aria-label={sidebarOpen ? "Close menu" : "Open menu"}
+              >
+                <PanelLeft className="h-4 w-4" />
+              </button>
+              <span className="font-display text-base font-normal text-eco-heading">
+                Grimoire
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleChat}
+                className={cn(
+                  "rounded-lg p-2 transition-colors hover:bg-black/[0.04]",
+                  chatOpen
+                    ? "text-eco-primary"
+                    : "text-eco-foreground/50 hover:text-eco-foreground",
+                )}
+                aria-label={chatOpen ? "Close chat" : "Open chat"}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </button>
+            </header>
+
           {!sidebarOpen && (
             <button
               type="button"
               onClick={handleToggleSidebar}
-              className="app-sidebar-show-btn rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+              className="app-sidebar-show-btn hidden rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground lg:block"
               aria-label="Show sidebar"
             >
               <PanelLeft className="h-4 w-4" />
             </button>
           )}
+
           <main className="app-main-scroll scrollbar-thin">{children}</main>
           <CommandBar
             onAsk={handleAsk}
@@ -70,7 +160,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onSaved={handleSaved}
           />
         </div>
-        <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+
+        <ChatPanel open={chatOpen} onClose={handleCloseChat} />
         <Toaster />
       </div>
     </LibraryProvider>

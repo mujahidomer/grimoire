@@ -81,12 +81,12 @@ export function CommandBar({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-6">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:z-40 lg:px-6 lg:pb-6">
       <div className="pointer-events-auto w-full max-w-2xl">
         {saveOpen ? (
           <form
             onSubmit={handleSave}
-            className="flex items-center gap-2 rounded-2xl border border-black/[0.08] bg-white px-3 py-2 shadow-eco-lg"
+            className="flex flex-wrap items-center gap-2 rounded-2xl border border-black/[0.08] bg-white px-3 py-2 shadow-eco-lg sm:flex-nowrap"
           >
             <input
               type="url"
@@ -94,28 +94,30 @@ export function CommandBar({
               onChange={(e) => setUrl(e.target.value)}
               placeholder="Paste a link to save…"
               autoFocus
-              className="h-9 flex-1 bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/40 focus:outline-none"
+              className="h-9 min-w-0 flex-1 basis-full bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/40 focus:outline-none sm:basis-auto"
             />
-            <Button type="submit" size="sm" disabled={saving || !url.trim()}>
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Save"
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={closeSaveMode}
-            >
-              Cancel
-            </Button>
+            <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+              <Button type="submit" size="sm" disabled={saving || !url.trim()}>
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={closeSaveMode}
+              >
+                Cancel
+              </Button>
+            </div>
           </form>
         ) : (
           <form
             onSubmit={handleAsk}
-            className="flex items-center gap-2 rounded-full border border-black/[0.08] bg-white/95 px-4 py-2 shadow-eco-lg backdrop-blur-eco"
+            className="flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-white/95 px-3 py-2 shadow-eco-lg backdrop-blur-eco sm:gap-2 sm:px-4"
           >
             <input
               value={input}
@@ -129,15 +131,16 @@ export function CommandBar({
               variant="secondary"
               size="sm"
               onClick={() => openSaveMode()}
-              className="shrink-0 rounded-full"
+              className="shrink-0 rounded-full px-2.5 sm:px-3"
+              aria-label="Save link"
             >
               <Plus className="h-3.5 w-3.5" />
-              Save link
+              <span className="hidden sm:inline">Save link</span>
             </Button>
             <button
               type="button"
               onClick={onOpenChat}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-eco-border-light bg-eco-surface px-3 py-1.5 font-sans text-label-md font-medium text-eco-on-surface transition-colors hover:bg-black/[0.03]"
+              className="hidden shrink-0 items-center gap-1.5 rounded-full border border-eco-border-light bg-eco-surface px-3 py-1.5 font-sans text-label-md font-medium text-eco-on-surface transition-colors hover:bg-black/[0.03] sm:inline-flex"
             >
               <MessageCircle className="h-3.5 w-3.5" />
               Ask anything

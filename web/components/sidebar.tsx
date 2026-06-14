@@ -34,11 +34,13 @@ export function Sidebar({
   open,
   onToggleSidebar,
   onToggleChat,
+  onNavigate,
   chatOpen,
 }: {
   open: boolean;
   onToggleSidebar: () => void;
   onToggleChat: () => void;
+  onNavigate?: () => void;
   chatOpen: boolean;
 }) {
   const pathname = usePathname();
@@ -69,7 +71,10 @@ export function Sidebar({
       <nav className="flex flex-col gap-0.5 px-2 py-2">
         <Link
           href="/"
-          onClick={() => setCategory(null)}
+          onClick={() => {
+            setCategory(null);
+            onNavigate?.();
+          }}
           className={cn(
             "flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-sans text-body-md transition-colors duration-eco",
             isHome && !category && !chatOpen
@@ -82,7 +87,10 @@ export function Sidebar({
         </Link>
         <button
           type="button"
-          onClick={onToggleChat}
+          onClick={() => {
+            onToggleChat();
+            onNavigate?.();
+          }}
           className={cn(
             "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left font-sans text-body-md transition-colors duration-eco",
             chatOpen
@@ -102,7 +110,10 @@ export function Sidebar({
         <div className="flex flex-col gap-0.5">
           <button
             type="button"
-            onClick={() => setCategory(null)}
+            onClick={() => {
+              setCategory(null);
+              onNavigate?.();
+            }}
             className={cn(
               "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left font-sans text-body-md transition-colors duration-eco",
               isHome && !category
@@ -117,7 +128,10 @@ export function Sidebar({
             <button
               key={cat}
               type="button"
-              onClick={() => setCategory(cat)}
+              onClick={() => {
+                setCategory(cat);
+                onNavigate?.();
+              }}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left font-sans text-body-md transition-colors duration-eco",
                 category === cat

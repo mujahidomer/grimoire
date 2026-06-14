@@ -5,6 +5,14 @@ export interface Tag {
   confidence_pending: boolean;
 }
 
+export interface LinkPreview {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  site_name: string | null;
+}
+
 export interface LinkedResource {
   id: string;
   title: string;

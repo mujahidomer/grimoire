@@ -6,8 +6,8 @@ export function MainHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-8 flex items-start justify-between gap-4">
-      <h1 className="font-display text-[2rem] font-normal leading-tight text-eco-heading">
+    <div className="mb-6 flex items-start justify-between gap-4 lg:mb-8">
+      <h1 className="font-display text-[1.625rem] font-normal leading-tight text-eco-heading lg:text-[2rem]">
         {title}
       </h1>
       {actions}
