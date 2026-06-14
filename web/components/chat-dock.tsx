@@ -6,6 +6,7 @@ import { Loader2, MessageCircle, Send, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
 import { askChat } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ChatMarkdown } from "@/components/chat-markdown";
 
 interface Turn {
   question: string;
@@ -120,9 +121,7 @@ export function ChatDock() {
                     </p>
                   ) : (
                     <div className="space-y-3">
-                      <p className="prose-serif whitespace-pre-wrap text-sm">
-                        {turn.answer}
-                      </p>
+                      <ChatMarkdown content={turn.answer} />
                       {turn.sources.length > 0 && (
                         <div className="space-y-1.5 border-t border-slate-100 pt-3">
                           <p className="font-sans text-xs font-medium uppercase tracking-wide text-slate-400">
