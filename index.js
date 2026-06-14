@@ -254,6 +254,41 @@ app.post('/api/save', requireAuth(async (req, res) => {
   }
 }));
 
+// POST /api/items/:id/reclassify — re-run classification on stored transcript/caption.
+// Useful when takeaways were empty or the classifier prompt improved.
+app.post('/api/items/:id/reclassify', requireAuth(async (req, res) => {
+  try {
+    const item = await getItemById(req.params.id, req.userId);
+    if (!item) return res.status(404).json({ error: 'not_found' });
+
+    const text = (item.transcript || item.caption || '').trim();
+    if (!text) {
+      return res.status(422).json({
+        error: 'no_content',
+        message: 'No transcript or caption to reclassify from.'
+      });
+    }
+
+    const [classified] = await processContent(text, item.source_url, [], {
+      transcript: item.transcript,
+      caption: item.caption
+    });
+    classified.sourceUrl = item.source_url;
+    const itemId = await upsertItem(classified, { userId: req.userId, source: item.source });
+    try {
+      await embedAndStoreItem(classified, itemId, req.userId);
+    } catch (err) {
+      console.error('Reclassify embedding failed (item still updated):', err.message);
+    }
+
+    const refreshed = await getItemById(itemId, req.userId);
+    res.json({ success: true, item: refreshed });
+  } catch (err) {
+    console.error('POST /api/items/:id/reclassify error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}));
+
 // POST /api/items/:id/linked-resources — attach a follow-up link to an existing
 // item (Doc B Screen 2, the permanent replacement for the Telegram reply-to-append
 // flow). Body: { url }. Extracts + classifies the link, upserts it, then returns
