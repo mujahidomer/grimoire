@@ -37,6 +37,7 @@ export interface Item {
   source_url: string;
   date_saved: string;
   created_at: string;
+  updated_at?: string;
   source: string;
   summary: string | null;
   key_takeaways: TakeawayValue;

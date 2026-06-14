@@ -1,5 +1,5 @@
 import type { Item, TakeawayValue } from "@/lib/types";
-import { truncate } from "@/lib/utils";
+import { truncate, itemRecencyMs } from "@/lib/utils";
 
 // Collect every string leaf from the free-form keyTakeaways value so the
 // question builder can work regardless of whether it's a string, array, or
@@ -43,8 +43,7 @@ function unique(items: string[]) {
 
 function sortByRecent(items: Item[]) {
   return [...items].sort(
-    (a, b) =>
-      new Date(b.date_saved).getTime() - new Date(a.date_saved).getTime(),
+    (a, b) => itemRecencyMs(b) - itemRecencyMs(a),
   );
 }
 

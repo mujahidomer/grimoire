@@ -10,7 +10,7 @@ export type LibraryViewMode = "grid" | "list";
 function groupByDay(items: Item[]): { label: string; items: Item[] }[] {
   const map = new Map<string, Item[]>();
   for (const item of items) {
-    const d = new Date(item.date_saved);
+    const d = new Date(item.created_at);
     const key = d.toLocaleDateString("en-US", {
       weekday: "short",
       day: "numeric",
@@ -154,7 +154,7 @@ export function RecentSaves({ items }: { items: Item[] }) {
                   </p>
                 </div>
                 <span className="shrink-0 font-sans text-label-md text-eco-foreground/40">
-                  {formatDate(item.date_saved)}
+                  {formatTime(item.created_at)}
                 </span>
               </Link>
             </li>

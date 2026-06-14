@@ -22,6 +22,16 @@ export function formatDate(iso: string): string {
   });
 }
 
+/** When the item was last saved or updated in the library (not publication date). */
+export function itemRecencyMs(item: {
+  created_at: string;
+  updated_at?: string;
+}): number {
+  const created = new Date(item.created_at).getTime();
+  const updated = item.updated_at ? new Date(item.updated_at).getTime() : 0;
+  return Math.max(created, updated);
+}
+
 export function formatTime(iso: string): string {
   if (!iso) return "";
   const d = new Date(iso);

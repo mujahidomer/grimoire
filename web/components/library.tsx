@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { fetchItem, fetchItems } from "@/lib/api";
 import { useLibraryFilters } from "@/lib/library-context";
@@ -12,17 +12,41 @@ import {
 } from "@/components/activity-feed";
 import { LibraryViewToggle } from "@/components/library-view-toggle";
 import { MainHeader } from "@/components/main-header";
-import { cn } from "@/lib/utils";
+import { cn, itemRecencyMs } from "@/lib/utils";
 
 const VIEW_STORAGE_KEY = "grimoire-library-view";
 
 function sortItems(items: Item[]) {
-  return [...items].sort((a, b) => {
-    const dateDiff =
-      new Date(b.date_saved).getTime() - new Date(a.date_saved).getTime();
-    if (dateDiff !== 0) return dateDiff;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  return [...items].sort(
+    (a, b) => itemRecencyMs(b) - itemRecencyMs(a),
+  );
+}
+
+async function fetchItemsWithEnsured(
+  q: string,
+  cat: string | null,
+  ensureIds?: string[],
+): Promise<Item[]> {
+  let next = await fetchItems({
+    q: q.trim() || undefined,
+    category: cat || undefined,
   });
+
+  if (ensureIds?.length) {
+    const have = new Set(next.map((item) => item.id));
+    const missing = ensureIds.filter((itemId) => !have.has(itemId));
+    if (missing.length) {
+      const fetched = await Promise.all(
+        missing.map((itemId) => fetchItem(itemId).catch(() => null)),
+      );
+      next = [
+        ...fetched.filter((item): item is Item => item !== null),
+        ...next,
+      ];
+    }
+  }
+
+  return sortItems(next);
 }
 
 function readStoredView(): LibraryViewMode {
@@ -33,12 +57,13 @@ function readStoredView(): LibraryViewMode {
 
 export function Library({ initialItems }: { initialItems: Item[] }) {
   const { query, setQuery, category, setCategory } = useLibraryFilters();
-  const [items, setItems] = useState<Item[]>(initialItems);
+  const [items, setItems] = useState<Item[]>(() => sortItems(initialItems));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<LibraryViewMode>("list");
 
   const reqId = useRef(0);
+  const pendingEnsureIds = useRef<string[] | undefined>();
 
   useEffect(() => {
     setView(readStoredView());
@@ -54,22 +79,17 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
     setLoading(true);
     setError(null);
     try {
-      let next = await fetchItems({
-        q: q.trim() || undefined,
-        category: cat || undefined,
-      });
+      let next = await fetchItemsWithEnsured(q, cat, ensureIds);
 
+      // After a save, the list query can briefly lag behind the new row.
       if (ensureIds?.length) {
         const have = new Set(next.map((item) => item.id));
-        const missing = ensureIds.filter((itemId) => !have.has(itemId));
-        if (missing.length) {
-          const fetched = await Promise.all(
-            missing.map((itemId) => fetchItem(itemId).catch(() => null)),
-          );
-          next = [
-            ...fetched.filter((item): item is Item => item !== null),
-            ...next,
-          ];
+        const stillMissing = ensureIds.filter((itemId) => !have.has(itemId));
+        if (stillMissing.length && id === reqId.current) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          if (id === reqId.current) {
+            next = await fetchItemsWithEnsured(q, cat, ensureIds);
+          }
         }
       }
 
@@ -83,13 +103,17 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
     }
   }, []);
 
-  const mounted = useRef(false);
+  const refresh = useCallback(() => {
+    load(query, category);
+  }, [load, query, category]);
+
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-    const t = setTimeout(() => load(query, category), 300);
+    const delay = query.trim() ? 300 : 0;
+    const t = setTimeout(() => {
+      const ensureIds = pendingEnsureIds.current;
+      pendingEnsureIds.current = undefined;
+      load(query, category, ensureIds);
+    }, delay);
     return () => clearTimeout(t);
   }, [query, category, load]);
 
@@ -99,11 +123,16 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
       const savedIds = detail?.savedIds?.filter(Boolean);
 
       // After a save, clear filters so the new item is not hidden by an active
-      // category/search, and fetch it directly if the list query still omits it.
+      // category/search. Queue ensureIds for the filter-driven reload so we
+      // don't race two concurrent list fetches.
       if (savedIds?.length) {
-        setCategory(null);
-        setQuery("");
-        load("", null, savedIds);
+        pendingEnsureIds.current = savedIds;
+        if (query || category) {
+          setCategory(null);
+          setQuery("");
+        } else {
+          load("", null, savedIds);
+        }
         return;
       }
 
@@ -129,7 +158,22 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
       <MainHeader
         title={title}
         actions={
-          <LibraryViewToggle view={view} onChange={handleViewChange} />
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={loading}
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/[0.08] bg-white/60 text-eco-foreground/50 transition-colors duration-eco hover:text-eco-heading disabled:opacity-50",
+              )}
+              aria-label="Refresh library"
+            >
+              <RefreshCw
+                className={cn("h-4 w-4", loading && "animate-spin")}
+              />
+            </button>
+            <LibraryViewToggle view={view} onChange={handleViewChange} />
+          </div>
         }
       />
 

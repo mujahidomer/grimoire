@@ -10,9 +10,15 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const supabase = createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const accessToken = session?.access_token ?? null;
+    data: { user },
+  } = await supabase.auth.getUser();
+  let accessToken: string | null = null;
+  if (user) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    accessToken = session?.access_token ?? null;
+  }
 
   let initialItems: Item[] = [];
   try {
