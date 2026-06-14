@@ -8,7 +8,7 @@ import {
   ChevronRight,
   ExternalLink,
 } from "lucide-react";
-import type { Item, LinkedResource } from "@/lib/types";
+import type { Item, LinkedResource, TakeawayValue } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { artifactEmoji, formatDate, formatType, truncate } from "@/lib/utils";
 import { RawMarkdownButton } from "@/components/raw-markdown";
@@ -22,6 +22,72 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
       {children}
     </h2>
   );
+}
+
+const MAX_TAKEAWAY_DEPTH = 3;
+
+function isEmptyTakeaways(value: TakeawayValue | null | undefined): boolean {
+  if (value == null) return true;
+  if (typeof value === "string") return value.trim() === "";
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
+  return false;
+}
+
+// Recursively render the free-form keyTakeaways value. Strings become
+// paragraphs, arrays become lists, objects render each key as a subheading and
+// recurse into its value. Nesting is capped at MAX_TAKEAWAY_DEPTH; anything
+// deeper is flattened to its string form so we never blow the stack on bad data.
+function renderTakeaways(value: TakeawayValue, depth = 0): React.ReactNode {
+  if (value == null) return null;
+
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (!text) return null;
+    return <p className="prose-reading text-base">{text}</p>;
+  }
+
+  if (depth >= MAX_TAKEAWAY_DEPTH) {
+    return <p className="prose-reading text-base">{JSON.stringify(value)}</p>;
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.filter((v) => !isEmptyTakeaways(v));
+    if (items.length === 0) return null;
+    return (
+      <ul className="list-disc space-y-2 pl-5">
+        {items.map((v, i) => (
+          <li key={i} className="prose-reading text-base">
+            {renderTakeaways(v, depth + 1)}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value).filter(
+      ([, v]) => !isEmptyTakeaways(v),
+    );
+    if (entries.length === 0) return null;
+    const headingSize = depth === 0 ? "text-base" : "text-body-md";
+    return (
+      <div className="space-y-4">
+        {entries.map(([key, v]) => (
+          <div key={key} className="space-y-2">
+            <h3
+              className={`font-sans font-medium capitalize text-eco-heading ${headingSize}`}
+            >
+              {key.replace(/[_-]/g, " ")}
+            </h3>
+            {renderTakeaways(v, depth + 1)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return <p className="prose-reading text-base">{String(value)}</p>;
 }
 
 export function ItemView({ item }: { item: Item }) {
@@ -123,16 +189,10 @@ export function ItemView({ item }: { item: Item }) {
           </section>
         )}
 
-        {item.key_takeaways.length > 0 && (
+        {!isEmptyTakeaways(item.key_takeaways) && (
           <section className="mb-10">
             <SectionHeading>Key Takeaways</SectionHeading>
-            <ul className="list-disc space-y-2 pl-5">
-              {item.key_takeaways.map((t, i) => (
-                <li key={i} className="prose-reading text-base">
-                  {t}
-                </li>
-              ))}
-            </ul>
+            {renderTakeaways(item.key_takeaways)}
           </section>
         )}
 

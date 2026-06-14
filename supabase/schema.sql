@@ -67,7 +67,7 @@ create table if not exists items (
   date_saved          date not null,
   source              text not null default 'telegram',    -- how it entered Grimoire
   summary             text,
-  key_takeaways       jsonb not null default '[]',         -- array of strings
+  key_takeaways       jsonb not null default '[]',         -- free-form value: nested object (new) or string[] (legacy)
   transcript          text,
   caption             text,
   artifact_type       text not null default 'none',        -- skill|tool|resource|person|concept|none
