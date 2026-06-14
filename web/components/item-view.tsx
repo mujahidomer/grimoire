@@ -16,7 +16,7 @@ import { AddLinkedResource } from "@/components/add-linked-resource";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 font-sans text-sm font-semibold uppercase tracking-wide text-slate-400">
+    <h2 className="mb-3 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50">
       {children}
     </h2>
   );
@@ -32,28 +32,21 @@ export function ItemView({ item }: { item: Item }) {
   const hasTranscript = !!(item.transcript && item.transcript.trim());
 
   return (
-    <div className="min-h-screen">
-      {/* Breadcrumb */}
-      <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 font-sans text-sm text-slate-500 hover:text-indigo-600"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Library
-          </Link>
-        </div>
-      </header>
+    <div className="mx-auto max-w-3xl px-8 py-10">
+      <Link
+        href="/"
+        className="mb-6 inline-flex items-center gap-1.5 font-sans text-body-md text-eco-foreground/70 transition-colors duration-eco hover:text-eco-primary"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </Link>
 
-      <article className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        {/* Title */}
-        <h1 className="font-sans text-3xl font-semibold leading-tight text-slate-900">
+      <article>
+        <h1 className="font-display text-[2rem] font-normal leading-tight text-eco-heading">
           {item.title}
         </h1>
 
-        {/* Metadata row */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-sm text-slate-500">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-body-md text-eco-foreground/70">
           <span>{item.category}</span>
           <span aria-hidden>·</span>
           <span>{formatType(item.type)}</span>
@@ -66,7 +59,7 @@ export function ItemView({ item }: { item: Item }) {
                 href={item.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-indigo-600 hover:underline"
+                className="inline-flex items-center gap-1 text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
               >
                 Source <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -74,7 +67,6 @@ export function ItemView({ item }: { item: Item }) {
           )}
         </div>
 
-        {/* Tags — all shown; pending ones muted with a ? and tooltip */}
         {item.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
             {item.tags.map((tag) =>
@@ -96,10 +88,9 @@ export function ItemView({ item }: { item: Item }) {
           </div>
         )}
 
-        {/* Artifact block — subtle */}
         {hasArtifact && (
-          <div className="mt-5 rounded-lg bg-indigo-50/60 px-4 py-3">
-            <p className="font-sans text-sm text-indigo-900">
+          <div className="mt-5 rounded-xl bg-eco-primary/15 px-4 py-3">
+            <p className="font-sans text-body-md text-eco-secondary">
               {artifactEmoji(item.artifact_type)}{" "}
               <span className="font-medium">{formatType(item.artifact_type)}</span>
               {item.artifact_name ? `: ${item.artifact_name}` : ""}
@@ -109,7 +100,7 @@ export function ItemView({ item }: { item: Item }) {
                 href={item.artifact_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex items-center gap-1 font-sans text-xs text-indigo-600 hover:underline"
+                className="mt-1 inline-flex items-center gap-1 font-sans text-label-md text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
               >
                 Open <ExternalLink className="h-3 w-3" />
               </a>
@@ -117,31 +108,28 @@ export function ItemView({ item }: { item: Item }) {
           </div>
         )}
 
-        {/* Actions */}
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <RawMarkdownButton itemId={item.id} />
           <AddLinkedResource itemId={item.id} onAdded={setResources} />
         </div>
 
-        <hr className="my-8 border-slate-100" />
+        <hr className="my-8 border-black/[0.06]" />
 
-        {/* Summary */}
         {item.summary && (
           <section className="mb-10">
             <SectionHeading>Summary</SectionHeading>
-            <p className="prose-serif whitespace-pre-wrap text-base">
+            <p className="prose-reading whitespace-pre-wrap text-base">
               {item.summary}
             </p>
           </section>
         )}
 
-        {/* Key Takeaways */}
         {item.key_takeaways.length > 0 && (
           <section className="mb-10">
             <SectionHeading>Key Takeaways</SectionHeading>
             <ul className="list-disc space-y-2 pl-5">
               {item.key_takeaways.map((t, i) => (
-                <li key={i} className="prose-serif text-base">
+                <li key={i} className="prose-reading text-base">
                   {t}
                 </li>
               ))}
@@ -149,12 +137,11 @@ export function ItemView({ item }: { item: Item }) {
           </section>
         )}
 
-        {/* Transcript — collapsible, collapsed by default */}
         {hasTranscript && (
           <section className="mb-10">
             <button
               onClick={() => setShowTranscript((s) => !s)}
-              className="flex items-center gap-1.5 font-sans text-sm font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
+              className="flex items-center gap-1.5 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50 transition-colors duration-eco hover:text-eco-foreground"
             >
               {showTranscript ? (
                 <ChevronDown className="h-4 w-4" />
@@ -164,24 +151,22 @@ export function ItemView({ item }: { item: Item }) {
               {showTranscript ? "Hide transcript" : "Show transcript"}
             </button>
             {showTranscript && (
-              <p className="prose-serif mt-4 whitespace-pre-wrap text-base">
+              <p className="prose-reading mt-4 whitespace-pre-wrap text-base">
                 {item.transcript}
               </p>
             )}
           </section>
         )}
 
-        {/* Caption — only if non-null */}
         {item.caption && (
           <section className="mb-10">
             <SectionHeading>Caption</SectionHeading>
-            <p className="prose-serif whitespace-pre-wrap text-base italic">
+            <p className="prose-reading whitespace-pre-wrap text-base italic">
               {item.caption}
             </p>
           </section>
         )}
 
-        {/* Linked Resources — only if non-empty */}
         {resources.length > 0 && (
           <section className="mb-10">
             <SectionHeading>Linked Resources</SectionHeading>
@@ -189,7 +174,7 @@ export function ItemView({ item }: { item: Item }) {
               {resources.map((r) => (
                 <li
                   key={r.id ?? r.source_url}
-                  className="rounded-lg border border-slate-200 p-4"
+                  className="rounded-xl border border-black/[0.06] bg-white p-4 shadow-eco-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -197,13 +182,13 @@ export function ItemView({ item }: { item: Item }) {
                         href={r.source_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-sans text-sm font-medium text-slate-900 hover:text-indigo-600"
+                        className="inline-flex items-center gap-1 font-sans text-body-md font-medium text-eco-secondary transition-colors duration-eco hover:text-eco-primary"
                       >
                         {r.title || "Linked resource"}
                         <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                       </a>
                       {r.body_content && (
-                        <p className="prose-serif mt-1 text-sm text-slate-500">
+                        <p className="prose-reading mt-1 text-body-md text-eco-foreground/70">
                           {truncate(r.body_content, 140)}
                         </p>
                       )}

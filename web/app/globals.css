@@ -3,8 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 20% 18%;
+  --eco-primary: #A1B887;
+  --eco-secondary: #2D3B23;
+  --eco-tertiary: #4F663C;
+  --eco-text: #5E6B52;
+  --eco-border: #B6CC9D;
+  --eco-border-light: #E0E3D5;
+  --eco-card: #0D120D;
+  --eco-background: #FFFFFF;
+  --eco-sidebar: #F3F2EE;
+  --eco-canvas: #FFFFFF;
+  --eco-main: #FAF9F6;
+  --eco-surface: #FFFFFF;
+  --eco-heading: #2D3B23;
+  --eco-on-surface: #2D3B23;
+  --eco-inverse: #FFFFFF;
+  --eco-muted: #4d5744;
+  --sidebar-width: 240px;
 }
 
 @layer base {
@@ -12,26 +27,114 @@
     -webkit-font-smoothing: antialiased;
   }
   body {
-    @apply bg-white text-slate-800 font-sans;
+    font-family: var(--font-inter), system-ui, sans-serif;
+    background-color: var(--eco-canvas);
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--eco-text);
   }
-  /* Reading content uses the serif; chrome uses the sans (the default). */
-  .prose-serif {
-    @apply font-serif text-slate-700 leading-relaxed;
+  .prose-reading {
+    font-family: var(--font-inter), system-ui, sans-serif;
+    line-height: 1.625;
+    font-size: 14px;
+    line-height: 20px;
+    color: color-mix(in srgb, var(--eco-text) 90%, transparent);
   }
 }
 
-/* Thin, calm scrollbars — the UI should recede. */
+@layer components {
+  .app-shell {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--eco-canvas);
+  }
+
+  .app-sidebar {
+    display: flex;
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    flex-direction: column;
+    height: 100%;
+    border-right: 1px solid rgba(0, 0, 0, 0.06);
+    background-color: var(--eco-sidebar);
+  }
+
+  .app-chat-sidebar {
+    display: flex;
+    width: 360px;
+    flex-shrink: 0;
+    flex-direction: column;
+    height: 100%;
+    border-left: 1px solid rgba(0, 0, 0, 0.06);
+    background-color: var(--eco-sidebar);
+  }
+
+  .app-main {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .app-main-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 7rem;
+    background-color: var(--eco-main);
+  }
+
+  .app-sidebar-show-btn {
+    position: absolute;
+    top: 1rem;
+    left: 0.75rem;
+    z-index: 30;
+  }
+
+  .glass {
+    border: 1px solid color-mix(in srgb, var(--eco-border) 40%, transparent);
+    background: color-mix(in srgb, white 60%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  .card-shell {
+    border-radius: 32px;
+    padding: 1px;
+    background: radial-gradient(
+      circle at 70% 50%,
+      rgba(26, 38, 24, 0.8) 0%,
+      rgb(0, 0, 0) 100%
+    );
+  }
+
+  .card-surface {
+    border-radius: 31px;
+    background-color: var(--eco-card);
+  }
+}
+
 @layer utilities {
+  .bg-canvas {
+    background-color: var(--eco-canvas);
+  }
+  .bg-sidebar {
+    background-color: var(--eco-sidebar);
+  }
+  .w-sidebar {
+    width: 240px;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgb(203 213 225) transparent;
+    scrollbar-color: var(--eco-border) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgb(203 213 225);
+    background-color: var(--eco-border);
     border-radius: 9999px;
   }
 }

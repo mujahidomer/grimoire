@@ -1,6 +1,5 @@
 import { fetchItems } from "@/lib/api";
 import { Library } from "@/components/library";
-import { ChatDock } from "@/components/chat-dock";
 import type { Item } from "@/lib/types";
 
 // Server-render the first paint with all items; the client takes over for
@@ -17,10 +16,5 @@ export default async function HomePage() {
     initialItems = [];
   }
 
-  return (
-    <>
-      <Library initialItems={initialItems} />
-      <ChatDock />
-    </>
-  );
+  return <Library initialItems={initialItems} />;
 }

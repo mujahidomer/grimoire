@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { fetchItem } from "@/lib/api";
 import { ItemView } from "@/components/item-view";
-import { ChatDock } from "@/components/chat-dock";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +11,7 @@ export default async function ItemPage({
 }) {
   try {
     const item = await fetchItem(params.id);
-    return (
-      <>
-        <ItemView item={item} />
-        <ChatDock />
-      </>
-    );
+    return <ItemView item={item} />;
   } catch {
     // 404 / not_found from the API, or backend unreachable.
     notFound();

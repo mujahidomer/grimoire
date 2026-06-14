@@ -65,26 +65,25 @@ export function PasteBox({ onSaved }: { onSaved: () => void }) {
         </Button>
       </form>
 
-      {/* Honest, specific status line below the box. Processing is 5–15s. */}
       {status.kind === "saving" && (
-        <p className="mt-2 font-sans text-sm text-slate-500">
+        <p className="mt-2 font-sans text-body-md text-eco-foreground/70">
           Saving… extracting, classifying, and embedding. This takes a few
           seconds.
         </p>
       )}
       {status.kind === "saved" && (
-        <p className="mt-2 font-sans text-sm text-slate-600">
+        <p className="mt-2 font-sans text-body-md text-eco-text">
           Saved —{" "}
           <Link
             href={`/item/${status.id}`}
-            className="font-medium text-indigo-600 hover:underline"
+            className="font-medium text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
           >
             {status.title}
           </Link>
         </p>
       )}
       {status.kind === "error" && (
-        <p className="mt-2 font-sans text-sm text-rose-600">{status.message}</p>
+        <p className="mt-2 font-sans text-body-md text-rose-600">{status.message}</p>
       )}
     </div>
   );

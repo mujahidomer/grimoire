@@ -1,21 +1,19 @@
 import type { Metadata } from "next";
-import { Rethink_Sans, Source_Serif_4 } from "next/font/google";
+import { Gloock, Inter } from "next/font/google";
+import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 
-// UI chrome: Rethink Sans (400 regular, 600 semibold).
-const rethink = Rethink_Sans({
+const gloock = Gloock({
   subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--font-rethink",
+  weight: ["400"],
+  variable: "--font-gloock",
   display: "swap",
 });
 
-// Reading content: Source Serif 4 (400 + 400 italic).
-const sourceSerif = Source_Serif_4({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-  variable: "--font-source-serif",
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -30,8 +28,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${rethink.variable} ${sourceSerif.variable}`}>
-      <body>{children}</body>
+    <html lang="en" className={`${gloock.variable} ${inter.variable}`}>
+      <body className={`${gloock.variable} ${inter.variable}`}>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }

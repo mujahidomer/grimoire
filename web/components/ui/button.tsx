@@ -6,17 +6,18 @@ type Size = "default" | "sm" | "icon";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-600",
+    "bg-eco-surface text-eco-on-surface hover:bg-white/90 border border-black/[0.12] focus-visible:ring-eco-primary",
   secondary:
-    "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus-visible:ring-indigo-600",
-  ghost: "text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-400",
+    "bg-eco-primary text-white hover:bg-eco-tertiary focus-visible:ring-eco-primary",
+  ghost:
+    "text-eco-foreground hover:bg-eco-primary/10 focus-visible:ring-eco-border",
   outline:
-    "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-400",
+    "border border-eco-border bg-white/60 text-eco-text hover:bg-eco-primary/10 focus-visible:ring-eco-border",
 };
 
 const sizes: Record<Size, string> = {
-  default: "h-10 px-4 py-2 text-sm",
-  sm: "h-8 px-3 text-sm",
+  default: "h-10 px-4 py-2 text-body-md",
+  sm: "h-8 px-3 text-body-md",
   icon: "h-9 w-9",
 };
 
@@ -31,7 +32,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-sans font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-surface font-sans font-medium transition-colors duration-eco focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
         sizes[size],
         className,

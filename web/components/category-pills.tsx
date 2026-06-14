@@ -16,7 +16,7 @@ export function CategoryPills({
   ];
 
   return (
-    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-thin sm:mx-0 sm:flex-wrap sm:px-0">
+    <div className="-mx-section flex gap-2 overflow-x-auto px-section pb-1 scrollbar-thin sm:mx-0 sm:flex-wrap sm:px-0">
       {pills.map((pill) => {
         const isActive = active === pill.value;
         return (
@@ -24,10 +24,10 @@ export function CategoryPills({
             key={pill.label}
             onClick={() => onChange(pill.value)}
             className={cn(
-              "whitespace-nowrap rounded-lg px-3 py-1.5 font-sans text-sm transition-colors",
+              "whitespace-nowrap rounded-surface px-3 py-1.5 font-sans text-body-md transition-colors duration-eco",
               isActive
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50",
+                ? "bg-eco-surface text-eco-on-surface ring-1 ring-eco-border"
+                : "bg-white/60 text-eco-foreground ring-1 ring-eco-border backdrop-blur-eco hover:bg-eco-primary/10",
             )}
           >
             {pill.label}
