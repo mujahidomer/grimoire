@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import type { Item } from "@/lib/types";
-import { fetchItems } from "@/lib/api";
+import { fetchItem, fetchItems } from "@/lib/api";
 import { useLibraryFilters } from "@/lib/library-context";
 import {
   ActivityFeed,
@@ -16,6 +16,15 @@ import { cn } from "@/lib/utils";
 
 const VIEW_STORAGE_KEY = "grimoire-library-view";
 
+function sortItems(items: Item[]) {
+  return [...items].sort((a, b) => {
+    const dateDiff =
+      new Date(b.date_saved).getTime() - new Date(a.date_saved).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 function readStoredView(): LibraryViewMode {
   if (typeof window === "undefined") return "list";
   const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
@@ -23,7 +32,7 @@ function readStoredView(): LibraryViewMode {
 }
 
 export function Library({ initialItems }: { initialItems: Item[] }) {
-  const { query, category } = useLibraryFilters();
+  const { query, setQuery, category, setCategory } = useLibraryFilters();
   const [items, setItems] = useState<Item[]>(initialItems);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,15 +49,30 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
     window.localStorage.setItem(VIEW_STORAGE_KEY, next);
   }
 
-  const load = useCallback(async (q: string, cat: string | null) => {
+  const load = useCallback(async (q: string, cat: string | null, ensureIds?: string[]) => {
     const id = ++reqId.current;
     setLoading(true);
     setError(null);
     try {
-      const next = await fetchItems({
+      let next = await fetchItems({
         q: q.trim() || undefined,
         category: cat || undefined,
       });
+
+      if (ensureIds?.length) {
+        const have = new Set(next.map((item) => item.id));
+        const missing = ensureIds.filter((itemId) => !have.has(itemId));
+        if (missing.length) {
+          const fetched = await Promise.all(
+            missing.map((itemId) => fetchItem(itemId).catch(() => null)),
+          );
+          next = [
+            ...fetched.filter((item): item is Item => item !== null),
+            ...next,
+          ];
+        }
+      }
+
       if (id === reqId.current) setItems(next);
     } catch (err) {
       if (id === reqId.current) {
@@ -70,18 +94,28 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
   }, [query, category, load]);
 
   useEffect(() => {
-    function onRefresh() {
+    function onRefresh(e: Event) {
+      const detail = (e as CustomEvent<{ savedIds?: string[] } | undefined>).detail;
+      const savedIds = detail?.savedIds?.filter(Boolean);
+
+      // After a save, clear filters so the new item is not hidden by an active
+      // category/search, and fetch it directly if the list query still omits it.
+      if (savedIds?.length) {
+        setCategory(null);
+        setQuery("");
+        load("", null, savedIds);
+        return;
+      }
+
       load(query, category);
     }
     window.addEventListener("grimoire:refresh", onRefresh);
     return () => window.removeEventListener("grimoire:refresh", onRefresh);
-  }, [load, query, category]);
+  }, [load, query, category, setCategory, setQuery]);
 
   const isFiltered = !!query || !!category;
   const title = category ?? (isFiltered ? "Search results" : "Library");
-  const sorted = [...items].sort(
-    (a, b) => new Date(b.date_saved).getTime() - new Date(a.date_saved).getTime(),
-  );
+  const sorted = sortItems(items);
 
   return (
     <div
