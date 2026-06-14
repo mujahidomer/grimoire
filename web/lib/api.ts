@@ -154,6 +154,14 @@ export async function saveUrl(url: string): Promise<SaveResponse> {
   return data;
 }
 
+export async function deleteItem(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/items/${id}`, {
+    method: "DELETE",
+    headers: await clientAuthHeaders(),
+  });
+  await json<{ success: boolean }>(res);
+}
+
 export async function addLinkedResource(
   itemId: string,
   url: string,
