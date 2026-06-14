@@ -31,8 +31,8 @@ export function PasteBox({ onSaved }: { onSaved: () => void }) {
       setStatus({
         kind: "error",
         message:
-          err instanceof Error
-            ? "Couldn't save that link. Check the URL and try again."
+          err instanceof Error && err.message
+            ? err.message
             : "Couldn't save that link. Check the URL and try again.",
       });
     }
