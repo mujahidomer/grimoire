@@ -1,17 +1,23 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
 const { extractContent } = require('./lib/extractor');
 const { processContent, researchUrl, processLinkedResource } = require('./lib/classifier');
 const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
-  upsertItem, upsertItemTags, upsertLinkedResource, findItemBySourceUrl
+  upsertItem, upsertItemTags, upsertLinkedResource, findItemBySourceUrl, getItemById
 } = require('./lib/repository');
 const { embedAndStoreItem } = require('./lib/embeddings');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 
 const app = express();
+// CORS for the web UI (Doc B paste-box + chat panel). The throwaway viewer runs
+// on a separate origin (Next dev server on :3000, or the deployed UI), so browser
+// calls need explicit cross-origin permission. No credentials/cookies this phase
+// (service-role key is server-side), so a permissive policy is fine.
+app.use(cors());
 app.use(express.json());
 
 // ─── Telegram Bot ────────────────────────────────────────────────────────────
@@ -214,6 +220,69 @@ app.get('/health', (req, res) => res.json({ status: 'ok', user: !!USER_ID }));
 
 // Retrieval + chat API (Doc A item 5): GET /api/items, GET /api/items/:id, POST /api/chat.
 registerApiRoutes(app);
+
+// POST /api/save — the web paste-box save flow (Doc B). Same pipeline as the
+// Telegram/iOS capture path, just a clean HTTP entry point. Body: { url }.
+// Returns a top-level { id, title } for the first saved item (what the paste-box
+// links to) plus the full items array, since one URL can yield multiple items.
+app.post('/api/save', async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: 'url is required' });
+  if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
+  try {
+    const extracted = await extractContent(url);
+    let saved;
+    if (!extracted.text) {
+      // Can't scrape directly — fall back to research, mirroring the Telegram path.
+      saved = await researchAndSave(url);
+    } else {
+      saved = await runPipeline(extracted.text, url, extracted.hashtags,
+        { caption: extracted.caption, transcript: extracted.transcript });
+    }
+    if (!saved || saved.length === 0) {
+      return res.status(422).json({ success: false, error: 'no_content',
+        message: 'Nothing extractable found at that URL.' });
+    }
+    const items = saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type }));
+    res.json({ success: true, id: items[0].id, title: items[0].title, count: items.length, items });
+  } catch (err) {
+    console.error('POST /api/save error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/items/:id/linked-resources — attach a follow-up link to an existing
+// item (Doc B Screen 2, the permanent replacement for the Telegram reply-to-append
+// flow). Body: { url }. Extracts + classifies the link, upserts it, then returns
+// the item's refreshed linked_resources so the UI can update in place.
+app.post('/api/items/:id/linked-resources', async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: 'url is required' });
+  if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
+  const userId = req.get('x-user-id') || USER_ID;
+  try {
+    const item = await getItemById(req.params.id, userId);
+    if (!item) return res.status(404).json({ error: 'not_found' });
+
+    let extracted = null;
+    try { extracted = await extractContent(url); }
+    catch (err) { console.error('Linked resource extraction failed:', err.message); }
+
+    const processed = await processLinkedResource(extracted?.text || '', extracted?.title);
+    await upsertLinkedResource(item.id, userId, {
+      source_url: url,
+      title: processed.title,
+      type: processed.resource_type,
+      body_content: processed.content
+    });
+
+    const refreshed = await getItemById(item.id, userId);
+    res.json({ success: true, linked_resources: refreshed.linked_resources || [] });
+  } catch (err) {
+    console.error('POST /api/items/:id/linked-resources error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // Legacy capture endpoints (iOS Shortcut), now writing to Postgres.
 app.post('/process-url', async (req, res) => {
