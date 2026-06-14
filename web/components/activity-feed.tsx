@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Lock } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { formatDate, formatTime, formatType, truncate } from "@/lib/utils";
 import { SourceThumbnail } from "@/components/source-thumbnail";
@@ -42,12 +41,9 @@ function LibraryListRow({ item }: { item: Item }) {
           {item.category} · {formatType(item.type)}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2 pt-0.5">
-        <Lock className="h-3 w-3 text-eco-foreground/25" />
-        <span className="font-sans text-label-md tabular-nums text-eco-foreground/40">
-          {formatTime(item.date_saved)}
-        </span>
-      </div>
+      <span className="shrink-0 pt-0.5 font-sans text-label-md tabular-nums text-eco-foreground/40">
+        {formatTime(item.created_at)}
+      </span>
     </Link>
   );
 }

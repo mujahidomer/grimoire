@@ -78,11 +78,11 @@
   .app-chat-sidebar {
     position: fixed;
     right: 0;
-    bottom: 0;
+    bottom: max(1rem, env(safe-area-inset-bottom));
     left: 0;
     z-index: 50;
     display: flex;
-    height: min(85vh, 100dvh);
+    height: min(85dvh, calc(100dvh - max(1rem, env(safe-area-inset-bottom))));
     width: 100%;
     flex-shrink: 0;
     flex-direction: column;

@@ -29,6 +29,7 @@ export interface Item {
   type: string; // 'video' | 'article'
   source_url: string;
   date_saved: string;
+  created_at: string;
   source: string;
   summary: string | null;
   key_takeaways: string[];

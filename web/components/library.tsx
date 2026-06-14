@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { fetchItems } from "@/lib/api";
 import { useLibraryFilters } from "@/lib/library-context";
@@ -12,7 +12,6 @@ import {
 } from "@/components/activity-feed";
 import { LibraryViewToggle } from "@/components/library-view-toggle";
 import { MainHeader } from "@/components/main-header";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const VIEW_STORAGE_KEY = "grimoire-library-view";
@@ -94,13 +93,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
       <MainHeader
         title={title}
         actions={
-          <div className="flex items-center gap-2">
-            <LibraryViewToggle view={view} onChange={handleViewChange} />
-            <Button size="sm">
-              <Plus className="h-4 w-4" />
-              Quick save
-            </Button>
-          </div>
+          <LibraryViewToggle view={view} onChange={handleViewChange} />
         }
       />
 
