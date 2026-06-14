@@ -2,13 +2,13 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-      <p className="font-sans text-lg text-slate-600">
+    <div className="flex flex-col items-center justify-center gap-4 px-8 py-24 text-center">
+      <p className="font-display text-headline-lg font-light text-eco-foreground">
         That item isn&apos;t in your library.
       </p>
       <Link
         href="/"
-        className="font-sans text-sm font-medium text-indigo-600 hover:underline"
+        className="font-sans text-body-md font-medium text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
       >
         ← Back to Library
       </Link>

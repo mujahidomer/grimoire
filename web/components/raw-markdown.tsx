@@ -40,15 +40,15 @@ export function RawMarkdownButton({ itemId }: { itemId: string }) {
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-eco-secondary/30 p-4"
           onClick={() => setOpen(false)}
         >
           <div
-            className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-lg border border-slate-200 bg-white shadow-2xl"
+            className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-card border border-eco-border bg-white/90 shadow-eco-lg backdrop-blur-eco"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-              <span className="font-sans text-sm font-semibold text-slate-900">
+            <div className="flex items-center justify-between border-b border-eco-border/40 px-5 py-3">
+              <span className="font-sans text-body-md font-semibold text-eco-secondary">
                 Raw markdown
               </span>
               <div className="flex items-center gap-1">
@@ -80,11 +80,11 @@ export function RawMarkdownButton({ itemId }: { itemId: string }) {
             </div>
             <div className="overflow-auto p-5 scrollbar-thin">
               {loading ? (
-                <div className="flex justify-center py-12 text-slate-400">
+                <div className="flex justify-center py-12 text-eco-foreground/50">
                   <Loader2 className="h-5 w-5 animate-spin" />
                 </div>
               ) : (
-                <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-700">
+                <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-eco-text">
                   {markdown}
                 </pre>
               )}

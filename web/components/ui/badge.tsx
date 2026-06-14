@@ -1,12 +1,12 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "default" | "muted" | "indigo";
+type Variant = "default" | "muted" | "accent";
 
 const variants: Record<Variant, string> = {
-  default: "bg-slate-100 text-slate-600",
-  muted: "bg-transparent text-slate-400 border border-slate-200",
-  indigo: "bg-indigo-50 text-indigo-700",
+  default: "bg-eco-primary/10 text-eco-primary",
+  muted: "bg-transparent text-eco-foreground/60 border border-eco-border/50",
+  accent: "bg-eco-primary/20 text-eco-primary",
 };
 
 export function Badge({
@@ -17,7 +17,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-sans text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-surface px-2 py-0.5 font-sans text-label-md font-light",
         variants[variant],
         className,
       )}

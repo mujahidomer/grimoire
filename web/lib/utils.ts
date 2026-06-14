@@ -22,6 +22,28 @@ export function formatDate(iso: string): string {
   });
 }
 
+export function formatTime(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+export function looksLikeUrl(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return /^https?:\/\//i.test(trimmed);
+  }
+}
+
 export function truncate(text: string | null | undefined, n: number): string {
   if (!text) return "";
   return text.length > n ? text.slice(0, n).trimEnd() + "…" : text;
