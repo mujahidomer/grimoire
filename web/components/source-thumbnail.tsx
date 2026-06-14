@@ -8,13 +8,12 @@ import { getYouTubeThumbnail } from "@/lib/youtube";
 import { cn } from "@/lib/utils";
 
 function initialImage(url: string): string | null {
-  const cached = getCachedThumbnail(url);
-  if (cached !== undefined) return cached;
+  // sessionStorage is client-only; use YouTube URLs here so SSR matches hydration.
   return getYouTubeThumbnail(url);
 }
 
 function initiallyLoading(url: string): boolean {
-  return getCachedThumbnail(url) === undefined && !getYouTubeThumbnail(url);
+  return !getYouTubeThumbnail(url);
 }
 
 export function SourceThumbnail({

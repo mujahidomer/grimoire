@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Gloock, Inter } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
@@ -20,6 +20,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Grimoire",
   description: "Your saved knowledge, searchable and ask-able.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

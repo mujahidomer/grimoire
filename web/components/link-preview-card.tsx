@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, Globe, Loader2 } from "lucide-react";
 import { previewImageUrl } from "@/lib/api";
 import { getCachedLinkPreview, loadLinkPreview } from "@/lib/preview-cache";
+import { SourceBadge } from "@/lib/source-platform";
 import type { LinkPreview } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { formatType, truncate } from "@/lib/utils";
@@ -68,9 +69,12 @@ export function LinkPreviewCard({
 
   return (
     <section className="mb-8">
-      <p className="mb-3 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50">
-        Saved link
-      </p>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50">
+          Saved link
+        </p>
+        <SourceBadge url={url} />
+      </div>
       <a
         href={url}
         target="_blank"
@@ -79,7 +83,7 @@ export function LinkPreviewCard({
       >
         <div className="flex flex-col sm:flex-row">
           {showImage ? (
-            <div className="h-44 w-full shrink-0 overflow-hidden bg-eco-border/20 sm:h-auto sm:w-48 sm:min-h-[120px]">
+            <div className="h-[200px] w-full shrink-0 self-start overflow-hidden bg-eco-border/20 sm:w-48">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewImageUrl(image!)}
@@ -90,7 +94,7 @@ export function LinkPreviewCard({
               />
             </div>
           ) : (
-            <div className="flex h-44 w-full shrink-0 items-center justify-center bg-eco-primary/10 sm:h-auto sm:w-48 sm:min-h-[120px]">
+            <div className="flex h-[200px] w-full shrink-0 self-start items-center justify-center bg-eco-primary/10 sm:w-48">
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-eco-foreground/40" />
               ) : (
@@ -101,7 +105,7 @@ export function LinkPreviewCard({
 
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-sans text-label-md text-eco-foreground/50">
+              <span className="truncate font-sans text-label-md text-eco-foreground/50">
                 {siteName}
               </span>
               {type && (
@@ -112,13 +116,13 @@ export function LinkPreviewCard({
               <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-eco-foreground/40 transition-colors duration-eco group-hover:text-eco-primary sm:ml-0" />
             </div>
 
-            <h2 className="font-sans text-body-md font-semibold leading-snug text-eco-heading transition-colors duration-eco group-hover:text-eco-primary">
-              {title}
+            <h2 className="line-clamp-2 font-sans text-body-md font-semibold leading-snug text-eco-heading transition-colors duration-eco group-hover:text-eco-primary">
+              {truncate(title, 120)}
             </h2>
 
             {description && (
-              <p className="prose-reading line-clamp-3 text-body-md text-eco-foreground/70">
-                {truncate(description, 220)}
+              <p className="prose-reading line-clamp-2 text-body-md text-eco-foreground/70">
+                {truncate(description, 140)}
               </p>
             )}
 
