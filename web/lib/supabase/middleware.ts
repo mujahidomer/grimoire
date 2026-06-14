@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isDevAuthBypassEnabled } from "@/lib/dev-auth";
 
 function isAuthRoute(pathname: string) {
   return (
@@ -50,7 +51,7 @@ export async function updateSession(request: NextRequest) {
 
   const isAuth = isAuthRoute(request.nextUrl.pathname);
 
-  if (!user && !isAuth) {
+  if (!user && !isAuth && !isDevAuthBypassEnabled()) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", request.nextUrl.pathname);

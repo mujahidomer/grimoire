@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/sidebar";
 import { CommandBar } from "@/components/command-bar";
 import { ChatPanel } from "@/components/chat-panel";
 import { Toaster } from "@/components/toaster";
+import { isDevAuthBypassEnabled } from "@/lib/dev-auth";
 
 const DESKTOP_MQ = "(min-width: 1024px)";
 
@@ -18,6 +19,11 @@ function isDesktopViewport() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    document.documentElement.classList.add("app-layout");
+    return () => document.documentElement.classList.remove("app-layout");
+  }, []);
 
   useEffect(() => {
     if (!isDesktopViewport()) setSidebarOpen(false);
@@ -91,6 +97,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <LibraryProvider>
       <div className="app-shell">
+        {isDevAuthBypassEnabled() && (
+          <p className="shrink-0 border-b border-black/[0.06] bg-black/[0.02] px-3 py-1 text-center font-sans text-[11px] leading-none text-eco-foreground/45">
+            Local dev mode
+          </p>
+        )}
+        <div className="app-shell-body">
         {sidebarOpen && (
           <div
             className="app-overlay-backdrop"
@@ -162,6 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <ChatPanel open={chatOpen} onClose={handleCloseChat} />
+        </div>
         <Toaster />
       </div>
     </LibraryProvider>

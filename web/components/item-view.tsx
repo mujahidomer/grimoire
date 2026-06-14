@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { artifactEmoji, formatDate, formatType, truncate } from "@/lib/utils";
 import { RawMarkdownButton } from "@/components/raw-markdown";
 import { AddLinkedResource } from "@/components/add-linked-resource";
+import { DeleteItemButton } from "@/components/delete-item-button";
 import { LinkPreviewCard } from "@/components/link-preview-card";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -108,6 +109,7 @@ export function ItemView({ item }: { item: Item }) {
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <RawMarkdownButton itemId={item.id} />
           <AddLinkedResource itemId={item.id} onAdded={setResources} />
+          <DeleteItemButton itemId={item.id} itemTitle={item.title} />
         </div>
 
         <hr className="my-8 border-black/[0.06]" />

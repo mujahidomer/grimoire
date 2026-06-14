@@ -87,7 +87,7 @@ export function CommandBar({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:z-40 lg:px-6 lg:pb-6">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:absolute lg:z-40 lg:px-6 lg:pb-6">
       <div className="pointer-events-auto w-full max-w-2xl">
         {saveOpen ? (
           <form
