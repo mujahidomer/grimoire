@@ -5,7 +5,9 @@ import { Loader2, MessageCircle, Plus } from "lucide-react";
 import { saveUrl } from "@/lib/api";
 import { useSaveLinkProgress } from "@/lib/save-link-progress";
 import { showToast } from "@/lib/toast";
+import { useSuggestedQuestions } from "@/lib/use-suggested-questions";
 import { looksLikeUrl } from "@/lib/utils";
+import { AnimatedPlaceholder } from "@/components/animated-placeholder";
 import { SaveLinkProgress } from "@/components/save-link-progress";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +29,7 @@ export function CommandBar({
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const { stepIndex } = useSaveLinkProgress(saving);
+  const suggestedQuestions = useSuggestedQuestions();
 
   function openSaveMode(initialUrl = "") {
     setSaveOpen(true);
@@ -130,37 +133,47 @@ export function CommandBar({
             {saving && <SaveLinkProgress stepIndex={stepIndex} />}
           </form>
         ) : (
-          <form
-            onSubmit={handleAsk}
-            className="flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-white/95 px-3 py-2 shadow-eco-lg backdrop-blur-eco sm:gap-2 sm:px-4"
-          >
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onPaste={handlePaste}
-              placeholder="Ask anything"
-              className="h-9 min-w-0 flex-1 bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/40 focus:outline-none"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => openSaveMode()}
-              className="shrink-0 rounded-full px-2.5 sm:px-3"
-              aria-label="Save link"
+          <div className="command-bar-glow">
+            <form
+              onSubmit={handleAsk}
+              className="relative flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:gap-2 sm:px-4"
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Save link</span>
-            </Button>
-            <button
-              type="button"
-              onClick={onOpenChat}
-              className="hidden shrink-0 items-center gap-1.5 rounded-full border border-eco-border-light bg-eco-surface px-3 py-1.5 font-sans text-label-md font-medium text-eco-on-surface transition-colors hover:bg-black/[0.03] sm:inline-flex"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              Ask anything
-            </button>
-          </form>
+              <div className="relative min-w-0 flex-1">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onPaste={handlePaste}
+                  placeholder={suggestedQuestions[0]}
+                  aria-label="Ask a question about your library"
+                  className="relative z-0 h-9 w-full bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-transparent focus:outline-none"
+                />
+                <AnimatedPlaceholder
+                  suggestions={suggestedQuestions}
+                  visible={!input.trim()}
+                  className="z-10"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => openSaveMode()}
+                className="shrink-0 rounded-full px-2.5 sm:px-3"
+                aria-label="Save link"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Save link</span>
+              </Button>
+              <button
+                type="button"
+                onClick={onOpenChat}
+                className="hidden shrink-0 items-center gap-1.5 rounded-full border border-eco-border-light bg-eco-surface px-3 py-1.5 font-sans text-label-md font-medium text-eco-on-surface transition-colors hover:bg-black/[0.03] sm:inline-flex"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                Ask anything
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </div>
