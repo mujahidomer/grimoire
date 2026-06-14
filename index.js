@@ -81,6 +81,25 @@ async function runPipeline(rawText, sourceUrl, hashtags, parts = {}) {
   return saved;
 }
 
+// Extract content from a URL and save. Falls back to web-search classification
+// when scraping/transcript extraction fails or returns nothing.
+async function saveFromUrl(url) {
+  let extracted = null;
+  try {
+    extracted = await extractContent(url);
+  } catch (err) {
+    console.warn(`[saveFromUrl] Extraction failed (${err.message}), falling back to research...`);
+    return researchAndSave(url);
+  }
+
+  if (!extracted.text) {
+    return researchAndSave(url);
+  }
+
+  return runPipeline(extracted.text, url, extracted.hashtags,
+    { caption: extracted.caption, transcript: extracted.transcript });
+}
+
 async function sendSavedConfirmation(chatId, saved) {
   const summary = saved.map(item =>
     `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary || ''}`
@@ -184,18 +203,8 @@ bot.on('message', async (msg) => {
     if (isUrl) {
       const url = text.trim();
       await bot.sendMessage(chatId, '🔗 Extracting content...');
-      const extracted = await extractContent(url);
-
-      if (!extracted.text) {
-        await bot.sendMessage(chatId, '🔍 Can\'t scrape this URL directly. Researching it instead...');
-        const saved = await researchAndSave(url);
-        if (saved.length === 0) return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
-        return await sendSavedConfirmation(chatId, saved);
-      }
-
-      await bot.sendMessage(chatId, '🧠 Analyzing with Claude...');
-      const saved = await runPipeline(extracted.text, url, extracted.hashtags, { caption: extracted.caption, transcript: extracted.transcript });
-      if (saved.length === 0) return bot.sendMessage(chatId, '🤔 No skills or insights found in this content. Try a different source.');
+      const saved = await saveFromUrl(url);
+      if (saved.length === 0) return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
       await sendSavedConfirmation(chatId, saved);
 
     } else {
@@ -230,15 +239,7 @@ app.post('/api/save', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'url is required' });
   if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
   try {
-    const extracted = await extractContent(url);
-    let saved;
-    if (!extracted.text) {
-      // Can't scrape directly — fall back to research, mirroring the Telegram path.
-      saved = await researchAndSave(url);
-    } else {
-      saved = await runPipeline(extracted.text, url, extracted.hashtags,
-        { caption: extracted.caption, transcript: extracted.transcript });
-    }
+    const saved = await saveFromUrl(url);
     if (!saved || saved.length === 0) {
       return res.status(422).json({ success: false, error: 'no_content',
         message: 'Nothing extractable found at that URL.' });
@@ -313,4 +314,7 @@ app.post('/process-text', async (req, res) => {
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🔮 Grimoire running on port ${PORT}`));
+app.listen(PORT, () => {
+  const supadata = process.env.SUPADATA_API_KEY?.trim() ? 'configured' : 'missing';
+  console.log(`🔮 Grimoire running on port ${PORT} (Supadata: ${supadata})`);
+});
