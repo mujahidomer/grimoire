@@ -13,7 +13,7 @@ interface CommandBarProps {
   onAsk: (question: string) => void;
   onOpenChat: () => void;
   asking?: boolean;
-  onSaved?: () => void;
+  onSaved?: (detail: { savedIds: string[] }) => void;
 }
 
 export function CommandBar({
@@ -66,7 +66,10 @@ export function CommandBar({
     try {
       const res = await saveUrl(trimmed);
       closeSaveMode();
-      onSaved?.();
+      const savedIds =
+        res.items?.map((item) => item.id).filter(Boolean) ??
+        (res.id ? [res.id] : []);
+      onSaved?.({ savedIds });
       showToast(
         res.title ? `Saved "${res.title}"` : "Link saved to your library",
         "success",

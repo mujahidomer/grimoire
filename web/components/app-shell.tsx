@@ -84,8 +84,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setChatOpen(false);
   }, []);
 
-  const handleSaved = useCallback(() => {
-    window.dispatchEvent(new CustomEvent("grimoire:refresh"));
+  const handleSaved = useCallback((detail?: { savedIds?: string[] }) => {
+    window.dispatchEvent(new CustomEvent("grimoire:refresh", { detail }));
   }, []);
 
   return (

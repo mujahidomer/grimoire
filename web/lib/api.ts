@@ -17,12 +17,19 @@ async function clientAuthHeaders(): Promise<HeadersInit> {
 
   try {
     const supabase = createBrowserClient();
+    // Validate the session with Supabase before attaching the token — getSession()
+    // alone can return a stale local copy while cookies are still syncing.
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      h.Authorization = `Bearer ${session.access_token}`;
-      return h;
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        h.Authorization = `Bearer ${session.access_token}`;
+        return h;
+      }
     }
   } catch {
     /* browser client unavailable (SSR) */
