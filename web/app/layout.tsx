@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Gloock, Inter } from "next/font/google";
-import { AppShell } from "@/components/app-shell";
+import { AuthAwareShell } from "@/components/auth-aware-shell";
 import "./globals.css";
 
 const gloock = Gloock({
@@ -36,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${gloock.variable} ${inter.variable}`}>
       <body className={`${gloock.variable} ${inter.variable}`}>
-        <AppShell>{children}</AppShell>
+        <AuthAwareShell>{children}</AuthAwareShell>
       </body>
     </html>
   );

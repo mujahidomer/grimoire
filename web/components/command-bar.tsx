@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Loader2, MessageCircle, Plus } from "lucide-react";
 import { saveUrl } from "@/lib/api";
+import { useSaveLinkProgress } from "@/lib/save-link-progress";
 import { showToast } from "@/lib/toast";
 import { looksLikeUrl } from "@/lib/utils";
+import { SaveLinkProgress } from "@/components/save-link-progress";
 import { Button } from "@/components/ui/button";
 
 interface CommandBarProps {
@@ -24,6 +26,7 @@ export function CommandBar({
   const [saveOpen, setSaveOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const { stepIndex } = useSaveLinkProgress(saving);
 
   function openSaveMode(initialUrl = "") {
     setSaveOpen(true);
@@ -86,33 +89,42 @@ export function CommandBar({
         {saveOpen ? (
           <form
             onSubmit={handleSave}
-            className="flex flex-wrap items-center gap-2 rounded-2xl border border-black/[0.08] bg-white px-3 py-2 shadow-eco-lg sm:flex-nowrap"
+            className="rounded-2xl border border-black/[0.08] bg-white px-3 py-2 shadow-eco-lg"
           >
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Paste a link to save…"
-              autoFocus
-              className="h-9 min-w-0 flex-1 basis-full bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/40 focus:outline-none sm:basis-auto"
-            />
-            <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
-              <Button type="submit" size="sm" disabled={saving || !url.trim()}>
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Save"
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={closeSaveMode}
-              >
-                Cancel
-              </Button>
+            <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Paste a link to save…"
+                autoFocus
+                disabled={saving}
+                aria-busy={saving}
+                className="h-9 min-w-0 flex-1 basis-full bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/40 focus:outline-none disabled:opacity-60 sm:basis-auto"
+              />
+              <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+                <Button type="submit" size="sm" disabled={saving || !url.trim()}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save link"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={closeSaveMode}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
+            {saving && <SaveLinkProgress stepIndex={stepIndex} />}
           </form>
         ) : (
           <form

@@ -11,13 +11,16 @@ const {
 const { embedAndStoreItem } = require('./lib/embeddings');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
+const { requireAuth } = require('./lib/request-auth');
 
 const app = express();
 // CORS for the web UI (Doc B paste-box + chat panel). The throwaway viewer runs
 // on a separate origin (Next dev server on :3000, or the deployed UI), so browser
-// calls need explicit cross-origin permission. No credentials/cookies this phase
-// (service-role key is server-side), so a permissive policy is fine.
-app.use(cors());
+// calls need explicit cross-origin permission.
+app.use(cors({
+  origin: process.env.WEB_ORIGIN || true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
+}));
 app.use(express.json());
 
 // ─── Telegram Bot ────────────────────────────────────────────────────────────
@@ -40,23 +43,23 @@ const confirmationIndex = new Map();
 // ─── Core Pipeline (writes to Postgres, not Drive/Sheets) ─────────────────────
 // Normalize tags against the canonical `tags` table, persist the item + tags +
 // any linked resources, then embed it. Returns a lightweight saved record.
-async function saveItem(item, sourceUrl) {
+async function saveItem(item, sourceUrl, userId) {
   item.sourceUrl = sourceUrl;
 
   let finalTags = Array.isArray(item.tags) ? item.tags : [];
-  finalTags = await normalizeTagsPg(finalTags, USER_ID);
+  finalTags = await normalizeTagsPg(finalTags, userId);
   item.tags = finalTags;
 
-  const itemId = await upsertItem(item, { userId: USER_ID, source: item.source || 'telegram' });
-  await upsertItemTags(itemId, USER_ID, finalTags);
+  const itemId = await upsertItem(item, { userId, source: item.source || 'telegram' });
+  await upsertItemTags(itemId, userId, finalTags);
 
   for (const lr of Array.isArray(item.linked_resources) ? item.linked_resources : []) {
-    if (typeof lr === 'string') await upsertLinkedResource(itemId, USER_ID, { source_url: lr });
-    else await upsertLinkedResource(itemId, USER_ID, lr);
+    if (typeof lr === 'string') await upsertLinkedResource(itemId, userId, { source_url: lr });
+    else await upsertLinkedResource(itemId, userId, lr);
   }
 
   try {
-    await embedAndStoreItem(item, itemId, USER_ID);
+    await embedAndStoreItem(item, itemId, userId);
   } catch (err) {
     console.error('Embedding failed (item still saved):', err.message);
   }
@@ -65,39 +68,39 @@ async function saveItem(item, sourceUrl) {
     summary: item.summary, has_lead_magnet_cta: item.has_lead_magnet_cta };
 }
 
-async function researchAndSave(sourceUrl) {
+async function researchAndSave(sourceUrl, userId) {
   const items = await researchUrl(sourceUrl);
   if (!items || items.length === 0) return [];
   const saved = [];
-  for (const item of items) saved.push(await saveItem(item, sourceUrl));
+  for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
   return saved;
 }
 
-async function runPipeline(rawText, sourceUrl, hashtags, parts = {}) {
+async function runPipeline(rawText, sourceUrl, hashtags, parts = {}, userId) {
   const items = await processContent(rawText, sourceUrl, hashtags, parts);
   if (!items || items.length === 0) return [];
   const saved = [];
-  for (const item of items) saved.push(await saveItem(item, sourceUrl));
+  for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
   return saved;
 }
 
 // Extract content from a URL and save. Falls back to web-search classification
 // when scraping/transcript extraction fails or returns nothing.
-async function saveFromUrl(url) {
+async function saveFromUrl(url, userId) {
   let extracted = null;
   try {
     extracted = await extractContent(url);
   } catch (err) {
     console.warn(`[saveFromUrl] Extraction failed (${err.message}), falling back to research...`);
-    return researchAndSave(url);
+    return researchAndSave(url, userId);
   }
 
   if (!extracted.text) {
-    return researchAndSave(url);
+    return researchAndSave(url, userId);
   }
 
   return runPipeline(extracted.text, url, extracted.hashtags,
-    { caption: extracted.caption, transcript: extracted.transcript });
+    { caption: extracted.caption, transcript: extracted.transcript }, userId);
 }
 
 async function sendSavedConfirmation(chatId, saved) {
@@ -203,13 +206,13 @@ bot.on('message', async (msg) => {
     if (isUrl) {
       const url = text.trim();
       await bot.sendMessage(chatId, '🔗 Extracting content...');
-      const saved = await saveFromUrl(url);
+      const saved = await saveFromUrl(url, USER_ID);
       if (saved.length === 0) return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
       await sendSavedConfirmation(chatId, saved);
 
     } else {
       await bot.sendMessage(chatId, '🧠 Processing...');
-      const saved = await runPipeline(text, 'manual');
+      const saved = await runPipeline(text, 'manual', undefined, {}, USER_ID);
       if (saved.length === 0) return bot.sendMessage(chatId, '🤔 Nothing extractable found. Try pasting the content directly.');
       await sendSavedConfirmation(chatId, saved);
     }
@@ -234,12 +237,11 @@ registerApiRoutes(app);
 // Telegram/iOS capture path, just a clean HTTP entry point. Body: { url }.
 // Returns a top-level { id, title } for the first saved item (what the paste-box
 // links to) plus the full items array, since one URL can yield multiple items.
-app.post('/api/save', async (req, res) => {
+app.post('/api/save', requireAuth(async (req, res) => {
   const { url } = req.body || {};
   if (!url) return res.status(400).json({ error: 'url is required' });
-  if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
   try {
-    const saved = await saveFromUrl(url);
+    const saved = await saveFromUrl(url, req.userId);
     if (!saved || saved.length === 0) {
       return res.status(422).json({ success: false, error: 'no_content',
         message: 'Nothing extractable found at that URL.' });
@@ -250,17 +252,16 @@ app.post('/api/save', async (req, res) => {
     console.error('POST /api/save error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
-});
+}));
 
 // POST /api/items/:id/linked-resources — attach a follow-up link to an existing
 // item (Doc B Screen 2, the permanent replacement for the Telegram reply-to-append
 // flow). Body: { url }. Extracts + classifies the link, upserts it, then returns
 // the item's refreshed linked_resources so the UI can update in place.
-app.post('/api/items/:id/linked-resources', async (req, res) => {
+app.post('/api/items/:id/linked-resources', requireAuth(async (req, res) => {
   const { url } = req.body || {};
   if (!url) return res.status(400).json({ error: 'url is required' });
-  if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
-  const userId = req.get('x-user-id') || USER_ID;
+  const userId = req.userId;
   try {
     const item = await getItemById(req.params.id, userId);
     if (!item) return res.status(404).json({ error: 'not_found' });
@@ -283,7 +284,7 @@ app.post('/api/items/:id/linked-resources', async (req, res) => {
     console.error('POST /api/items/:id/linked-resources error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
-});
+}));
 
 // Legacy capture endpoints (iOS Shortcut), now writing to Postgres.
 app.post('/process-url', async (req, res) => {
@@ -293,7 +294,8 @@ app.post('/process-url', async (req, res) => {
   try {
     const extracted = await extractContent(url);
     if (!extracted.text) return res.json({ success: false, error: 'no_transcript', message: 'No transcript available — paste text manually' });
-    const saved = await runPipeline(extracted.text, url, extracted.hashtags, { caption: extracted.caption, transcript: extracted.transcript });
+    const saved = await runPipeline(extracted.text, url, extracted.hashtags,
+      { caption: extracted.caption, transcript: extracted.transcript }, USER_ID);
     res.json({ success: true, count: saved.length, items: saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -305,7 +307,7 @@ app.post('/process-text', async (req, res) => {
   if (!text) return res.status(400).json({ error: 'text is required' });
   if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
   try {
-    const saved = await runPipeline(text, source || 'manual');
+    const saved = await runPipeline(text, source || 'manual', undefined, {}, USER_ID);
     res.json({ success: true, count: saved.length, items: saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
