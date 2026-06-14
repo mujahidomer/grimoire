@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Loader2, Plus } from "lucide-react";
 import { saveUrl } from "@/lib/api";
+import { useSaveLinkProgress } from "@/lib/save-link-progress";
+import { SaveLinkProgress } from "@/components/save-link-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -16,6 +18,8 @@ type Status =
 export function PasteBox({ onSaved }: { onSaved: () => void }) {
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const saving = status.kind === "saving";
+  const { stepIndex } = useSaveLinkProgress(saving);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -65,12 +69,7 @@ export function PasteBox({ onSaved }: { onSaved: () => void }) {
         </Button>
       </form>
 
-      {status.kind === "saving" && (
-        <p className="mt-2 font-sans text-body-md text-eco-foreground/70">
-          Saving… extracting, classifying, and embedding. This takes a few
-          seconds.
-        </p>
-      )}
+      {status.kind === "saving" && <SaveLinkProgress stepIndex={stepIndex} />}
       {status.kind === "saved" && (
         <p className="mt-2 font-sans text-body-md text-eco-text">
           Saved —{" "}

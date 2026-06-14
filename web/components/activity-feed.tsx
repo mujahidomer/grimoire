@@ -96,7 +96,7 @@ export function ActivityFeed({
             {group.label}
           </h2>
           {view === "grid" ? (
-            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {group.items.map((item) => (
                 <li key={item.id}>
                   <LibraryGridCard item={item} />

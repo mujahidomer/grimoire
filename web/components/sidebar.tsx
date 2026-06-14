@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpen,
-  ChevronDown,
   Home,
   Lock,
   MessageCircle,
@@ -16,6 +15,7 @@ import { CATEGORIES } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useLibraryFilters } from "@/lib/library-context";
 import { SearchBox } from "@/components/search-box";
+import { UserMenu } from "@/components/user-menu";
 
 function categoryIcon(category: string) {
   if (category.includes("Food")) return "🍳";
@@ -191,18 +191,7 @@ export function Sidebar({
           </div>
         </div>
 
-        <button
-          type="button"
-          className="flex items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-black/[0.03]"
-        >
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-eco-primary text-xs font-semibold text-white">
-            G
-          </span>
-          <span className="min-w-0 flex-1 truncate font-sans text-body-md text-eco-on-surface">
-            My Grimoire
-          </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-eco-foreground/40" />
-        </button>
+        <UserMenu />
       </div>
     </aside>
   );
