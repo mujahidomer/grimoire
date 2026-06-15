@@ -3,14 +3,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check, Link2 } from "lucide-react";
+import { CheckCircle2, Circle, Globe, Link2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SaveLinkProgress } from "@/components/save-link-progress";
-import { saveUrl } from "@/lib/api";
-import { useSaveLinkProgress } from "@/lib/save-link-progress";
-import { truncate } from "@/lib/utils";
+import { previewImageUrl, saveUrl } from "@/lib/api";
+import { loadLinkPreview } from "@/lib/preview-cache";
+import { SAVE_LINK_STEPS, useSaveLinkProgress } from "@/lib/save-link-progress";
+import type { LinkPreview } from "@/lib/types";
+import { cn, truncate } from "@/lib/utils";
 
 type Status = "saving" | "saved" | "error";
+
+// Bare domain for the muted source line, e.g. "instagram.com".
+function hostname(value: string): string {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return value.replace(/^https?:\/\//i, "").split("/")[0];
+  }
+}
 
 // Render a shared link cleanly: drop the protocol/"www." and trailing slash,
 // then truncate so long Instagram/YouTube URLs don't overflow the card.
@@ -119,11 +129,30 @@ export function ShareHandler() {
   const [saved, setSaved] = useState<{ id?: string; title?: string } | null>(
     null,
   );
+  const [preview, setPreview] = useState<LinkPreview | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
   // Guards against React Strict Mode double-invoking the save on mount.
   const startedRef = useRef(false);
 
   // Animated three-step progress, identical to the main app's inline save.
   const { stepIndex } = useSaveLinkProgress(status === "saving");
+
+  // Fetch a link preview (thumbnail/title) in parallel with the save — purely
+  // best-effort cosmetics, so failures fall back to the domain-only card.
+  useEffect(() => {
+    if (!sharedUrl) return;
+    let cancelled = false;
+    loadLinkPreview(sharedUrl)
+      .then((p) => {
+        if (!cancelled) setPreview(p);
+      })
+      .catch(() => {
+        /* no preview — the domain fallback covers it */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sharedUrl]);
 
   const save = useCallback(async () => {
     if (!sharedUrl) {
@@ -166,30 +195,26 @@ export function ShareHandler() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
-  // After a successful save, let the confirmation land, then get out of the way:
-  // close the share-sheet tab if the browser allows it, else go home.
-  useEffect(() => {
-    if (status !== "saved") return;
-    const timer = setTimeout(() => {
-      window.close();
-      // window.close() is a no-op for tabs the script didn't open (Android's
-      // share sheet, iOS Safari), so redirect home as the fallback.
-      window.location.href = "/";
-    }, 2200);
-    return () => clearTimeout(timer);
-  }, [status]);
+  const domain = sharedUrl ? hostname(sharedUrl) : "";
+  const cardTitle = saved?.title || preview?.title || null;
+  const previewImage = preview?.image;
+  const showImage = !!previewImage && !imageFailed;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-eco-main px-4 py-10">
-      <div className="w-full max-w-md space-y-6">
+      <div className="w-full max-w-md space-y-7">
         <div className="text-center">
           <h1 className="font-display text-2xl text-eco-heading">Grimoire</h1>
-          <p className="mt-1 font-sans text-body-md text-eco-foreground/60">
-            Saving to your library
+          <p className="mt-1.5 font-sans text-body-md text-eco-foreground/60">
+            {status === "saved"
+              ? "Saved to your library"
+              : status === "error"
+                ? "Couldn’t save that link"
+                : "Saving to your library"}
           </p>
         </div>
 
-        <div className="space-y-5 rounded-xl border border-eco-border-light bg-eco-surface p-6 shadow-eco-sm">
+        <div className="space-y-6 rounded-xl border border-eco-border-light bg-eco-surface p-7 shadow-eco-sm">
           {sharedUrl && (
             <div className="flex items-center gap-2.5 rounded-lg bg-eco-main px-3 py-2.5">
               <Link2
@@ -202,35 +227,143 @@ export function ShareHandler() {
             </div>
           )}
 
-          {status === "saving" && <SaveLinkProgress stepIndex={stepIndex} />}
+          {/* Link preview — populates once the preview API responds; otherwise
+              shows the domain with a globe glyph and skips the thumbnail. */}
+          {sharedUrl && (
+            <div className="flex items-center gap-3.5 rounded-xl border border-black/[0.06] bg-white p-3.5 shadow-eco-sm">
+              {showImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewImageUrl(previewImage!)}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  onError={() => setImageFailed(true)}
+                  className="h-16 w-16 shrink-0 rounded-lg bg-eco-border/20 object-cover"
+                />
+              ) : (
+                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-eco-primary/10">
+                  <Globe className="h-6 w-6 text-eco-primary/50" aria-hidden />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                {cardTitle ? (
+                  <p className="line-clamp-2 font-sans text-base font-semibold leading-snug text-eco-heading">
+                    {truncate(cardTitle, 90)}
+                  </p>
+                ) : (
+                  <p className="font-sans text-base font-semibold text-eco-heading/40">
+                    Reading link…
+                  </p>
+                )}
+                <p className="mt-1 truncate font-sans text-sm text-eco-foreground/50">
+                  {domain}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {status === "saving" && (
+            <div
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              className="space-y-6"
+            >
+              <div>
+                <p className="font-sans text-lg font-medium text-eco-secondary">
+                  {SAVE_LINK_STEPS[stepIndex].label}…
+                </p>
+                <p className="mt-2.5 font-sans text-[15px] leading-relaxed text-eco-foreground/55">
+                  {SAVE_LINK_STEPS[stepIndex].hint} This usually takes 10–30
+                  seconds — you can switch away, it&apos;ll keep saving.
+                </p>
+              </div>
+
+              <ol className="space-y-4">
+                {SAVE_LINK_STEPS.map((step, index) => {
+                  const done = index < stepIndex;
+                  const active = index === stepIndex;
+                  return (
+                    <li
+                      key={step.id}
+                      className={cn(
+                        "flex items-center gap-3 font-sans text-base",
+                        done && "font-medium text-eco-on-surface",
+                        active && "font-medium text-eco-secondary",
+                        !done && !active && "font-normal text-eco-foreground/40",
+                      )}
+                    >
+                      {done ? (
+                        <CheckCircle2
+                          className="h-5 w-5 shrink-0 text-eco-primary"
+                          aria-hidden
+                        />
+                      ) : active ? (
+                        <Loader2
+                          className="h-5 w-5 shrink-0 animate-spin text-eco-primary"
+                          aria-hidden
+                        />
+                      ) : (
+                        <Circle
+                          className="h-5 w-5 shrink-0 text-eco-foreground/25"
+                          aria-hidden
+                        />
+                      )}
+                      <span>{step.label}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
 
           {status === "saved" && (
-            <div className="space-y-3 py-2 text-center">
-              <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-eco-primary/15">
-                <Check className="h-5 w-5 text-eco-primary" aria-hidden />
-              </span>
-              <p className="font-sans text-body-lg font-medium text-eco-heading">
-                Saved to Grimoire ✓
-              </p>
-              {saved?.title &&
-                (saved.id ? (
+            <div className="flex flex-col items-center gap-4 py-2 text-center">
+              <svg
+                viewBox="0 0 56 56"
+                className="h-16 w-16 text-eco-primary"
+                fill="none"
+                stroke="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden
+              >
+                <circle
+                  className="save-success-circle"
+                  cx="28"
+                  cy="28"
+                  r="25"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  transform="rotate(-90 28 28)"
+                />
+                <path
+                  className="save-success-check"
+                  d="M17 28.5 L25 36 L39 20"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <div className="save-success-label space-y-1.5">
+                <p className="font-display text-2xl text-eco-heading">Saved</p>
+                <p className="font-sans text-[15px] text-eco-foreground/55">
+                  You can close this tab
+                </p>
+                {saved?.id && (
                   <Link
                     href={`/item/${saved.id}`}
-                    className="block font-sans text-body-md text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
+                    className="inline-block pt-1 font-sans text-body-md font-medium text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
                   >
-                    {saved.title}
+                    View it
                   </Link>
-                ) : (
-                  <p className="font-sans text-body-md text-eco-foreground/60">
-                    {saved.title}
-                  </p>
-                ))}
+                )}
+              </div>
             </div>
           )}
 
           {status === "error" && (
             <div className="space-y-4 py-2 text-center">
-              <p className="font-sans text-body-md text-rose-600">
+              <p className="font-sans text-base text-rose-600">
                 {error ?? "Couldn't save that link."}
               </p>
               <Button
