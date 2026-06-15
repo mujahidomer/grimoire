@@ -1,11 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Check, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SaveLinkProgress } from "@/components/save-link-progress";
 import { saveUrl } from "@/lib/api";
+import { useSaveLinkProgress } from "@/lib/save-link-progress";
+import { truncate } from "@/lib/utils";
 
 type Status = "saving" | "saved" | "error";
+
+// Render a shared link cleanly: drop the protocol/"www." and trailing slash,
+// then truncate so long Instagram/YouTube URLs don't overflow the card.
+function prettyUrl(value: string): string {
+  let display = value;
+  try {
+    const u = new URL(value);
+    display = u.hostname.replace(/^www\./, "") + u.pathname + u.search;
+  } catch {
+    display = value.replace(/^https?:\/\//i, "");
+  }
+  return truncate(display.replace(/\/$/, ""), 52);
+}
 
 // URLSearchParams already percent-decodes once, but some share intents
 // double-encode the value, so decode again — defensively, since a stray "%"
@@ -98,8 +116,14 @@ export function ShareHandler() {
 
   const [status, setStatus] = useState<Status>("saving");
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ id?: string; title?: string } | null>(
+    null,
+  );
   // Guards against React Strict Mode double-invoking the save on mount.
   const startedRef = useRef(false);
+
+  // Animated three-step progress, identical to the main app's inline save.
+  const { stepIndex } = useSaveLinkProgress(status === "saving");
 
   const save = useCallback(async () => {
     if (!sharedUrl) {
@@ -111,7 +135,10 @@ export function ShareHandler() {
     setStatus("saving");
     setError(null);
     try {
-      await saveUrl(sharedUrl);
+      // keepalive keeps the POST in flight even if iOS bounces back to the
+      // source app or the tab is backgrounded mid-save.
+      const res = await saveUrl(sharedUrl, { keepalive: true });
+      setSaved({ id: res.id, title: res.title });
       setStatus("saved");
     } catch (err) {
       setStatus("error");
@@ -125,7 +152,21 @@ export function ShareHandler() {
     void save();
   }, [save]);
 
-  // After a successful save, briefly show confirmation then get out of the way:
+  // The save must survive the tab being hidden — observe visibility only to log
+  // it. We deliberately do NOT abort the request here; keepalive sees it home.
+  useEffect(() => {
+    function onVisibilityChange() {
+      console.info(
+        "[share-handler] visibilitychange:",
+        document.visibilityState,
+      );
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
+  // After a successful save, let the confirmation land, then get out of the way:
   // close the share-sheet tab if the browser allows it, else go home.
   useEffect(() => {
     if (status !== "saved") return;
@@ -134,45 +175,75 @@ export function ShareHandler() {
       // window.close() is a no-op for tabs the script didn't open (Android's
       // share sheet, iOS Safari), so redirect home as the fallback.
       window.location.href = "/";
-    }, 1500);
+    }, 2200);
     return () => clearTimeout(timer);
   }, [status]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-eco-main px-4">
-      <div className="w-full max-w-sm space-y-4 text-center">
-        {status === "saving" && (
-          <>
-            <div
-              className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-eco-border border-t-eco-primary"
-              aria-hidden
-            />
-            <p className="font-sans text-body-md text-eco-foreground/70">
-              Saving to Grimoire…
-            </p>
-          </>
-        )}
-
-        {status === "saved" && (
-          <p className="font-sans text-body-lg font-medium text-eco-heading">
-            Saved to Grimoire ✓
+    <main className="flex min-h-screen items-center justify-center bg-eco-main px-4 py-10">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center">
+          <h1 className="font-display text-2xl text-eco-heading">Grimoire</h1>
+          <p className="mt-1 font-sans text-body-md text-eco-foreground/60">
+            Saving to your library
           </p>
-        )}
+        </div>
 
-        {status === "error" && (
-          <>
-            <p className="font-sans text-body-md text-red-600">
-              {error ?? "Couldn't save that link."}
-            </p>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void save()}
-            >
-              Try again
-            </Button>
-          </>
-        )}
+        <div className="space-y-5 rounded-xl border border-eco-border-light bg-eco-surface p-6 shadow-eco-sm">
+          {sharedUrl && (
+            <div className="flex items-center gap-2.5 rounded-lg bg-eco-main px-3 py-2.5">
+              <Link2
+                className="h-4 w-4 shrink-0 text-eco-foreground/40"
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1 truncate font-sans text-body-md text-eco-on-surface">
+                {prettyUrl(sharedUrl)}
+              </span>
+            </div>
+          )}
+
+          {status === "saving" && <SaveLinkProgress stepIndex={stepIndex} />}
+
+          {status === "saved" && (
+            <div className="space-y-3 py-2 text-center">
+              <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-eco-primary/15">
+                <Check className="h-5 w-5 text-eco-primary" aria-hidden />
+              </span>
+              <p className="font-sans text-body-lg font-medium text-eco-heading">
+                Saved to Grimoire ✓
+              </p>
+              {saved?.title &&
+                (saved.id ? (
+                  <Link
+                    href={`/item/${saved.id}`}
+                    className="block font-sans text-body-md text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
+                  >
+                    {saved.title}
+                  </Link>
+                ) : (
+                  <p className="font-sans text-body-md text-eco-foreground/60">
+                    {saved.title}
+                  </p>
+                ))}
+            </div>
+          )}
+
+          {status === "error" && (
+            <div className="space-y-4 py-2 text-center">
+              <p className="font-sans text-body-md text-rose-600">
+                {error ?? "Couldn't save that link."}
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void save()}
+                className="w-full"
+              >
+                Try again
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

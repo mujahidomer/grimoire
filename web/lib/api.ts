@@ -141,11 +141,17 @@ export async function askChat(question: string): Promise<ChatResponse> {
   return json<ChatResponse>(res);
 }
 
-export async function saveUrl(url: string): Promise<SaveResponse> {
+export async function saveUrl(
+  url: string,
+  opts: { keepalive?: boolean } = {},
+): Promise<SaveResponse> {
   const res = await fetch(`${BASE}/api/save`, {
     method: "POST",
     headers: await clientAuthHeaders(),
     body: JSON.stringify({ url }),
+    // keepalive lets the request finish even if the tab is backgrounded or
+    // closed (e.g. the iOS share sheet bouncing back to the source app).
+    keepalive: opts.keepalive,
   });
   const data = (await res.json().catch(() => ({}))) as SaveResponse;
   if (!res.ok || !data.success) {
