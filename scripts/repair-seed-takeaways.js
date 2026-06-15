@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Re-parse seed-library MD files and fix key_takeaways on all seeded items in
-// Postgres. Needed after md-parse learned to recover structured takeaways from
-// nested markdown bullets (previously stored as flat string arrays).
+// Re-parse seed-library MD files and fix key_takeaways on every item whose
+// source_url matches a catalog entry (seed signups and in-app saves alike).
+// Needed after md-parse learned to recover structured takeaways from nested
+// markdown bullets (previously stored as flat string arrays).
 //
 // Usage:
 //   node scripts/repair-seed-takeaways.js
@@ -42,9 +43,8 @@ async function main() {
 
     const { data: rows, error } = await sb
       .from('items')
-      .select('id, user_id, title')
-      .eq('source_url', sourceUrl)
-      .eq('source', 'seed');
+      .select('id, user_id, title, source')
+      .eq('source_url', sourceUrl);
     if (error) throw new Error(error.message);
 
     for (const row of rows || []) {
