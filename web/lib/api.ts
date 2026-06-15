@@ -200,6 +200,19 @@ export async function uploadFile(file: File): Promise<string> {
   return publicUrl;
 }
 
+// Fire-and-forget: copy pre-processed seed items into the just-created user's
+// library. The user id is derived server-side from the auth token, so we only
+// send ids. The backend returns immediately and copies asynchronously.
+export async function seedLibrary(selectedItemIds: string[]): Promise<void> {
+  if (!selectedItemIds.length) return;
+  const res = await fetch(`${BASE}/api/seed`, {
+    method: "POST",
+    headers: await clientAuthHeaders(),
+    body: JSON.stringify({ selectedItemIds }),
+  });
+  if (!res.ok) throw new Error(`seed request failed (${res.status})`);
+}
+
 export async function deleteItem(id: string): Promise<void> {
   const res = await fetch(`${BASE}/api/items/${id}`, {
     method: "DELETE",

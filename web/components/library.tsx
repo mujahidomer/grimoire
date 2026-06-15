@@ -12,6 +12,7 @@ import {
 } from "@/components/activity-feed";
 import { LibraryViewToggle } from "@/components/library-view-toggle";
 import { MainHeader } from "@/components/main-header";
+import { GetStartedBanner } from "@/components/get-started-banner";
 import { cn, itemRecencyMs } from "@/lib/utils";
 
 const VIEW_STORAGE_KEY = "grimoire-library-view";
@@ -155,6 +156,8 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
         view === "grid" ? "max-w-7xl" : "max-w-3xl",
       )}
     >
+      <GetStartedBanner />
+
       <MainHeader
         title={title}
         actions={

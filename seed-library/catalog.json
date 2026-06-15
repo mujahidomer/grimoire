@@ -1,0 +1,26 @@
+{
+  "_comment": "Canonical id -> url mapping for the starter library. Keep in sync with web/lib/seed-catalog.ts (same ids). The build script reads this to generate seed-library/<id>.md via the live extraction+classification pipeline. /api/seed only needs the <id>.md files to exist; it does not read this file.",
+  "items": [
+    { "id": "ai-altman-agents", "segment": "ai", "url": "https://www.youtube.com/watch?v=sal78ACtGTc", "title": "Sam Altman on the future of AI agents" },
+    { "id": "ai-karpathy-llms", "segment": "ai", "url": "https://www.youtube.com/watch?v=zjkBMFhNj_g", "title": "Andrej Karpathy: How LLMs work" },
+    { "id": "ai-dual-llm-pattern", "segment": "ai", "url": "https://simonwillison.net/2023/Apr/25/dual-llm-pattern/", "title": "The dual LLM pattern for building AI products" },
+    { "id": "ai-first-agent", "segment": "ai", "url": "https://www.youtube.com/watch?v=fqVLjtvWgq8", "title": "Building your first AI agent from scratch" },
+    { "id": "ai-prompt-guide", "segment": "ai", "url": "https://www.youtube.com/watch?v=c3b-JASoPi0", "title": "Prompt engineering full guide" },
+
+    { "id": "islamic-dua-language", "segment": "islamic", "url": "https://islamqa.info/en/answers/9577", "title": "Making dua in your own language — ruling and guidance" },
+
+    { "id": "finance-psychology-of-money", "segment": "finance", "url": "https://www.collaborativefund.com/blog/the-psychology-of-money/", "title": "Morgan Housel: The psychology of money" },
+    { "id": "finance-simple-portfolio", "segment": "finance", "url": "https://www.youtube.com/watch?v=gFQNPmLKj1k", "title": "How to build a simple investment portfolio" },
+    { "id": "finance-just-keep-buying", "segment": "finance", "url": "https://ofdollarsanddata.com/just-keep-buying/", "title": "Just keep buying — Nick Maggiulli" },
+
+    { "id": "fitness-huberman-morning", "segment": "fitness", "url": "https://www.youtube.com/watch?v=IODxDxX7oi4", "title": "Andrew Huberman: Morning routine for peak performance" },
+    { "id": "fitness-israetel-hypertrophy", "segment": "fitness", "url": "https://www.youtube.com/watch?v=vcBig73ojpE", "title": "Mike Israetel: Complete hypertrophy guide" },
+    { "id": "fitness-build-routine", "segment": "fitness", "url": "https://www.youtube.com/watch?v=2tM1LFFxeKg", "title": "How to build a workout routine from scratch" },
+
+    { "id": "research-pg-think", "segment": "research", "url": "https://www.paulgraham.com/think.html", "title": "Paul Graham: Thinking for yourself" },
+    { "id": "research-fs-mental-models", "segment": "research", "url": "https://fs.blog/mental-models/", "title": "Farnam Street: The biggest list of mental models" },
+    { "id": "research-pg-writing", "segment": "research", "url": "https://www.paulgraham.com/writing44.html", "title": "Paul Graham: Writing simply" },
+    { "id": "research-ness-notes", "segment": "research", "url": "https://nesslabs.com/note-taking", "title": "How to take notes that actually help you think" },
+    { "id": "research-second-brain", "segment": "research", "url": "https://www.youtube.com/watch?v=ukLnPbIffxE", "title": "How to build a second brain" }
+  ]
+}

@@ -12,6 +12,7 @@ const { embedAndStoreItem } = require('./lib/embeddings');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 const { requireAuth } = require('./lib/request-auth');
+const { seedUserLibrary } = require('./lib/seed');
 
 const app = express();
 // CORS for the web UI (Doc B paste-box + chat panel). The throwaway viewer runs
@@ -252,6 +253,20 @@ app.post('/api/save', requireAuth(async (req, res) => {
     console.error('POST /api/save error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
+}));
+
+// POST /api/seed — copy pre-processed starter-library items into the caller's
+// library (the onboarding funnel). The user id is taken from the verified token,
+// never the body. Returns 200 immediately and copies asynchronously so signup
+// stays instant. Body: { selectedItemIds: string[] }.
+app.post('/api/seed', requireAuth(async (req, res) => {
+  const { selectedItemIds } = req.body || {};
+  const ids = Array.isArray(selectedItemIds) ? selectedItemIds.slice(0, 50) : [];
+  res.json({ success: true, accepted: ids.length });
+  // Fire-and-forget: do the copying after responding.
+  seedUserLibrary(req.userId, ids).catch((err) =>
+    console.error('POST /api/seed background error:', err),
+  );
 }));
 
 // POST /api/items/:id/reclassify — re-run classification on stored transcript/caption.

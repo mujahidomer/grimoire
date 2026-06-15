@@ -9,7 +9,8 @@ const BARE_ROUTES = new Set([
   "/signup",
   "/share-handler",
   "/landing",
-  "/onboarding",
+  "/seed-picker",
+  "/onboarding/shortcut",
 ]);
 
 export function AuthAwareShell({ children }: { children: React.ReactNode }) {

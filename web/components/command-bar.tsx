@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, MessageCircle, Paperclip, Plus } from "lucide-react";
 import { saveUrl, uploadFile } from "@/lib/api";
+import { useOnboarding } from "@/lib/onboarding";
 import { useSaveLinkProgress } from "@/lib/save-link-progress";
 import { showToast } from "@/lib/toast";
 import { useSuggestedQuestions } from "@/lib/use-suggested-questions";
@@ -31,6 +32,17 @@ export function CommandBar({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { stepIndex } = useSaveLinkProgress(saving);
   const suggestedQuestions = useSuggestedQuestions();
+  const { prefillQuery, markQueryDone, markSaveDone } = useOnboarding();
+  const prefilled = useRef(false);
+
+  // First-query beat: drop the segment-relevant example query into the input
+  // once, when onboarding metadata loads and the user hasn't typed yet.
+  useEffect(() => {
+    if (prefilled.current || !prefillQuery) return;
+    if (input.trim() || saveOpen) return;
+    prefilled.current = true;
+    setInput(prefillQuery);
+  }, [prefillQuery, input, saveOpen]);
 
   function openSaveMode(initialUrl = "") {
     setSaveOpen(true);
@@ -51,6 +63,7 @@ export function CommandBar({
       openSaveMode(q);
       return;
     }
+    markQueryDone();
     onAsk(q);
     setInput("");
   }
@@ -73,6 +86,7 @@ export function CommandBar({
       const savedIds =
         res.items?.map((item) => item.id).filter(Boolean) ??
         (res.id ? [res.id] : []);
+      markSaveDone();
       onSaved?.({ savedIds });
       showToast(
         res.title ? `Saved "${res.title}"` : "Link saved to your library",
@@ -105,6 +119,7 @@ export function CommandBar({
       const savedIds =
         res.items?.map((item) => item.id).filter(Boolean) ??
         (res.id ? [res.id] : []);
+      markSaveDone();
       onSaved?.({ savedIds });
       showToast(
         res.title ? `Saved "${res.title}"` : "File saved to your library",

@@ -1,25 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import {
+  DEFAULT_SEGMENT,
+  SEGMENTS,
+  SEGMENT_BY_ID,
+  SEGMENTS_STORAGE_KEY,
+  type SegmentId,
+} from "@/lib/seed-catalog";
 
-// Editorial, warm-stone marketing page. Colors are intentionally spec'd as
-// arbitrary values here (warmer than the app interior) rather than the eco
-// palette — this is the only public-facing surface with this treatment.
-const PROBLEMS = [
-  {
-    title: "You live in tools and tabs.",
-    body: "You save tools and workflows constantly. By the time you need them, they're buried.",
-  },
-  {
-    title: "Your recipes are scattered.",
-    body: "You've saved hundreds of recipes from everywhere. Standing in the kitchen, you can't remember which one fits.",
-  },
-  {
-    title: "Your reading list is a graveyard.",
-    body: "Dozens of articles saved, none retrievable. Grimoire makes everything you've read queryable.",
-  },
-];
+const MAX_SEGMENTS = 2;
 
 const STEPS = [
   { n: "1", title: "Share any link", body: "From any app — articles, videos, posts, recipes." },
@@ -28,10 +20,31 @@ const STEPS = [
 ];
 
 export function Landing() {
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next");
-  const withNext = (path: string) =>
-    next ? `${path}?next=${encodeURIComponent(next)}` : path;
+  const router = useRouter();
+  const [picked, setPicked] = useState<SegmentId[]>([]);
+  // Which segment's problem copy is currently shown (hover preview or selection).
+  const [active, setActive] = useState<SegmentId>(DEFAULT_SEGMENT);
+
+  function toggle(id: SegmentId) {
+    setActive(id);
+    setPicked((prev) => {
+      if (prev.includes(id)) return prev.filter((p) => p !== id);
+      if (prev.length >= MAX_SEGMENTS) return prev;
+      return [...prev, id];
+    });
+  }
+
+  function getStarted() {
+    if (picked.length === 0) return;
+    try {
+      localStorage.setItem(SEGMENTS_STORAGE_KEY, JSON.stringify(picked));
+    } catch {
+      /* storage blocked — seed-picker falls back to all segments */
+    }
+    router.push("/seed-picker");
+  }
+
+  const problem = SEGMENT_BY_ID[active].problem;
 
   return (
     <div className="min-h-screen bg-[#EEEAE4] text-[#1C1C1A]">
@@ -53,36 +66,20 @@ export function Landing() {
           you&apos;ve ever saved.
         </p>
         <div className="mt-10 flex flex-col items-center gap-4">
-          <Link
-            href={withNext("/signup")}
+          <a
+            href="#pick"
             className="rounded-full bg-[#2D4B2D] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
           >
             Get started
-          </Link>
+          </a>
           <Link
-            href={withNext("/login")}
+            href="/login"
             className="text-sm font-medium text-[#2D4B2D] hover:underline"
           >
             Sign in
           </Link>
         </div>
       </header>
-
-      {/* Problem */}
-      <section className="border-t border-stone-200/70 px-6 py-20">
-        <div className="mx-auto grid max-w-5xl gap-12 md:grid-cols-3">
-          {PROBLEMS.map((p) => (
-            <div key={p.title}>
-              <h3 className="font-display text-xl tracking-tight text-[#1C1C1A]">
-                {p.title}
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-[#8A8780]">
-                {p.body}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* How it works */}
       <section className="border-t border-stone-200/70 px-6 py-20">
@@ -96,9 +93,7 @@ export function Landing() {
                 key={s.n}
                 className="rounded-2xl border border-stone-200 bg-white p-6"
               >
-                <span className="font-display text-2xl text-[#2D4B2D]">
-                  {s.n}
-                </span>
+                <span className="font-display text-2xl text-[#2D4B2D]">{s.n}</span>
                 <h3 className="mt-3 font-display text-lg tracking-tight text-[#1C1C1A]">
                   {s.title}
                 </h3>
@@ -111,6 +106,58 @@ export function Landing() {
         </div>
       </section>
 
+      {/* Segment picker */}
+      <section id="pick" className="border-t border-stone-200/70 px-6 py-20">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="font-display text-3xl tracking-tight text-[#1C1C1A]">
+            What do you save most?
+          </h2>
+          <p className="mt-3 text-sm text-[#8A8780]">
+            Pick what fits. We&apos;ll build you a starter library.
+          </p>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {SEGMENTS.map((s) => {
+              const selected = picked.includes(s.id);
+              const disabled = !selected && picked.length >= MAX_SEGMENTS;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onMouseEnter={() => setActive(s.id)}
+                  onFocus={() => setActive(s.id)}
+                  onClick={() => toggle(s.id)}
+                  disabled={disabled}
+                  className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                    selected
+                      ? "border-[#2D4B2D] bg-[#2D4B2D] text-white"
+                      : "border-stone-300 bg-white text-[#1C1C1A] hover:border-stone-400"
+                  } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Problem copy swaps with a simple fade as pills are hovered/selected */}
+          <div key={active} className="mx-auto mt-10 max-w-xl fade-in">
+            <p className="text-base leading-relaxed text-[#1C1C1A]">{problem}</p>
+          </div>
+
+          <div className="mt-10">
+            <button
+              type="button"
+              onClick={getStarted}
+              disabled={picked.length === 0}
+              className="rounded-full bg-[#2D4B2D] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Get started →
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Limitation / preview footer */}
       <section className="border-t border-stone-200/70 px-6 py-20">
         <div className="mx-auto max-w-2xl text-center">
@@ -118,14 +165,6 @@ export function Landing() {
             This is an early version. Saving works via iOS Shortcut today. A
             native share extension, richer UI, and MCP integrations are coming.
           </p>
-          <div className="mt-8">
-            <Link
-              href={withNext("/signup")}
-              className="rounded-full bg-[#2D4B2D] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
-            >
-              Try it early
-            </Link>
-          </div>
         </div>
       </section>
     </div>

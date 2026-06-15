@@ -10,9 +10,22 @@ function isAuthRoute(pathname: string) {
   );
 }
 
-// Public marketing/auth surfaces an unauthenticated visitor may render.
+// Public funnel/auth surfaces an unauthenticated visitor may render.
 function isPublicRoute(pathname: string) {
-  return isAuthRoute(pathname) || pathname.startsWith("/landing");
+  return (
+    isAuthRoute(pathname) ||
+    pathname.startsWith("/landing") ||
+    pathname.startsWith("/seed-picker")
+  );
+}
+
+// Authenticated users have no business on the pre-auth funnel.
+function isFunnelRoute(pathname: string) {
+  return (
+    pathname === "/landing" ||
+    pathname === "/signup" ||
+    pathname === "/seed-picker"
+  );
 }
 
 export async function updateSession(request: NextRequest) {
@@ -67,43 +80,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user) {
-    const onboardingDone =
-      user.user_metadata?.onboarding_complete === true;
-    const dest = onboardingDone ? "/" : "/onboarding";
-
-    // Authenticated users have no business on the marketing/auth surfaces.
-    if (
-      pathname === "/login" ||
-      pathname === "/signup" ||
-      pathname === "/landing"
-    ) {
-      const url = request.nextUrl.clone();
-      url.pathname = dest;
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
-
-    // Funnel new users through onboarding until they complete it. /auth/* is
-    // excluded so the OAuth callback can finish exchanging its code first.
-    if (
-      !onboardingDone &&
-      pathname !== "/onboarding" &&
-      !pathname.startsWith("/auth")
-    ) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
-
-    // Finished users shouldn't be able to re-enter onboarding.
-    if (onboardingDone && pathname === "/onboarding") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
+  // Authenticated users skip the pre-auth funnel and land in their library.
+  // Onboarding is now an in-dashboard banner, not a gated route.
+  if (user && isFunnelRoute(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;

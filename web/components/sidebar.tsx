@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpen,
+  Bookmark,
   Home,
   Lock,
   MessageCircle,
@@ -101,6 +102,19 @@ export function Sidebar({
           <MessageCircle className="h-4 w-4 shrink-0 opacity-70" />
           Chat
         </button>
+        <Link
+          href="/onboarding/shortcut"
+          onClick={() => onNavigate?.()}
+          className={cn(
+            "flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-sans text-body-md transition-colors duration-eco",
+            pathname === "/onboarding/shortcut"
+              ? "bg-eco-primary/10 text-eco-primary"
+              : "text-eco-foreground hover:bg-black/[0.03]",
+          )}
+        >
+          <Bookmark className="h-4 w-4 shrink-0 opacity-70" />
+          Setup guide
+        </Link>
       </nav>
 
       <div className="mt-2 px-4">
