@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -134,6 +135,15 @@ export function UserMenu() {
               {userInfo.email}
             </p>
           )}
+          <Link
+            href="/settings"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 px-3 py-2.5 font-sans text-body-md text-eco-foreground transition-colors hover:bg-black/[0.03]"
+          >
+            <Settings className="h-4 w-4 opacity-60" />
+            Settings
+          </Link>
           <button
             type="button"
             role="menuitem"

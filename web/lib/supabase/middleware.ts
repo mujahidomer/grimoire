@@ -54,7 +54,12 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isAuth && !isDevAuthBypassEnabled()) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("next", request.nextUrl.pathname);
+    // Keep the original query string (e.g. the link shared into /share-handler)
+    // so it survives the round-trip through login.
+    url.searchParams.set(
+      "next",
+      request.nextUrl.pathname + request.nextUrl.search,
+    );
     return NextResponse.redirect(url);
   }
 
