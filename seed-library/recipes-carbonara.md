@@ -4,12 +4,12 @@ category: Food & Cooking
 type: Video
 tags:
   - carbonara
-  - Italian pasta
-  - authentic recipe
-  - Roman cuisine
-  - cooking tutorial
+  - italian cuisine
+  - pasta recipe
+  - traditional cooking
   - guanciale
-  - pasta technique
+  - Roman pasta
+  - cooking tutorial
 date_saved: '2026-06-15'
 source_url: https://www.youtube.com/watch?v=3AAdKl1UYZs
 artifact_type: none
@@ -20,10 +20,45 @@ linked_resources: []
 ---
 
 ## Summary
-Antonio Curluccio teaches how to prepare authentic Roman carbonara, correcting common mistakes. The dish uses guanciale (pork cheek), egg yolks, cheese, and pasta—without cream—to create a creamy sauce through proper temperature control.
+Antonio Curluccio demonstrates how to prepare authentic Roman carbonara, highlighting common mistakes and the proper technique. The recipe uses guanciale (pork cheek), egg yolks, cheese, and pepper—with no cream—to create a creamy sauce through temperature control rather than dairy.
 
 ## Key Takeaways
-_No key takeaways._
+- **ingredients:**
+  - Water (boiling)
+  - Salt (10 grams per litre of water)
+  - Spaghettini pasta
+  - Guanciale (pork cheek), or pancetta as alternative
+  - Good olive oil
+  - 2 eggs (yolks only, for 2 people)
+  - Parmesan or pecorino cheese (grated)
+  - Black pepper (abundant)
+- **cooking_steps:**
+  - Bring water to a boil and add salt at a ratio of 10 grams per litre
+  - Add spaghettini pasta to boiling water and stir occasionally
+  - Cook pasta for approximately 10 minutes (no oil needed)
+  - While pasta cooks, cut guanciale into large chunks
+  - Heat good olive oil in a pan
+  - Add guanciale chunks to the pan
+  - In a bowl, beat 2 egg yolks (do not add cream)
+  - Add grated parmesan or pecorino cheese to the egg yolks
+  - Add abundant black pepper to the egg mixture and stir
+  - Remove guanciale from heat to cool it down slightly (do not keep it too hot)
+  - Optional: absorb excess fat from the guanciale with a cloth if desired
+  - Test pasta for doneness by tasting
+  - Add cooked pasta to the bowl with the egg sauce and stir continuously
+  - The residual heat will coat the pasta and create a creamy sauce without scrambling the eggs
+  - Garnish with additional parmesan or pecorino cheese
+  - Finish with a final touch of black pepper as decoration
+- **key_principles:**
+  - Do not add cream—the sauce becomes creamy from the egg yolks and heat alone
+  - The guanciale must not be too hot when mixed with the eggs to avoid scrambling
+  - Stir continuously as you combine the hot pasta with the egg sauce
+  - Guanciale is preferred over pancetta for authentic Roman carbonara
+  - Salt the pasta water generously; do not salt the sauce further due to the saltiness of cured guanciale
+- **common_mistakes:**
+  - Adding cream to the carbonara
+  - Keeping the guanciale too hot, which scrambles the eggs
+  - Adding oil to the pasta water
 
 ## Transcript
 I am Antonio Curluccio, welcome to my kitchen.

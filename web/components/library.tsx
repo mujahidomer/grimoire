@@ -13,6 +13,8 @@ import {
 import { LibraryViewToggle } from "@/components/library-view-toggle";
 import { MainHeader } from "@/components/main-header";
 import { GetStartedBanner } from "@/components/get-started-banner";
+import { StarterLibraryLoader } from "@/components/starter-library-loader";
+import { useOnboarding } from "@/lib/onboarding";
 import { cn, itemRecencyMs } from "@/lib/utils";
 
 const VIEW_STORAGE_KEY = "grimoire-library-view";
@@ -58,6 +60,12 @@ function readStoredView(): LibraryViewMode {
 
 export function Library({ initialItems }: { initialItems: Item[] }) {
   const { query, setQuery, category, setCategory } = useLibraryFilters();
+  const {
+    starterLibraryLoading,
+    starterLibraryExpected,
+    starterLibraryLoaded,
+    starterLibraryPhase,
+  } = useOnboarding();
   const [items, setItems] = useState<Item[]>(() => sortItems(initialItems));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +117,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
   }, [load, query, category]);
 
   useEffect(() => {
+    if (starterLibraryLoading) return;
     const delay = query.trim() ? 300 : 0;
     const t = setTimeout(() => {
       const ensureIds = pendingEnsureIds.current;
@@ -116,7 +125,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
       load(query, category, ensureIds);
     }, delay);
     return () => clearTimeout(t);
-  }, [query, category, load]);
+  }, [query, category, load, starterLibraryLoading]);
 
   useEffect(() => {
     function onRefresh(e: Event) {
@@ -180,9 +189,17 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
         }
       />
 
-      {recentItems.length > 0 && <RecentSaves items={recentItems} />}
+      {recentItems.length > 0 && !starterLibraryLoading && (
+        <RecentSaves items={recentItems} />
+      )}
 
-      {loading && items.length === 0 ? (
+      {starterLibraryLoading ? (
+        <StarterLibraryLoader
+          loaded={starterLibraryLoaded}
+          expected={starterLibraryExpected}
+          phase={starterLibraryPhase}
+        />
+      ) : loading && items.length === 0 ? (
         <div className="flex items-center justify-center py-24 text-eco-foreground/50">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>

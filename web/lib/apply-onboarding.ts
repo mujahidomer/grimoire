@@ -1,4 +1,4 @@
-import { seedLibrary } from "@/lib/api";
+import { fetchItems, seedLibrary } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import {
   SEGMENTS_STORAGE_KEY,
@@ -8,6 +8,12 @@ import {
 export interface PendingOnboarding {
   segments: string[];
   seedSelections: string[];
+}
+
+export interface ApplyOnboardingResult {
+  applied: boolean;
+  requestedSeeds: number;
+  seededCount: number;
 }
 
 function readJsonArray(key: string): string[] {
@@ -40,20 +46,50 @@ function clearPendingOnboarding() {
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Poll the library until seeded items show up (or we time out). Seeding can
+// finish on the server before the list query reflects new rows.
+export async function waitForStarterLibrary(
+  expectedCount: number,
+  onProgress?: (loaded: number) => void,
+): Promise<number> {
+  if (expectedCount <= 0) return 0;
+
+  const deadline = Date.now() + 30_000;
+  let lastCount = 0;
+
+  while (Date.now() < deadline) {
+    try {
+      const items = await fetchItems({});
+      lastCount = items.length;
+      onProgress?.(lastCount);
+      if (lastCount >= expectedCount) return lastCount;
+    } catch {
+      /* retry until timeout */
+    }
+    await sleep(400);
+  }
+
+  return lastCount;
+}
+
 // Carry pre-auth funnel selections (from /landing + /seed-picker) into the new
-// account: stamp onboarding metadata and copy seed items. Returns true when
-// pending selections were applied; false when there was nothing to do or the
-// user is not signed in yet. Clears localStorage only after a successful apply
-// so OAuth signups and slow session sync can retry on the next page load.
-export async function applyPendingOnboarding(): Promise<boolean> {
+// account: stamp onboarding metadata and copy seed items. Clears localStorage
+// only after a successful apply so OAuth signups and slow session sync can retry.
+export async function applyPendingOnboarding(): Promise<ApplyOnboardingResult | null> {
   const pending = readPendingOnboarding();
-  if (!hasPendingOnboarding(pending)) return false;
+  if (!hasPendingOnboarding(pending)) return null;
 
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return false;
+  if (!user) return null;
+
+  const requestedSeeds = pending.seedSelections.length;
 
   try {
     await supabase.auth.updateUser({
@@ -65,17 +101,19 @@ export async function applyPendingOnboarding(): Promise<boolean> {
       },
     });
   } catch {
-    return false;
+    return null;
   }
 
-  if (pending.seedSelections.length > 0) {
+  let seededCount = 0;
+  if (requestedSeeds > 0) {
     try {
-      await seedLibrary(pending.seedSelections);
+      const result = await seedLibrary(pending.seedSelections);
+      seededCount = result.seeded;
     } catch {
-      return false;
+      return null;
     }
   }
 
   clearPendingOnboarding();
-  return true;
+  return { applied: true, requestedSeeds, seededCount };
 }

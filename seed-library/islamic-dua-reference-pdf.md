@@ -1,16 +1,16 @@
 ---
-title: 'The Month of Shaʿbān: A Friday Khutba on Preparation, Fasting, and Forgiveness'
+title: 'Khutba on the Month of Shaʿbān: Virtues, Deeds, and Forgiveness'
 category: Learning & Education
-type: Article
+type: article
 tags:
-  - Islamic sermon
-  - Shaʿbān
-  - fasting
-  - Qurʾān recitation
+  - Islamic education
+  - Sha'bān
+  - khutba?
+  - fasting?
+  - Quran
   - forgiveness
-  - Islamic spirituality
-  - khutba
-date_saved: '2026-06-15'
+  - Hadith
+date_saved: '2026-06-14'
 source_url: https://oerswwpgrrqcldnqdmff.supabase.co/storage/v1/object/public/uploads/af137d4a-958d-43dd-b88d-0d6dcce8b3f3/1781473070682-083c49a0-d36a-4f62-b8cf-1c21ca44600a.pdf
 artifact_type: none
 artifact_name: null
@@ -20,10 +20,80 @@ linked_resources: []
 ---
 
 ## Summary
-A comprehensive Friday sermon (khutba) discussing the spiritual significance of Shaʿbān, the Islamic month preceding Ramaḍān. The sermon emphasizes the Prophet Muhammad's practice of fasting during Shaʿbān, the importance of Qurʾān recitation, and the Night of the Middle of Shaʿbān when Allah grants forgiveness to believers. It also addresses the critical role of forgiving others and maintaining good character to preserve one's deeds.
+A Friday sermon (khutba) explaining the spiritual significance and virtues of the Islamic month of Shaʿbān, emphasizing the Prophet Muhammad's practice of fasting in this month and the importance of seeking forgiveness. The sermon encourages believers to increase voluntary fasting, recite the Quran, and seek forgiveness while avoiding harm to others.
 
 ## Key Takeaways
-_No key takeaways._
+- **passages:**
+  - **type:** quranic_verse
+  - **arabic:** يا أيها الناس اعبدوا ربكم الذي خلقكم والذين من قبلكم لعلكم تتقون
+  - **source:** Qurʾān 2:21
+  - **translation:** O mankind, worship your Lord who created you and those before you, that you may become mindful (of Him).
+  - **type:** hadith
+  - **arabic:** يغفل الناس عنه بين رجب ورمضان
+  - **source:** Reported by al-Nasāʾī
+  - **translation:** It is a month that people are heedless of, between Rajab and Ramaḍān.
+  - **type:** hadith
+  - **arabic:** كان أحب الشهور إلى رسول الله ملسو هيلع هللا ىلص أن يصومه شعبان
+  - **source:** Abū Dāwūd
+  - **translation:** The most beloved month for the Messenger of Allah ملسو هيلع هللا ىلص to fast was Shaʿbān.
+  - **type:** hadith
+  - **arabic:** ما رأيت رسول الله ملسو هيلع هللا ىلص استكمل صيام شهر قط إلا رمضان، وما رأيته في شهر أكثر منه صيام افي شعبان
+  - **source:** Bukhari and Muslim
+  - **translation:** I never saw the Messenger of Allah ملسو هيلع هللا ىلص complete the fasting of any month except Ramaḍān, and I never saw him fast more in any month than he fasted in Shaʿbān.
+  - **type:** hadith
+  - **arabic:** هو شهر ترفع فيه الأعمال إلى رب العالمين، فأحب أن يرفع عملي وأنا صائم
+  - **source:** Reported by al-Nasāʾī and others
+  - **translation:** That is a month in which deeds are raised to the Lord of the worlds, and I love that my deeds be raised while I am fasting.
+  - **type:** hadith
+  - **arabic:** باع الله وجهه عن النار سبعين خريفا دا
+  - **source:** Bukhari and Muslim
+  - **translation:** Allah will distance his face from the Fire by seventy years.
+  - **type:** hadith
+  - **arabic:** من قرأ حرفا من كتاب الله فله به حسنة، والحسنة بعشر أمثالها، لا أقول الم حرف، ولكن ألف حرف، والم حرف، وميم حرف
+  - **source:** Reported by al-Tirmidhī
+  - **translation:** Whoever recites one letter from the Book of Allah will have one good deed, and one good deed is multiplied tenfold. I do not say 'Alif Lām Mīm' is a letter, but Alif is a letter, Lām is a letter, and Mīm is a letter.
+  - **type:** hadith
+  - **arabic:** يقال لصاحب القرآن: اقرأ وارتق ورتل كما كنت ترتل في الدنيا، فإن منزلك عند آخر آية تقرؤها
+  - **source:** Reported by Abū Dāwūd and al-Tirmidhī
+  - **translation:** It will be said to the companion of the Qurʾān: Recite and rise, and recite as you used to recite in the world, for your rank will be at the last verse you recite.
+  - **type:** hadith
+  - **arabic:** طوبى لمن وجد في صحيفته استغفارا كثيرا
+  - **source:** Reported by Ibn Mājah
+  - **translation:** Glad tidings to the one who finds abundant seeking of forgiveness in his record.
+  - **type:** hadith
+  - **arabic:** نفحات من رحمته الله، فإن تعرضوا لنفحات رحمة الله
+  - **source:** Reported by Tabarani in Muʿjam al-kabīr
+  - **translation:** Expose yourselves to the breezes of the mercy of Allah, for indeed Allah has breezes from His mercy.
+  - **type:** hadith
+  - **arabic:** إن الله ليطلع في ليلة النصف من شعبان، فيغفر لجميع خلقه إلا ملشرك أو مشاحن
+  - **source:** Reported by Ibn Mājah and others
+  - **translation:** Indeed Allah looks at His creation on the night of the middle of Shaʿbān, and He forgives all of His creation except a polytheist or one who harbors hatred.
+  - **type:** hadith
+  - **arabic:** لا خير فيها، هي من أهل النار
+  - **source:** Reported by Aḥmad and others
+  - **translation:** There is no good in her. She is among the people of the Fire.
+  - **type:** hadith
+  - **arabic:** اغفروا يغفر الله لكم
+  - **source:** Al-adab al-mufrad
+  - **translation:** Forgive, and Allah will forgive you.
+- **key_teachings:**
+  - **harm_to_others:** Good deeds are nullified if one harms others with tongue or communication; this applies to prayer, fasting, and charity
+  - **forgiveness_principle:** Seeking Allah's pardon is best accomplished by pardoning His servants
+  - **night_of_middle_of_shaban:** Allah looks upon His creation and forgives all except those who associate partners with Allah or harbor hatred in their hearts
+  - **quranic_recitation_rewards:** Each letter from the Qurʾān earns a good deed multiplied tenfold; the companion of the Qurʾān will be elevated in ranks
+- **virtues_of_shaban:**
+  - A month of pardon and forgiveness from Allah
+  - A month often neglected by people between Rajab and Ramaḍān
+  - A month of preparing provisions for Ramaḍān
+  - A field of racing toward the Most Merciful
+  - A month when deeds are raised to the Lord of the worlds
+- **recommended_practices:**
+  - Increase in voluntary fasting, following the Prophet's example
+  - Turn eagerly to the recitation of the Qurʾān
+  - Reflect, study, and contemplate the Qurʾān
+  - Fill records with seeking forgiveness (istighfār)
+  - Pardon others and seek the forgiveness of your Lord
+  - Avoid harming others with tongue, writing, or communication
 
 ## Transcript
 1 |

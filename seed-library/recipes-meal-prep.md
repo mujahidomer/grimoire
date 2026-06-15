@@ -5,14 +5,14 @@ type: Article
 tags:
   - meal prep
   - meal planning
+  - budgeting
   - time-saving
-  - budget-friendly
   - food storage
   - beginner guide
-  - kitchen efficiency
+  - healthy eating
 date_saved: '2026-06-15'
 source_url: https://www.budgetbytes.com/meal-prep-101/
-artifact_type: concept
+artifact_type: skill
 artifact_name: Meal Prepping
 artifact_url: null
 artifact_url_source: null
@@ -20,10 +20,49 @@ linked_resources: []
 ---
 
 ## Summary
-This beginner's guide demystifies meal prepping by explaining what it is, who it's for, and how to get started. It covers which foods prep well, storage longevity, practical formulas for balanced meals, and the containers needed to successfully meal prep.
+A comprehensive beginner's guide to meal prepping that explains what meal prepping is, why it's beneficial, who it suits, and how to get started. The article covers which foods work well for meal prepping, storage guidelines, meal prep formulas, and essential equipment needed.
 
 ## Key Takeaways
-_No key takeaways._
+- **definition:** Meal prepping is preparing 3-7 days worth of food at once by cooking a recipe and portioning it into grab-and-go meals for later.
+- **benefits:**
+  - Convenient and efficient for busy schedules
+  - Reduces food waste
+  - Reduces temptation to eat outside your plan
+  - Allows home-cooked meals without daily preparation time
+  - Saves money
+- **who_it_suits:** People who value convenience and efficiency over variety; those who don't mind eating the same thing for several days; people with control over their diet, time, or budget as priorities. Not ideal for those who dislike leftovers or get bored easily with food.
+- **foods_that_work_well:**
+  - Cooked grains & pasta
+  - Cooked beans
+  - Cooked meat
+  - Roasted vegetables
+  - Hearty fresh vegetables (celery, carrots, peas, bell peppers, kale, cabbage, radishes)
+  - Whole fruit (apples, oranges, stone fruit)
+  - Nuts & seeds
+  - Cheese
+  - Sauces and dips (salad dressings, hummus, salsa, sour cream)
+- **foods_that_dont_work_well:**
+  - Softer fruits and vegetables (lettuce, berries, cut fruit)
+  - Crunchy items (fried food, crackers, chips)
+- **storage_guidelines:** Follow FDA refrigeration guidelines. Food quality declines slowly in the refrigerator. Personal preference determines acceptable texture and flavor changes. Generally don't prep more than four days at a time; by day five food often becomes too limp to enjoy.
+- **getting_started_steps:**
+  - Start SMALL with packing leftover dinner for lunch the next day
+  - Get comfortable and observe which foods work as leftovers for you
+  - Pick one single recipe to prep for the week (single recipe meal preps include protein, grain, and vegetables)
+  - Once comfortable with one recipe, expand to two meals or add breakfast prep
+  - Customize your prep level to what works for you (don't force three meals for five days if unsure)
+- **meal_prep_formulas:**
+  - Basic: Protein + Grain + Vegetable
+  - Low Carb: Protein + Vegetable + Vegetable
+  - Vegetarian: Legume + Grain + Vegetable
+  - Add toppings like sauces, nuts, seeds, or croutons for variety
+- **essential_equipment:**
+  - Reusable plastic containers (Ziploc brand mentioned as budget-friendly, BPA-free, freezer/dishwasher/microwave safe)
+  - Glass containers (Pyrex single compartment 3-cup rectangle and 4-cup bowl recommended)
+  - Divided glass containers with separate compartments (more limited use, compartments not leak-proof)
+  - Metal bento box style containers (for cold meals only, no microwave reheating)
+  - Fold top sandwich bags or zip-top bags for separating ingredients
+  - 1-2 oz resealable containers for keeping dressings and dips separate
 
 ## Transcript
 Title: Meal Prep 101: A Beginner’s Guide to Prepping and Portioning Meals
@@ -42,11 +81,6 @@ Just looking for some inspiration? Browse our [complete collection of Meal Prep 
 ![Image 2: Pinterest](blob:http://localhost/03b1f1be71f626b81a433441bbfad367)Pin this recipe for later!
 
 _All recipes are rigorously tested in our [Nashville Test Kitchen](https://www.budgetbytes.com/about/#h-how-we-test-recipes) to ensure they are easy, affordable, and delicious._
-
-### RECIPE VIDEO
-
-[Video 5](https://www.budgetbytes.com/meal-prep-101/)
-Video Muted
 
 ## What is Meal Prepping?
 

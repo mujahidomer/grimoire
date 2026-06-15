@@ -1,5 +1,5 @@
 ---
-title: Perfect Soft and Creamy Scrambled Eggs
+title: How to Make Perfect Soft and Creamy Scrambled Eggs
 category: Food & Cooking
 type: Article
 tags:
@@ -7,21 +7,56 @@ tags:
   - breakfast
   - cooking technique
   - easy recipe
-  - eggs
+  - egg recipe
 date_saved: '2026-06-15'
 source_url: https://www.recipetineats.com/scrambled-eggs/
-artifact_type: none
-artifact_name: null
+artifact_type: skill
+artifact_name: Soft and Creamy Scrambled Eggs
 artifact_url: null
 artifact_url_source: null
 linked_resources: []
 ---
 
 ## Summary
-A detailed guide to making perfectly soft, creamy, and custardy scrambled eggs in just 60 seconds using low heat and gentle stirring techniques. The recipe emphasizes proper pan selection, heat control, and the correct folding motion to achieve beautiful egg curds rather than dry, overcooked eggs.
+A detailed guide to making soft, creamy, custardy scrambled eggs in 60 seconds using low heat and gentle stirring motions. The recipe emphasizes proper technique to avoid overcooked, crumbly eggs and includes tips for achieving the perfect texture and presentation.
 
 ## Key Takeaways
-_No key takeaways._
+- **ingredients:**
+  - 4 eggs
+  - 2 tbsp milk (optional)
+  - 1/4 tsp salt
+  - 2 grinds black pepper
+  - 1 tbsp (15g) butter
+- **cooking_steps:**
+  - Whisk together eggs, milk, salt and pepper
+  - Melt butter in a non stick skillet or well seasoned cast iron pan (about 25cm/10") over medium heat (or medium low if your stove is strong)
+  - Pour egg mixture into the pan and wait 5 seconds for the base to just start setting
+  - Start leisurely pushing the rubber spatula back and forth in long strokes across the pan and around the edges to push cooked egg out of the way and let raw egg run onto the skillet to cook
+  - After 30 seconds, start gently folding the eggs over (scoop and gently flip)
+  - Continue pushing and folding for 60 seconds total cook time until you have a pile of soft, custardy scrambled egg curds and no raw egg leaking on the edges
+  - Remove from the stove when still slightly undercooked for your taste
+  - Gently push and fold the eggs for another 10 seconds to finish cooking with residual pan heat
+  - Slide onto hot toasted buttered bread and serve immediately
+- **cookware:**
+  - Non stick skillet or well seasoned cast iron pan (about 25cm/10" for 4 eggs)
+  - Rubber spatula or flat edge wooden spoon
+- **doneness_levels:**
+  - Soft and custardy (as pictured) – the status quo served at bistros if you don't specify otherwise
+  - Ever so slightly underdone
+  - 100% fully cooked and set
+- **critical_technique:** Use gentle, leisurely, sleepy strokes with pushing/folding/turning motions. Do NOT viciously stir in circles or zig zag frantically, as this creates rough, chopped up dried scrambled eggs instead of soft and creamy curds.
+- **key_tips:**
+  - Use medium heat for a standard stove, or medium low if your stove is strong/hot/big burner
+  - Use a smaller skillet if cooking less eggs (~20cm/8" or less for 2 eggs)
+  - Scrambled eggs should not be browned or crispy – should be yellow and creamy all the way through
+  - Milk is optional but makes eggs more creamy; use 1/2 tablespoon per egg maximum
+  - Eggs cook super fast, so remove from stove when slightly underdone and let residual heat finish cooking
+- **serving_suggestions:** Serve on hot buttered toasted bread for eggs on toast. Can make a full English breakfast by adding bacon, sausages, garlic butter mushrooms, and sautéed spinach.
+- **nutrition:**
+  - **per_serving:** 182 calories (for 2 eggs with 1/2 tbsp butter)
+  - **protein:** 12g
+  - **fat:** 14g
+  - **carbohydrates:** 1g
 
 ## Transcript
 Title: Scrambled Eggs

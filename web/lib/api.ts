@@ -200,17 +200,28 @@ export async function uploadFile(file: File): Promise<string> {
   return publicUrl;
 }
 
+export interface SeedLibraryResult {
+  accepted: number;
+  seeded: number;
+  skipped: number;
+}
+
 // Copy pre-processed seed items into the just-created user's library. The user
 // id is derived server-side from the auth token, so we only send ids. The
 // backend awaits seeding before responding so the library refresh sees items.
-export async function seedLibrary(selectedItemIds: string[]): Promise<void> {
-  if (!selectedItemIds.length) return;
+export async function seedLibrary(
+  selectedItemIds: string[],
+): Promise<SeedLibraryResult> {
+  if (!selectedItemIds.length) {
+    return { accepted: 0, seeded: 0, skipped: 0 };
+  }
   const res = await fetch(`${BASE}/api/seed`, {
     method: "POST",
     headers: await clientAuthHeaders(),
     body: JSON.stringify({ selectedItemIds }),
   });
   if (!res.ok) throw new Error(`seed request failed (${res.status})`);
+  return json<SeedLibraryResult>(res);
 }
 
 export async function deleteItem(id: string): Promise<void> {

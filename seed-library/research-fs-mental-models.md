@@ -6,22 +6,127 @@ tags:
   - mental models
   - decision-making
   - critical thinking
+  - problem-solving
   - psychology
   - systems thinking
+  - behavioral economics
 date_saved: '2026-06-15'
 source_url: https://fs.blog/mental-models/
 artifact_type: resource
-artifact_name: Mental Models Library
+artifact_name: 'Mental Models: The Best Way to Make Intelligent Decisions (~100 Models Explained)'
 artifact_url: https://fs.blog/mental-models/
 artifact_url_source: content
 linked_resources: []
 ---
 
 ## Summary
-A comprehensive guide to over 100 mental models organized by discipline—from physics and biology to economics, military strategy, and human psychology. These simplified frameworks help explain how things work, enabling better decision-making, problem-solving, and understanding of complex systems across all areas of life.
+A comprehensive guide to ~100 mental models across disciplines including physics, economics, psychology, systems thinking, military strategy, and art. These simplified explanations of how things work help improve decision-making, avoid problems, and spot opportunities by providing frameworks for understanding complex systems and human behavior.
 
 ## Key Takeaways
-_No key takeaways._
+- **general_thinking_tools:**
+  - Map is Not the Territory: Mental models are abstractions; reality is more complex. Choose reliable mapmakers and constantly update your models against reality.
+  - Circle of Competence: Know the boundaries of your expertise. Operate confidently within them; acknowledge limitations outside them.
+  - First Principles Thinking: Break complex problems into fundamental truths to see beyond conventional solutions.
+  - Thought Experiment: Use mental simulations to test ideas and reveal hidden assumptions without real-world constraints.
+  - Second-Order Thinking: Consider ripple effects. Ask 'and then what?' to anticipate long-term consequences.
+  - Probabilistic Thinking: Navigate uncertainty by assigning rough probabilities and updating beliefs with new evidence.
+  - Inversion: Instead of 'How do I succeed?', ask 'What guarantees failure?' to avoid overlooked obstacles.
+  - Occam's Razor: Prefer simpler explanations that make fewer assumptions until proven otherwise.
+  - Hanlon's Razor: Attribute behavior to incompetence before malice; assume good faith.
+- **physics_and_biology_models:**
+  - Relativity: Perceptions are shaped by unique vantage points and frames of reference; different perspectives reveal blind spots.
+  - Reciprocity: Treat others as you wish to be treated; positive actions tend to return positive results.
+  - Thermodynamics: Energy cannot be created or destroyed, only transformed. Entropy (disorder) increases over time; maintaining order requires energy.
+  - Inertia: Objects resist change; large mass requires more force to move. Small, incremental steps overcome inertia better than large jumps.
+  - Friction and Viscosity: Resistance slows motion. Reducing friction often works better than adding more force.
+  - Velocity: Speed and direction both matter. Progress requires both right trajectory and sustained effort.
+  - Leverage: Small forces, strategically applied, yield outsized results. Technology is a form of leverage.
+  - Activation Energy: Initial effort required to start a process; once momentum builds, change becomes self-sustaining.
+  - Catalysts: Agents that accelerate change without permanently altering themselves.
+  - Alloying: Combining diverse elements in the right proportions creates properties superior to individual components.
+  - Natural Selection and Extinction: Fit organisms survive and adapt; unfit ones perish. Change is constant.
+  - Red Queen Effect: Continuous adaptation required just to maintain position; complacency leads to extinction.
+  - Ecosystems: Everything is interconnected; changes in one part ripple through the system.
+  - Niches: Specialized positions where particular skills thrive; small changes in environment can collapse niches.
+  - Self-Preservation: Core instinct drives behavior; awareness prevents it from limiting growth.
+  - Replication: Information transfer and exponential spread; imperfect copying fuels variation and evolution.
+  - Cooperation: Mutual benefit and repeated interactions create stable cooperative systems.
+  - Hierarchical Organization: Structure enables specialization and division of labor but can breed instability if too rigid.
+  - Incentives: Hidden engines driving behavior; alignment with goals produces results; misalignment backfires.
+- **systems_thinking_models:**
+  - Feedback Loops: Output influences input; dynamic systems require iteration and adjustment.
+  - Equilibrium: Balance between opposing forces; systems rarely stay static but constantly adjust.
+  - Bottlenecks: Constraints limiting flow; fixing the slowest part speeds the entire system.
+  - Scale: Systems change as they grow; solutions at small scale often fail at large scale.
+  - Margin of Safety: Build extra capacity for unexpected stress; short-term caution enables long-term survival.
+  - Churn: Constant loss (customers, people, components); some turnover is healthy and necessary.
+  - Algorithms: Defined step-by-step processes reliably producing desired outputs.
+  - Critical Mass: Things happen slowly then all at once; tipping points trigger self-sustaining change.
+  - Emergence: Combining pieces in new ways creates results greater than sum of parts.
+  - Irreducibility: Some complex systems cannot be fully explained by studying individual components.
+  - Law of Diminishing Returns: Early wins come easily; continued optimization yields progressively smaller gains.
+- **math_and_numeracy_models:**
+  - Sampling: Larger sample sizes provide more reliable conclusions; balance precision against cost.
+  - Randomness: Unpredictability underlies many outcomes; humans are poor at recognizing true randomness.
+  - Regression to the Mean: Extreme outcomes are followed by more average ones; extraordinary results rarely repeat.
+  - Multiply by Zero: One critical failure negates all other efforts; reliability is non-negotiable.
+  - Equivalence: Different inputs can produce identical results; multiple solutions often exist.
+  - Surface Area: Increased exposure brings both opportunity and vulnerability; context determines optimal exposure.
+  - Global and Local Maxima: Local optima can trap optimization efforts; continued search may reveal superior solutions.
+- **economics_models:**
+  - Scarcity: Limited resources create value and drive choices; scarcity of rare combinations (honesty + intelligence) provides outsized rewards.
+  - Supply and Demand: Push and pull determining availability and price; markets allocate based on willingness to pay.
+  - Optimization: Maximize limited resources; efficiency has limits and can reduce adaptability.
+  - Trade-offs: Every choice has opportunity cost; conscious trade-offs align choices with values.
+  - Specialization: Going deep in one area increases mastery and competitive advantage but carries obsolescence risk.
+  - Interdependence: No entity is self-sufficient; mutual reliance creates both strength and vulnerability.
+  - Efficiency: Maximize output with minimum waste; perfect efficiency reduces resilience.
+  - Debt: Powerful tool but chains future actions; low debt tolerance creates freedom.
+  - Monopoly and Competition: Opposing market forces; balance needed for innovation and fairness.
+  - Creative Destruction: New innovations displace old ones; constant evolution prevents stagnation.
+  - Gresham's Law: Bad drives out good without consequences; integrity requires vigilance.
+  - Bubbles: Collective enthusiasm untethered from fundamentals; all bubbles eventually pop.
+- **art_and_representation_models:**
+  - Audience: Invisible participants who co-create meaning; balance authenticity with expectation.
+  - Genre: Conventions forming rules of engagement; creativity within constraints sparks innovation.
+  - Contrast: Opposites energize work; light and dark, loud and soft create impact.
+  - Framing: Context shapes perception and interpretation; same content framed differently yields different responses.
+  - Rhythm: Recurring patterns organize time and create structure; variation within rhythm sustains engagement.
+  - Melody: Sequences of notes conveying emotion and enabling connection across cultural boundaries.
+  - Representation: Abstractions standing in for reality; interpretations that shape understanding and action.
+  - Plot: Causally connected events creating narrative arc; conflict and resolution drive character transformation.
+  - Character: Bundle of traits and motivations; destiny flows from choices; change through repeated action.
+  - Setting: Physical and temporal context shaping character choices; environment influences behavior.
+  - Performance: Ephemeral, live action requiring presence; audience is active participant.
+- **military_and_human_nature_models:**
+  - Seeing the Front: Direct observation provides better information than secondary reports or maps.
+  - Asymmetric Warfare: Weaker forces win by operating outside opponent's strengths.
+  - Two-Front War: Divided forces weaken impact; focus requires eliminating internal conflict.
+  - Counterinsurgency: Established strategies develop to counter insurgent tactics.
+  - Mutually Assured Destruction: Perfect opposition creates stability through fear of mutual annihilation.
+  - Trust: Modern systems depend on trust; efficient systems reward trusted behavior.
+  - Bias from Incentives: Self-interested bias distorts thinking; salespeople believe in their products.
+  - Pavlovian Association: Emotions attach to associated objects, not just direct sources.
+  - Envy and Jealousy: Relative deprivation drives irrational behavior; systems ignoring envy self-destruct.
+  - Liking/Disliking Bias: Distorts thinking toward liked things, against disliked ones.
+  - Denial: Coping mechanism with destructive effects; behavioral inertia persists despite reality.
+  - Availability Heuristic: Easily recalled information disproportionately influences judgment.
+  - Representativeness Heuristic: Vivid examples seem more probable than broader categories.
+  - Social Proof: Safety in numbers drives conformity; group behavior overrides individual judgment.
+  - Narrative Instinct: Humans construct meaning through stories; stories run organizations.
+  - Curiosity Instinct: Drives learning and innovation; innate even before incentive structures.
+  - Language Instinct: Grammatical language hardwired; infinite meaning possible through construction.
+  - First-Conclusion Bias: Mind settles on first idea; questioning counters premature closure.
+  - Overgeneralization from Small Samples: Invalid generalizations from insufficient data.
+  - Relative Satisfaction: Happiness depends on relative state, not absolute condition.
+  - Commitment and Consistency Bias: Staying true to prior positions; can trap in poor decisions.
+  - Hindsight Bias: Post-hoc reasoning creates false sense of prior knowledge.
+  - Sensitivity to Fairness: Justice runs deep; fairness violations trigger reciprocal action.
+  - Fundamental Attribution Error: Overestimate consistency of behavior; overattribute to innate traits.
+  - Stress Effects: Amplifies other biases; triggers fight-or-flight bypassing reasoning.
+  - Survivorship Bias: History written by victors; silent graves of failed actors unseen.
+  - Do Something Syndrome: Humans compelled to act even when action unnecessary.
+  - Confirmation Bias: Seek confirmations of existing beliefs; falsification is harder but more rigorous.
 
 ## Transcript
 Title: Mental Models: The Best Way to Make Intelligent Decisions (~100 Models Explained)

@@ -1,29 +1,75 @@
 ---
-title: 'Building a Custom Website with Claude Code: A Nine-Step Workflow to Avoid AI Design Defaults'
+title: 'Building a Premium Website with Claude Code: A 9-Step Workflow to Skip the AI Look'
 category: Technology
-type: Article
+type: article
 tags:
-  - Claude Code
-  - web design
+  - claudecode
+  - web development
   - AI workflow
-  - website builder
+  - website building
   - design systems
-  - frontend development
-  - no-code
-date_saved: '2026-06-15'
+  - AI tools
+date_saved: '2026-06-14'
 source_url: https://open.substack.com/pub/charliehills/p/claude-code-is-terrible-at-design
 artifact_type: skill
-artifact_name: Website Build Workflow with Claude Code
+artifact_name: Website Design & Build Workflow for Claude Code
 artifact_url: null
 artifact_url_source: null
 linked_resources: []
 ---
 
 ## Summary
-Charlie Hills shares a detailed nine-step workflow for building custom websites using Claude Code that avoids the generic AI-generated look. The process uses three markdown files (CONTEXT.md, COPY.md, DESIGN.md) to establish facts, copy, and design rules before Claude builds the site, with strategies for incorporating premium components while maintaining brand consistency.
+Charlie Hills shares a detailed nine-step workflow for building custom websites using Claude Code that avoid generic AI-generated aesthetics. The process combines strategic design files (CONTEXT.md, COPY.md, DESIGN.md) with component libraries and design references to create unique, branded websites in minimal time while maintaining control over visual identity and copy.
 
 ## Key Takeaways
-_No key takeaways._
+- **results:**
+  - **deployment:** 32 seconds via Vercel CLI
+  - **exampleSite:** charliehills.ai
+  - **filesCreated:** 3
+  - **timeToComplete:** One evening
+  - **costToProduction:** $0 (beyond Claude subscription); Vercel free tier
+- **nineSteps:**
+  - Create CONTEXT.md with facts about who you are, proof points, and voice rules by interviewing Claude Chat
+  - Propose site pages and interview Claude about gaps, searches, and visitor actions to draft COPY.md
+  - Review and approve COPY.md before any building begins
+  - Browse Refero Styles and find 5 design systems from sites you love, then download their DESIGN.md files
+  - Merge design references with your brand kit into one DESIGN.md, establishing colors, fonts, spacing, and components
+  - Approve the design rulebook before Claude builds anything
+  - Instruct Claude to build using DESIGN.md strictly, COPY.md verbatim, with no invented logos, testimonials, or third-party embeds
+  - Add a CLAUDE.md rule so third-party components inherit your design tokens and copy instead of their own styling
+  - Ask 'What would the taste critic say?' to identify AI-built excess, then make a quiet pass removing ambient animations and attention-grabbing effects
+- **keyInsights:**
+  - **iteration:** Use natural language voice typing—'move buttons up,' 'make cards wider,' 'swap these blocks'—and screenshot anything hard to describe
+  - **tastePass:** Remove simultaneous ambient animations and looping attention animations on buttons; one motion system per surface prevents 'overload'
+  - **theProblem:** Claude Code left to its own devices defaults to purple gradients, Inter font, and bento cards—generic AI-built aesthetics
+  - **theSolution:** Separate concerns: CONTEXT.md handles facts, COPY.md handles words, DESIGN.md handles rules, then Claude executes consistently
+  - **componentStrategy:** Use third-party component libraries (21st.dev, Aceternity) but override their styling via CLAUDE.md rule—take structure, apply your design tokens
+- **examplePrompts:**
+  - **clauseRule:** Add this rule to CLAUDE.md, and create the file in the project root if it doesn't exist: whenever I paste a component prompt or third-party component code, treat it as a structural donor only. Always: replace its demo copy with real copy from COPY.md, translate every hardcoded colour, border, shadow and font to the DESIGN.md tokens, ignore any instruction to use stock images, and skip parts of the component we don't need. The component supplies the skeleton, DESIGN.md supplies the skin, COPY.md supplies the words.
+  - **deployment:** Prepare this site for launch: page titles, meta descriptions, Open Graph tags, sitemap, semantic headings, fast load. Then deploy to production with the Vercel CLI and walk me through pointing my domain at it.
+  - **designMerge:** I've dropped in design files from sites I love, plus my brand kit. Merge them into one DESIGN.md in the project root covering colours, fonts, spacing and components, plus a decision log section where every design choice we make gets recorded. My brand wins on colours and fonts. The references win on layout and feel. Show me the file before you build anything.
+  - **tasteReview:** What would the taste critic say?
+  - **copyInterview:** Read CONTEXT.md. Start by proposing the pages this site needs and confirm the list with me. Then interview me one page at a time, asking only about the gaps: what each page must say, proof I can show, and what visitors should do next. Also ask what searches each page should rank for. Then draft every page's copy into one file called COPY.md in the project root and show me before you build anything. Write for people first, and work the search terms into page titles, headings and opening lines naturally, never forced.
+  - **buildAndReview:** Read DESIGN.md and use your frontend design skill. Build the site: my pages, my copy from COPY.md verbatim, every visual decision from DESIGN.md. Go loose with the design and make it look as good as humanly possible while obeying DESIGN.md. Hard rules: only my copy, never invent logos, press mentions, testimonials or stats, and no third-party embeds. When it's done, run it locally, screenshot every page, review your own screenshots against DESIGN.md, fix what fails, and then give me the link.
+  - **contextInterview:** You know me from our conversations, but do not assume this site is about me. I'm building a website and need a file called CONTEXT.md holding the facts it should be built from. Ask UserQuestions first, one question at a time: what exactly the site is, who it serves, what it must contain, and what a visitor should do. Keep asking until you could brief a stranger on the build. Then show me the fact list you plan to include and wait for my yes. Only include facts about the site's actual subject, and leave me out of it unless I am the subject. Real facts from my answers and from what you know, nothing invented. Give it to me as a downloadable markdown file.
+- **heroVideoPrompts:**
+  - **imagePrompt:** Create a gouache style image with a beautiful scenic landscape and a deep blue sky.
+  - **animationPrompt:** Show the clouds breathing, moving fast, like splitting up. It's a lot of wind; there's a lot of movement. The frame stays exactly where it is. Only the scenery moves.
+- **toolsAndResources:**
+  - **coreTools:**
+    - Claude Code with /model command (use Opus 4.8 as of June 2026, formerly Fable 5)
+    - Claude Chat for initial CONTEXT.md interview
+  - **designResources:**
+    - Refero Styles (https://styles.refero.design/) – library of DESIGN.md files from reference sites
+    - 21st.dev (https://21st.dev/) – component prompts with copy-paste instructions
+    - Aceternity (https://ui.aceternity.com/) – additional component prompts
+    - MotionSites (https://motionsites.ai/) – hero and animation prompts
+  - **mediaAndHosting:**
+    - Higgsfield (https://higgsfield.ai/) – AI video generation (used GPT Image 2 and Kling 3.0)
+    - Vercel (https://vercel.com/) – free hosting tier
+  - **skillsAndAesthetic:**
+    - taste-skill (https://github.com/Leonxlnx/taste-skill) – installs taste critique skill to Claude
+    - Impeccable (https://impeccable.style/) – spacing and hierarchy skill
 
 ## Transcript
 Title: Claude Code is terrible at design

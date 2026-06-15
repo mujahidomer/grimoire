@@ -4,26 +4,45 @@ category: Personal Development
 type: Article
 tags:
   - independent-mindedness
-  - critical thinking
+  - unconventional thinking
   - intellectual autonomy
-  - nonconformity
-  - self-improvement
+  - novel ideas
+  - critical thinking
   - curiosity
-  - philosophy
+  - self-improvement
 date_saved: '2026-06-15'
 source_url: https://www.paulgraham.com/think.html
 artifact_type: concept
-artifact_name: Independent-Mindedness
+artifact_name: Independent-mindedness
 artifact_url: null
 artifact_url_source: null
 linked_resources: []
 ---
 
 ## Summary
-Paul Graham explores the nature of independent-mindedness and its importance in certain high-value work like science, investing, and entrepreneurship. He argues that independent-mindedness is partly innate but can be cultivated through specific practices like surrounding yourself with independent-minded people, cultivating skepticism, and pursuing curiosity.
+Paul Graham explores the nature of independent-mindedness and its importance in creative and innovative work. The essay identifies three core components—fastidiousness about truth, resistance to being told what to think, and curiosity—and offers practical techniques for cultivating independent thinking, such as surrounding yourself with independent-minded people, reading history, and deliberately questioning conventional beliefs.
 
 ## Key Takeaways
-_No key takeaways._
+- **work_types_requiring_independence:** Some professions (scientist, investor, startup founder, essayist) require both correctness and novelty; most other work (administration) only requires correctness. The distinction between these types is sharp and crucial when choosing a career.
+- **nature_vs_nurture:** Independent-mindedness appears to be largely inborn rather than learned. Schools generally ignore or suppress it, and people often misjudge their own position on the conventional-to-independent spectrum.
+- **three_components_of_independent_mindedness:**
+  - **fastidiousness_about_truth:** Carefully labeling beliefs with appropriate degrees of conviction rather than letting them rush toward extremes. This includes avoiding ideologies that require accepting bundles of beliefs without examination.
+  - **resistance_to_being_told_what_to_think:** A positive, active delight in subversive and counterintuitive ideas, not merely negative skepticism. This component appears most innate and difficult to increase.
+  - **curiosity:** The most variable and individual component. It drives discovery of novel ideas and can compensate for deficiencies in the other two components.
+- **practical_cultivation_techniques:**
+  - Be less aware of conventional beliefs (nerds practice this unintentionally)
+  - Surround yourself with independent-minded people; self-segregate from conventional-minded groups when possible
+  - Attend good universities to find clumps of independent-minded peers
+  - Cultivate a small collection of independent-minded friends you can talk to regularly
+  - Meet diverse types of people who think differently and learn what they know that others don't
+  - Read history to understand how past peoples viewed their world differently
+  - Cultivate skepticism by actively asking 'Is that true?' when you hear claims
+  - Watch for intellectual fashions spreading through groups, as unfashionable ideas are disproportionately likely to lead somewhere interesting
+  - Seek out topics that naturally engage your curiosity
+  - Indulge your curiosity by investigating things you're interested in, as this tends to increase rather than sate it
+- **component_interchangeability:** The three components can substitute for one another. High fastidiousness about truth can compensate for lower resistance to conformism. Either can compensate for lower curiosity by creating mental space that discomfort will push curiosity to fill.
+- **common_misconceptions:** Conventional-minded people don't identify as such and genuinely feel they think independently. The independent-minded may underestimate how different their ideas are. Strong convictions are not signs of independent-mindedness but often the opposite.
+- **special_cases:** High school is particularly difficult for the independent-minded due to conformist pressure, but teaches what to avoid. Successful startups dilute independent-mindedness as they grow, causing founders to speak more freely with other founders than their own employees.
 
 ## Transcript
 Title: How to Think for Yourself
@@ -36,12 +55,12 @@ There are some kinds of work that you can't do well without thinking differently
 
 The same is true for investors. It's not enough for a public market investor to predict correctly how a company will do. If a lot of other people make the same prediction, the stock price will already reflect it, and there's no room to make money. The only valuable insights are the ones most other investors don't share.
 
-You see this pattern with startup founders too. You don't want to start a startup to do something that everyone agrees is a good idea, or there will already be other companies doing it. You have to do something that sounds to most other people like a bad idea, but that you know isn't � like writing software for a tiny computer used by a few thousand hobbyists, or starting a site to let people rent airbeds on strangers' floors.
+You see this pattern with startup founders too. You don't want to start a startup to do something that everyone agrees is a good idea, or there will already be other companies doing it. You have to do something that sounds to most other people like a bad idea, but that you know isn't — like writing software for a tiny computer used by a few thousand hobbyists, or starting a site to let people rent airbeds on strangers' floors.
 
 Ditto for essayists. An essay that told people things they already knew would be boring. You have to tell them something
 
 [new](https://www.paulgraham.com/useful.html).
-But this pattern isn't universal. In fact, it doesn't hold for most kinds of work. In most kinds of work � to be an administrator, for example � all you need is the first half. All you need is to be right. It's not essential that everyone else be wrong.
+But this pattern isn't universal. In fact, it doesn't hold for most kinds of work. In most kinds of work — to be an administrator, for example — all you need is the first half. All you need is to be right. It's not essential that everyone else be wrong.
 
 There's room for a little novelty in most kinds of work, but in practice there's a fairly sharp distinction between the kinds of work where it's essential to be independent-minded, and the kinds where it's not.
 
@@ -86,7 +105,7 @@ More generally your goal should be not to let anything into your head unexamined
 When you stand back at a sufficient distance, you can see ideas spreading through groups of people like waves. The most obvious are in fashion: you notice a few people wearing a certain kind of shirt, and then more and more, until half the people around you are wearing the same shirt. You may not care much what you wear, but there are intellectual fashions too, and you definitely don't want to participate in those. Not just because you want sovereignty over your own thoughts, but because
 
 [unfashionable](https://www.paulgraham.com/nov.html) ideas are disproportionately likely to lead somewhere interesting. The best place to find undiscovered ideas is where no one else is looking. [[4](https://www.paulgraham.com/think.html#f4n)] ___________ 
-To go beyond this general advice, we need to look at the internal structure of independent-mindedness � at the individual muscles we need to exercise, as it were. It seems to me that it has three components: fastidiousness about truth, resistance to being told what to think, and curiosity.
+To go beyond this general advice, we need to look at the internal structure of independent-mindedness — at the individual muscles we need to exercise, as it were. It seems to me that it has three components: fastidiousness about truth, resistance to being told what to think, and curiosity.
 
 Fastidiousness about truth means more than just not believing things that are false. It means being careful about degree of belief. For most people, degree of belief rushes unexamined toward the extremes: the unlikely becomes impossible, and the probable becomes certain.
 
@@ -102,7 +121,7 @@ Can you increase your fastidiousness about truth? I would think so. In my experi
 The second component of independent-mindedness, resistance to being told what to think, is the most visible of the three. But even this is often misunderstood. The big mistake people make about it is to think of it as a merely negative quality. The language we use reinforces that idea. You're _un_ conventional. You _don't_ care what other people think. But it's not just a kind of immunity. In the most independent-minded people, the desire not to be told what to think is a positive force. It's not mere skepticism, but an active
 
 [delight](https://www.paulgraham.com/gba.html) in ideas that subvert the conventional wisdom, the more counterintuitive the better.
-Some of the most novel ideas seemed at the time almost like practical jokes. Think how often your reaction to a novel idea is to laugh. I don't think it's because novel ideas are funny per se, but because novelty and humor share a certain kind of surprisingness. But while not identical, the two are close enough that there is a definite correlation between having a sense of humor and being independent-minded � just as there is between being humorless and being conventional-minded.
+Some of the most novel ideas seemed at the time almost like practical jokes. Think how often your reaction to a novel idea is to laugh. I don't think it's because novel ideas are funny per se, but because novelty and humor share a certain kind of surprisingness. But while not identical, the two are close enough that there is a definite correlation between having a sense of humor and being independent-minded — just as there is between being humorless and being conventional-minded.
 
 [[9](https://www.paulgraham.com/think.html#f9n)]
 I don't think we can significantly increase our resistance to being told what to think. It seems the most innate of the three components of independent-mindedness; people who have this quality as adults usually showed all too visible signs of it as children. But if we can't increase our resistance to being told what to think, we can at least shore it up, by surrounding ourselves with other independent-minded people.
@@ -163,7 +182,7 @@ Some investment firms already seem to be able to grow revenues without growing t
 [8](https://www.paulgraham.com/think.html)] If we broaden the concept of fastidiousness about truth so that it excludes pandering, bogusness, and pomposity as well as falsehood in the strict sense, our model of independent-mindedness can expand further into the arts.
 [
 
-[9](https://www.paulgraham.com/think.html)] This correlation is far from perfect, though. G�del and Dirac don't seem to have been very strong in the humor department. But someone who is both "neurotypical" and humorless is very likely to be conventional-minded.
+[9](https://www.paulgraham.com/think.html)] This correlation is far from perfect, though. Gödel and Dirac don't seem to have been very strong in the humor department. But someone who is both "neurotypical" and humorless is very likely to be conventional-minded.
 [
 
 [10](https://www.paulgraham.com/think.html)] Exception: gossip. Almost everyone is curious about gossip.

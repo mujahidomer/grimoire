@@ -1,5 +1,5 @@
 ---
-title: 'Just Keep Buying: The Power of Consistent Investment'
+title: 'Just Keep Buying: The Dollar Cost Averaging Investment Strategy'
 category: Finance
 type: Article
 tags:
@@ -8,22 +8,52 @@ tags:
   - wealth building
   - market timing
   - stock market
-  - investment strategy
-  - behavioral finance
 date_saved: '2026-06-15'
 source_url: https://ofdollarsanddata.com/just-keep-buying/
 artifact_type: concept
 artifact_name: Just Keep Buying
-artifact_url: null
-artifact_url_source: null
+artifact_url: https://amzn.to/37nSH1I
+artifact_url_source: content
 linked_resources: []
 ---
 
 ## Summary
-This article advocates for consistent, continuous investment in diversified income-producing assets regardless of market conditions, rather than attempting to time the market. Through historical data and examples, the author demonstrates that a disciplined "just keep buying" approach (dollar cost averaging) outperforms market timing strategies over long time horizons.
+This article argues for a consistent, disciplined approach to investing called "Just Keep Buying," which is based on dollar cost averaging principles. Rather than trying to time the market perfectly, investors should continuously purchase diverse income-producing assets regardless of market conditions, holding them long-term to build wealth through compounding.
 
 ## Key Takeaways
-_No key takeaways._
+- **core_principle:** Just Keep Buying – continuously purchase a diverse set of income-producing assets regardless of market conditions (high or low)
+- **main_advantages:**
+  - Eliminates the need to time the market perfectly
+  - Protects against missing significant upside gains while waiting for corrections
+  - Builds wealth through consistent accumulation and compounding
+  - Creates a disciplined investing habit, like paying rent/mortgage
+- **why_market_timing_fails:**
+  - Market can continue rising for extended periods before corrections occur
+  - Plenty of articles calling the market overvalued exist in every year (2012, 2013, 2014, etc.)
+  - Investors who waited for corrections in 2012 missed ~70% gains through early 2017
+- **historical_example:**
+  - **scenario:** An investor with possibly the worst market timing luck
+  - **purchases:** 4 large stock purchases between 1973 and 2007
+  - **timing:** Bought before 48% decline (1973), 34% decline (1987), dot-com crash (2000), and Great Recession (2007)
+  - **total_invested:** Just under $200,000
+  - **result:** $980,000 profit for 9% annualized return
+  - **key_secret:** Never sold – holding assets matters more than entry timing
+- **valuation_data_insights:**
+  - P/E ratio (price-to-earnings) indicates market valuation levels
+  - Higher P/E generally means overvalued market, lower P/E means undervalued
+  - Negative relationship exists between P/E and future 5-year real returns
+  - Over 5-year periods, P/E is a somewhat strong predictor of returns
+  - Over 20-year periods, U.S. stocks have shown no real negative returns (including dividends)
+  - Over 30-year periods, returns converge despite initial valuation differences
+- **when_to_sell:**
+  - For rebalancing (annually/quarterly, etc.)
+  - During retirement
+  - Otherwise: never sell – holding is fundamental to capitalism and wealth building
+- **psychological_challenge:**
+  - **the_barrier:** Most difficult to maintain faith during declining prices and market crashes
+  - **the_irony:** Best time to buy (low prices) is when you most want to sell
+  - **historical_test:** Great Depression example: stocks fell 26% (1929-1930), then 26% more (1930-1931), then 64% (1931-1932) = 80% cumulative loss over 3 years; investors who bought at peak and sold in summer 1932 lost 90%
+- **formal_concept:** Dollar Cost Averaging (DCA), but with psychological motivation built in
 
 ## Transcript
 Title: Just Keep Buying

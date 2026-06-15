@@ -1,29 +1,51 @@
 ---
-title: The Science of Note-Taking and Classic Techniques
+title: The Science of Note-Taking and Classic Systems
 category: Learning & Education
 type: Article
 tags:
   - note-taking
   - learning science
-  - memory
-  - study techniques
+  - memory retention
   - productivity
-  - information retention
-  - Cornell Method
+  - study techniques
+  - cognitive psychology
+  - information management
 date_saved: '2026-06-15'
 source_url: https://nesslabs.com/note-taking
-artifact_type: resource
-artifact_name: The Science of Note-Taking
-artifact_url: https://nesslabs.com/note-taking
-artifact_url_source: caption
+artifact_type: concept
+artifact_name: Note-Taking Systems
+artifact_url: null
+artifact_url_source: null
 linked_resources: []
 ---
 
 ## Summary
-This article explores the scientific benefits of note-taking and presents evidence that active note-taking improves learning and memory retention. It covers four key benefits of note-taking and introduces four classic note-taking systems: the Cornell Method, Mind Map, Charting Method, and Zettelkasten.
+This article explores the scientific benefits of note-taking and presents four classic note-taking systems. It explains how active note-taking improves learning and memory retention, and provides practical frameworks including the Cornell Method, Mind Map, Charting Method, and Zettelkasten.
 
 ## Key Takeaways
-_No key takeaways._
+- **scientificBenefits:**
+  - Note-taking forms new neural pathways and encodes information into long-term memory more effectively than passive consumption
+  - Quantity of notes matters more than quality—taking more notes leads to better retention
+  - Adding visual elements like sketches to notes significantly enhances learning (The Drawing Effect)
+  - Hand-written notes are more effective for learning and memory than digital notes
+- **noteTakingSystems:**
+  - **cornellMethod:**
+    - **creator:** Walter Pauk (1940s, Cornell University)
+    - **structure:** Divide page into three sections: notes (main area), cues (left column), and summary (bottom)
+    - **process:** Take notes in main area, add key points and action items in left column, summarize everything at bottom after finishing
+  - **mindMap:**
+    - **approach:** Visual mapping with branching connections
+    - **process:** Write central topic in middle, draw nodes around it with related ideas, actively form connections between concepts
+    - **bestFor:** Visual learners seeking to maximize active learning
+    - **advancedTool:** Roam Research
+  - **chartingMethod:**
+    - **structure:** Rows describe elements being studied, columns detail aspects of each element
+    - **bestFor:** Structured data with clear categories (similarities/differences, dates, events)
+    - **limitation:** Not flexible enough for unstructured content
+  - **zettelkasten:**
+    - **approach:** Transforms information input into creative output by encouraging ongoing interaction with notes
+    - **resource:** How to Take Smart Notes
+- **keyQuote:** It doesn't matter how you record your notes, as long as you do. — Bill Gates
 
 ## Transcript
 Title: The science of note-taking
