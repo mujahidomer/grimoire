@@ -8,7 +8,7 @@ const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
   upsertItem, upsertItemTags, upsertLinkedResource, findItemBySourceUrl, getItemById
 } = require('./lib/repository');
-const { embedAndStoreItem } = require('./lib/embeddings');
+const { embedItemInBackground } = require('./lib/embeddings');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 const { requireAuth } = require('./lib/request-auth');
@@ -43,7 +43,8 @@ const confirmationIndex = new Map();
 
 // ─── Core Pipeline (writes to Postgres, not Drive/Sheets) ─────────────────────
 // Normalize tags against the canonical `tags` table, persist the item + tags +
-// any linked resources, then embed it. Returns a lightweight saved record.
+// any linked resources, then kick off embedding in the background. Returns a
+// lightweight saved record as soon as the DB write completes.
 async function saveItem(item, sourceUrl, userId) {
   item.sourceUrl = sourceUrl;
 
@@ -59,11 +60,7 @@ async function saveItem(item, sourceUrl, userId) {
     else await upsertLinkedResource(itemId, userId, lr);
   }
 
-  try {
-    await embedAndStoreItem(item, itemId, userId);
-  } catch (err) {
-    console.error('Embedding failed (item still saved):', err.message);
-  }
+  embedItemInBackground(item, itemId, userId);
 
   return { itemId, title: item.title, category: item.category, type: item.type,
     summary: item.summary, has_lead_magnet_cta: item.has_lead_magnet_cta };
@@ -292,11 +289,7 @@ app.post('/api/items/:id/reclassify', requireAuth(async (req, res) => {
     });
     classified.sourceUrl = item.source_url;
     const itemId = await upsertItem(classified, { userId: req.userId, source: item.source });
-    try {
-      await embedAndStoreItem(classified, itemId, req.userId);
-    } catch (err) {
-      console.error('Reclassify embedding failed (item still updated):', err.message);
-    }
+    embedItemInBackground(classified, itemId, req.userId);
 
     const refreshed = await getItemById(itemId, req.userId);
     res.json({ success: true, item: refreshed });
