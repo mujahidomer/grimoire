@@ -270,10 +270,10 @@ export function ShareHandler() {
               className="space-y-6"
             >
               <div>
-                <p className="font-sans text-lg font-medium text-eco-secondary">
+                <p className="font-sans text-label-md font-medium text-eco-secondary">
                   {SAVE_LINK_STEPS[stepIndex].label}…
                 </p>
-                <p className="mt-2.5 font-sans text-[15px] leading-relaxed text-eco-foreground/55">
+                <p className="mt-2.5 font-sans text-label-md leading-relaxed text-eco-foreground/55">
                   {SAVE_LINK_STEPS[stepIndex].hint} This usually takes 10–30
                   seconds — you can switch away, it&apos;ll keep saving.
                 </p>
@@ -287,7 +287,7 @@ export function ShareHandler() {
                     <li
                       key={step.id}
                       className={cn(
-                        "flex items-center gap-3 font-sans text-base",
+                        "flex items-center gap-3 font-sans text-label-md",
                         done && "font-medium text-eco-on-surface",
                         active && "font-medium text-eco-secondary",
                         !done && !active && "font-normal text-eco-foreground/40",
@@ -363,7 +363,7 @@ export function ShareHandler() {
 
           {status === "error" && (
             <div className="space-y-4 py-2 text-center">
-              <p className="font-sans text-base text-rose-600">
+              <p className="font-sans text-body-md text-rose-600">
                 {error ?? "Couldn't save that link."}
               </p>
               <Button
