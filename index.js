@@ -257,16 +257,18 @@ app.post('/api/save', requireAuth(async (req, res) => {
 
 // POST /api/seed — copy pre-processed starter-library items into the caller's
 // library (the onboarding funnel). The user id is taken from the verified token,
-// never the body. Returns 200 immediately and copies asynchronously so signup
-// stays instant. Body: { selectedItemIds: string[] }.
+// never the body. Awaits the copy so the client can refresh once items exist.
+// Body: { selectedItemIds: string[] }.
 app.post('/api/seed', requireAuth(async (req, res) => {
-  const { selectedItemIds } = req.body || {};
-  const ids = Array.isArray(selectedItemIds) ? selectedItemIds.slice(0, 50) : [];
-  res.json({ success: true, accepted: ids.length });
-  // Fire-and-forget: do the copying after responding.
-  seedUserLibrary(req.userId, ids).catch((err) =>
-    console.error('POST /api/seed background error:', err),
-  );
+  try {
+    const { selectedItemIds } = req.body || {};
+    const ids = Array.isArray(selectedItemIds) ? selectedItemIds.slice(0, 50) : [];
+    const { seeded, skipped } = await seedUserLibrary(req.userId, ids);
+    res.json({ success: true, accepted: ids.length, seeded, skipped });
+  } catch (err) {
+    console.error('POST /api/seed error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 }));
 
 // POST /api/items/:id/reclassify — re-run classification on stored transcript/caption.
