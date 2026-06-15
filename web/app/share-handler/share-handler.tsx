@@ -28,6 +28,25 @@ function firstUrlIn(value: string): string | null {
   return match ? match[0] : null;
 }
 
+// The iOS Shortcut hands us shared links whose own query strings contain `&`,
+// which URLSearchParams truncates at the first `&` — so the saved URL loses its
+// trailing params. Read the raw href and take everything after `?url=` verbatim
+// to keep the link whole. This deliberately bypasses URLSearchParams.
+function urlFromRawParam(href: string): string | null {
+  const marker = "?url=";
+  const at = href.indexOf(marker);
+  if (at === -1) return null;
+  let raw = href.slice(at + marker.length);
+  // The share_target also appends &text= and &title= after url=. Cut those off
+  // so they aren't glued onto the link — the shared URL's own `&` params (which
+  // come before these) are preserved.
+  for (const sibling of ["&text=", "&title="]) {
+    const i = raw.indexOf(sibling);
+    if (i !== -1) raw = raw.slice(0, i);
+  }
+  return raw ? safeDecode(raw) : null;
+}
+
 // Last-ditch fallback: some share targets append the shared URL straight onto
 // our path with no param key, e.g. /share-handler?https://example.com or
 // /share-handler/https://example.com — dig the URL back out of the raw href.
@@ -38,15 +57,16 @@ function urlFromRawHref(href: string): string | null {
   return match ? safeDecode(match[0]) : null;
 }
 
-// Pull a usable link out of whatever the share sheet handed us. Android often
-// puts the URL in `url`; some apps only fill `text`; a few append it to the URL
-// with no key at all.
+// Pull a usable link out of whatever the share sheet handed us. Prefer the raw
+// `?url=` slice (survives `&` in the shared link); then Android's `url`/`text`
+// params; then a URL appended to the path with no key at all.
 function resolveSharedUrl(
   url: string | null,
   text: string | null,
   rawHref: string,
 ): string | null {
   return (
+    urlFromRawParam(rawHref) ??
     firstUrlIn(safeDecode(url)) ??
     firstUrlIn(safeDecode(text)) ??
     urlFromRawHref(rawHref)
