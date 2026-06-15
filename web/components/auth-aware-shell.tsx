@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { OnboardingProvider } from "@/lib/onboarding";
 
 // Routes that render standalone, without the sidebar/chat app shell.
 const BARE_ROUTES = new Set([
@@ -15,6 +16,9 @@ const BARE_ROUTES = new Set([
 
 export function AuthAwareShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (BARE_ROUTES.has(pathname)) return <>{children}</>;
-  return <AppShell>{children}</AppShell>;
+  return (
+    <OnboardingProvider>
+      {BARE_ROUTES.has(pathname) ? children : <AppShell>{children}</AppShell>}
+    </OnboardingProvider>
+  );
 }

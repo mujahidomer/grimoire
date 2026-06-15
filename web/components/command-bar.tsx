@@ -44,6 +44,16 @@ export function CommandBar({
     setInput(prefillQuery);
   }, [prefillQuery, input, saveOpen]);
 
+  useEffect(() => {
+    function onOpenSave() {
+      setSaveOpen(true);
+      setUrl("");
+      setInput("");
+    }
+    window.addEventListener("grimoire:open-save", onOpenSave);
+    return () => window.removeEventListener("grimoire:open-save", onOpenSave);
+  }, []);
+
   function openSaveMode(initialUrl = "") {
     setSaveOpen(true);
     setUrl(initialUrl);

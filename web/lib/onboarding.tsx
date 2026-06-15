@@ -27,6 +27,7 @@ interface OnboardingState {
   show: boolean;
   queryDone: boolean;
   saveDone: boolean;
+  shortcutDone: boolean;
   segments: SegmentId[];
   // Example query to pre-fill the chat bar, or "" once the query beat is done.
   prefillQuery: string;
@@ -37,6 +38,8 @@ interface OnboardingState {
   starterLibraryPhase: StarterLibraryPhase;
   markQueryDone: () => void;
   markSaveDone: () => void;
+  markShortcutDone: () => void;
+  dismissWelcome: () => void;
 }
 
 const OnboardingContext = createContext<OnboardingState | null>(null);
@@ -46,14 +49,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [active, setActive] = useState(false); // onboarding_complete === false
   const [queryDone, setQueryDone] = useState(false);
   const [saveDone, setSaveDone] = useState(false);
+  const [shortcutDone, setShortcutDone] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [segments, setSegments] = useState<SegmentId[]>([]);
   const [starterLibraryLoading, setStarterLibraryLoading] = useState(false);
   const [starterLibraryExpected, setStarterLibraryExpected] = useState(0);
   const [starterLibraryLoaded, setStarterLibraryLoaded] = useState(0);
   const [starterLibraryPhase, setStarterLibraryPhase] =
     useState<StarterLibraryPhase>("seeding");
-  // Keep the banner mounted briefly after completion so it can fade out.
-  const [dismissed, setDismissed] = useState(false);
   const writing = useRef(false);
 
   // Read funnel selections before first paint so we never flash "library empty".
@@ -112,6 +115,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         setActive(meta.onboarding_complete === false);
         setQueryDone(meta.getting_started_query_done === true);
         setSaveDone(meta.getting_started_save_done === true);
+        setShortcutDone(meta.getting_started_shortcut_done === true);
+        setWelcomeDismissed(meta.getting_started_welcome_dismissed === true);
         setSegments(Array.isArray(meta.segments) ? meta.segments : []);
       } catch {
         if (!cancelled) setStarterLibraryLoading(false);
@@ -125,15 +130,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // Persist a metadata patch, and flip onboarding_complete once both beats land.
+  // Persist a metadata patch, and flip onboarding_complete once all three beats land.
   const patchMeta = useCallback(
-    async (patch: Record<string, unknown>, bothDone: boolean) => {
+    async (patch: Record<string, unknown>, allDone: boolean) => {
       if (writing.current) return;
       writing.current = true;
       try {
         const supabase = createClient();
         await supabase.auth.updateUser({
-          data: bothDone ? { ...patch, onboarding_complete: true } : patch,
+          data: allDone ? { ...patch, onboarding_complete: true } : patch,
         });
       } catch {
         /* best-effort — local state already reflects the change */
@@ -147,32 +152,43 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const markQueryDone = useCallback(() => {
     setQueryDone((prev) => {
       if (prev || !active) return prev;
-      const bothDone = saveDone;
-      void patchMeta({ getting_started_query_done: true }, bothDone);
-      if (bothDone) finishSoon();
+      const allDone = saveDone && shortcutDone;
+      void patchMeta({ getting_started_query_done: true }, allDone);
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, saveDone, patchMeta]);
+  }, [active, saveDone, shortcutDone, patchMeta]);
 
   const markSaveDone = useCallback(() => {
     setSaveDone((prev) => {
       if (prev || !active) return prev;
-      const bothDone = queryDone;
-      void patchMeta({ getting_started_save_done: true }, bothDone);
-      if (bothDone) finishSoon();
+      const allDone = queryDone && shortcutDone;
+      void patchMeta({ getting_started_save_done: true }, allDone);
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, queryDone, patchMeta]);
+  }, [active, queryDone, shortcutDone, patchMeta]);
 
-  // Let the last checkmark register, then fade the banner out for good.
-  const finishSoon = useCallback(() => {
-    window.setTimeout(() => setDismissed(true), 1200);
-  }, []);
+  const markShortcutDone = useCallback(() => {
+    setShortcutDone((prev) => {
+      if (prev || !active) return prev;
+      const allDone = queryDone && saveDone;
+      void patchMeta({ getting_started_shortcut_done: true }, allDone);
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, queryDone, saveDone, patchMeta]);
+
+  const dismissWelcome = useCallback(() => {
+    setWelcomeDismissed(true);
+    void patchMeta({ getting_started_welcome_dismissed: true }, false);
+  }, [patchMeta]);
 
   const firstSegment = segments[0] ?? DEFAULT_SEGMENT;
-  const show = loaded && active && !dismissed && !starterLibraryLoading;
+  const allDone = queryDone && saveDone && shortcutDone;
+  const showChecklist = loaded && active && !allDone && !starterLibraryLoading;
+  const showWelcome = loaded && allDone && !welcomeDismissed && !starterLibraryLoading;
+  const show = showChecklist || showWelcome;
   const prefillQuery =
     active && !queryDone ? SEGMENT_BY_ID[firstSegment]?.query ?? "" : "";
 
@@ -183,6 +199,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         show,
         queryDone,
         saveDone,
+        shortcutDone,
         segments,
         prefillQuery,
         starterLibraryLoading,
@@ -191,6 +208,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         starterLibraryPhase,
         markQueryDone,
         markSaveDone,
+        markShortcutDone,
+        dismissWelcome,
       }}
     >
       {children}
@@ -207,6 +226,7 @@ export function useOnboarding(): OnboardingState {
       show: false,
       queryDone: false,
       saveDone: false,
+      shortcutDone: false,
       segments: [],
       prefillQuery: "",
       starterLibraryLoading: false,
@@ -215,6 +235,8 @@ export function useOnboarding(): OnboardingState {
       starterLibraryPhase: "seeding",
       markQueryDone: () => {},
       markSaveDone: () => {},
+      markShortcutDone: () => {},
+      dismissWelcome: () => {},
     };
   }
   return ctx;

@@ -98,6 +98,7 @@ export async function applyPendingOnboarding(): Promise<ApplyOnboardingResult | 
         onboarding_complete: false,
         getting_started_query_done: false,
         getting_started_save_done: false,
+        getting_started_shortcut_done: false,
       },
     });
   } catch {

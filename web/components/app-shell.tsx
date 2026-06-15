@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { MessageCircle, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LibraryProvider } from "@/lib/library-context";
-import { OnboardingProvider } from "@/lib/onboarding";
 import { Sidebar } from "@/components/sidebar";
 import { CommandBar } from "@/components/command-bar";
 import { ChatPanel } from "@/components/chat-panel";
@@ -45,6 +44,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setChatOpen(true);
       window.history.replaceState({}, "", "/");
     }
+  }, []);
+
+  useEffect(() => {
+    function onOpenChat() {
+      setChatOpen(true);
+      if (!isDesktopViewport()) setSidebarOpen(false);
+    }
+    window.addEventListener("grimoire:open-chat", onOpenChat);
+    return () => window.removeEventListener("grimoire:open-chat", onOpenChat);
   }, []);
 
   useEffect(() => {
@@ -97,7 +105,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <LibraryProvider>
-      <OnboardingProvider>
       <div className="app-shell">
         {isDevAuthBypassEnabled() && (
           <p className="shrink-0 border-b border-black/[0.06] bg-black/[0.02] px-3 py-1 text-center font-sans text-[11px] leading-none text-eco-foreground/45">
@@ -179,7 +186,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <Toaster />
       </div>
-      </OnboardingProvider>
     </LibraryProvider>
   );
 }

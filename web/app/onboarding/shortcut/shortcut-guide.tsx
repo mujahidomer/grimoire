@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { Check, Plus } from "lucide-react";
+import { useOnboarding } from "@/lib/onboarding";
 
 const SHORTCUT_URL =
   "https://www.icloud.com/shortcuts/dd77a317524c429f9affb435899066a7";
 
 export function ShortcutGuide() {
+  const { markShortcutDone } = useOnboarding();
+
+  useEffect(() => {
+    markShortcutDone();
+  }, [markShortcutDone]);
+
   return (
     <div className="min-h-screen bg-[#EEEAE4] text-[#1C1C1A]">
       <div className="mx-auto max-w-2xl px-6 py-10">

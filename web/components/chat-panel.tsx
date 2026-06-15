@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
 import { askChat } from "@/lib/api";
+import { useOnboarding } from "@/lib/onboarding";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
 
@@ -25,11 +26,14 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef(false);
+  const { markQueryDone } = useOnboarding();
 
   const sendQuestion = useCallback(async (q: string) => {
     const trimmed = q.trim();
     if (!trimmed || loadingRef.current) return;
+    markQueryDone();
     loadingRef.current = true;
     setLoading(true);
     try {
@@ -57,7 +61,13 @@ export function ChatPanel({
       loadingRef.current = false;
       setLoading(false);
     }
-  }, []);
+  }, [markQueryDone]);
+
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [open]);
 
   useEffect(() => {
     function onAsk(e: Event) {
@@ -132,6 +142,7 @@ export function ChatPanel({
         className="flex items-center gap-2 border-t border-eco-border-light px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:py-4 lg:pb-4"
       >
         <input
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask a question…"
