@@ -22,7 +22,6 @@ const STEPS = [
 export function Landing() {
   const router = useRouter();
   const [picked, setPicked] = useState<SegmentId[]>([]);
-  // Which segment's problem copy is currently shown (hover preview or selection).
   const [active, setActive] = useState<SegmentId>(DEFAULT_SEGMENT);
 
   function toggle(id: SegmentId) {
@@ -57,6 +56,13 @@ export function Landing() {
 
       {/* Hero */}
       <header className="mx-auto max-w-3xl px-6 pb-24 pt-12 text-center">
+        <img
+          src="/icons/apple-touch-icon.png"
+          alt="Grimoire"
+          width={80}
+          height={80}
+          className="mx-auto mb-8 h-20 w-20"
+        />
         <h1 className="font-display text-4xl leading-[1.1] tracking-tight text-[#1C1C1A] sm:text-5xl">
           Your saved knowledge, finally answerable.
         </h1>
@@ -124,8 +130,6 @@ export function Landing() {
                 <button
                   key={s.id}
                   type="button"
-                  onMouseEnter={() => setActive(s.id)}
-                  onFocus={() => setActive(s.id)}
                   onClick={() => toggle(s.id)}
                   disabled={disabled}
                   className={`rounded-full border px-4 py-2 text-sm transition-colors ${
@@ -140,10 +144,12 @@ export function Landing() {
             })}
           </div>
 
-          {/* Problem copy swaps with a simple fade as pills are hovered/selected */}
-          <div key={active} className="mx-auto mt-10 max-w-xl fade-in">
-            <p className="text-base leading-relaxed text-[#1C1C1A]">{problem}</p>
-          </div>
+          {/* Problem copy for the selected segment */}
+          {picked.length > 0 && (
+            <div key={active} className="mx-auto mt-10 max-w-xl fade-in">
+              <p className="text-base leading-relaxed text-[#1C1C1A]">{problem}</p>
+            </div>
+          )}
 
           <div className="mt-10">
             <button

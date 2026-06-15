@@ -8,53 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AuthDivider } from "@/components/auth-divider";
 import { GoogleAuthButton } from "@/components/google-auth-button";
 import { createClient } from "@/lib/supabase/client";
-import { seedLibrary } from "@/lib/api";
-import {
-  SEGMENTS_STORAGE_KEY,
-  SEED_SELECTIONS_STORAGE_KEY,
-} from "@/lib/seed-catalog";
-
-function readJsonArray(key: string): string[] {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
-}
-
-// Carry the pre-auth funnel selections (chosen on /landing + /seed-picker) into
-// the new account: stamp onboarding metadata and copy the seed items in. Best
-// effort — a failure here must never block the user from reaching their library.
-async function applyOnboardingSelections() {
-  const segments = readJsonArray(SEGMENTS_STORAGE_KEY);
-  const seedSelections = readJsonArray(SEED_SELECTIONS_STORAGE_KEY);
-
-  const supabase = createClient();
-  try {
-    await supabase.auth.updateUser({
-      data: {
-        segments,
-        onboarding_complete: false,
-        getting_started_query_done: false,
-        getting_started_save_done: false,
-      },
-    });
-  } catch {
-    /* metadata write failed — banner just won't show; library still loads */
-  }
-
-  // Fire-and-forget: the backend copies seed items asynchronously.
-  void seedLibrary(seedSelections).catch(() => {});
-
-  try {
-    localStorage.removeItem(SEGMENTS_STORAGE_KEY);
-    localStorage.removeItem(SEED_SELECTIONS_STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-}
+import { applyPendingOnboarding } from "@/lib/apply-onboarding";
 
 export function SignupForm() {
   const router = useRouter();
@@ -83,7 +37,9 @@ export function SignupForm() {
       return;
     }
 
-    await applyOnboardingSelections();
+    // Best-effort — if the session is not ready yet (e.g. email confirm), the
+    // library shell retries on first authenticated load.
+    await applyPendingOnboarding();
     setLoading(false);
 
     router.push(next);

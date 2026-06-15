@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Check, FileText, Youtube } from "lucide-react";
+import { Check } from "lucide-react";
+import { SourceThumbnail } from "@/components/source-thumbnail";
 import {
   MIN_SEED_SELECTIONS,
   SEGMENTS,
@@ -11,10 +12,10 @@ import {
   SEGMENTS_STORAGE_KEY,
   SEED_SELECTIONS_STORAGE_KEY,
   seedItemsForSegment,
-  youtubeThumb,
   type SeedItem,
   type SegmentId,
 } from "@/lib/seed-catalog";
+import { cn } from "@/lib/utils";
 
 function readPickedSegments(): SegmentId[] {
   try {
@@ -74,8 +75,8 @@ export function SeedPicker() {
   const ready = count >= MIN_SEED_SELECTIONS;
 
   return (
-    <div className="min-h-screen bg-[#EEEAE4] pb-28 text-[#1C1C1A]">
-      <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="min-h-screen bg-[#EEEAE4] pb-36 text-[#1C1C1A]">
+      <div className="relative z-0 mx-auto max-w-5xl px-6 py-10">
         <Link
           href="/landing"
           className="text-sm text-[#8A8780] transition-colors hover:text-[#1C1C1A]"
@@ -93,8 +94,8 @@ export function SeedPicker() {
           </p>
         </header>
 
-        {/* Tabs */}
-        <div className="mt-8 flex flex-wrap justify-center gap-2">
+        {/* Scrollable tabs */}
+        <div className="-mx-6 mt-8 flex gap-2 overflow-x-auto px-6 pb-1 scrollbar-thin">
           {tabOrder.map((id) => {
             const isActive = id === activeTab;
             return (
@@ -102,11 +103,12 @@ export function SeedPicker() {
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
+                className={cn(
+                  "shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-sm transition-colors",
                   isActive
                     ? "border-[#2D4B2D] bg-[#2D4B2D] text-white"
-                    : "border-stone-300 bg-white text-[#1C1C1A] hover:border-stone-400"
-                }`}
+                    : "border-stone-300 bg-white text-[#1C1C1A] hover:border-stone-400",
+                )}
               >
                 {SEGMENT_BY_ID[id].label}
               </button>
@@ -114,7 +116,7 @@ export function SeedPicker() {
           })}
         </div>
 
-        {/* Content grid */}
+        {/* Content list */}
         <div className="mt-8">
           {items.length === 0 ? (
             <p className="py-16 text-center text-sm text-[#8A8780]">
@@ -122,24 +124,27 @@ export function SeedPicker() {
               once you&apos;re in. Pick from another tab to continue.
             </p>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((item) => (
-                <SeedCard
-                  key={item.id}
-                  item={item}
-                  selected={selected.has(item.id)}
-                  onToggle={() => toggle(item.id)}
-                />
-              ))}
+            <div className="rounded-2xl border border-stone-200 bg-white p-1 shadow-sm">
+              <ul className="divide-y divide-black/[0.05]">
+                {items.map((item) => (
+                  <li key={item.id}>
+                    <SeedListRow
+                      item={item}
+                      selected={selected.has(item.id)}
+                      onToggle={() => toggle(item.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
       </div>
 
       {/* Persistent selection bar */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
-          <p className="text-sm text-[#8A8780]">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+        <div className="mx-auto max-w-5xl px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+          <p className="mb-3 text-center text-sm text-[#8A8780]">
             {count} selected
             {!ready && (
               <span> — pick at least {MIN_SEED_SELECTIONS} to continue.</span>
@@ -149,7 +154,7 @@ export function SeedPicker() {
             type="button"
             onClick={addToLibrary}
             disabled={!ready}
-            className="rounded-full bg-[#2D4B2D] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-full bg-[#2D4B2D] py-3.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Add to my library →
           </button>
@@ -159,7 +164,7 @@ export function SeedPicker() {
   );
 }
 
-function SeedCard({
+function SeedListRow({
   item,
   selected,
   onToggle,
@@ -168,60 +173,39 @@ function SeedCard({
   selected: boolean;
   onToggle: () => void;
 }) {
-  const thumb = item.platform === "youtube" ? youtubeThumb(item.url) : null;
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-pressed={selected}
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white text-left transition-colors ${
-        selected ? "border-[#2D4B2D] ring-1 ring-[#2D4B2D]" : "border-stone-200 hover:border-stone-300"
-      }`}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors",
+        selected ? "bg-[#2D4B2D]/5" : "hover:bg-black/[0.02]",
+      )}
     >
-      {/* Selection check */}
-      <span
-        className={`absolute right-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
-          selected
-            ? "border-[#2D4B2D] bg-[#2D4B2D] text-white"
-            : "border-stone-300 bg-white/80 text-transparent"
-        }`}
-      >
-        <Check className="h-4 w-4" strokeWidth={3} />
-      </span>
-
-      {/* Thumbnail / content-type indicator */}
-      <div className="flex h-32 items-center justify-center bg-stone-100">
-        {thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumb}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <FileText className="h-8 w-8 text-stone-400" />
-        )}
-      </div>
-
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center gap-1.5 text-[#8A8780]">
-          {item.platform === "youtube" ? (
-            <Youtube className="h-3.5 w-3.5" />
-          ) : (
-            <FileText className="h-3.5 w-3.5" />
-          )}
-          <span className="text-xs capitalize">
-            {item.platform === "youtube" ? "Video" : "Article"}
-          </span>
-        </div>
-        <h3 className="mt-1.5 font-display text-base leading-snug tracking-tight text-[#1C1C1A]">
+      <SourceThumbnail
+        url={item.url}
+        className="h-12 w-16 shrink-0 rounded-lg"
+        iconClassName="h-4 w-4"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-sans text-sm font-medium text-[#1C1C1A]">
           {item.title}
-        </h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-[#8A8780]">
-          {item.summary}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-[#8A8780]">
+          {item.platform === "youtube" ? "Video" : "Article"} · {item.summary}
         </p>
       </div>
+      <span
+        className={cn(
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
+          selected
+            ? "border-[#2D4B2D] bg-[#2D4B2D] text-white"
+            : "border-stone-300 bg-white",
+        )}
+      >
+        {selected && <Check className="h-4 w-4" strokeWidth={3} />}
+      </span>
     </button>
   );
 }

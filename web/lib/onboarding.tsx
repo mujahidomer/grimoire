@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { applyPendingOnboarding } from "@/lib/apply-onboarding";
 import { createClient } from "@/lib/supabase/client";
 import { DEFAULT_SEGMENT, SEGMENT_BY_ID, type SegmentId } from "@/lib/seed-catalog";
 
@@ -47,7 +48,22 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
           data: { user },
         } = await supabase.auth.getUser();
         if (cancelled) return;
-        const meta = user?.user_metadata ?? {};
+
+        // OAuth signups skip the email form, so funnel selections may still be
+        // in localStorage when the authenticated library first mounts.
+        if (user) {
+          const applied = await applyPendingOnboarding();
+          if (cancelled) return;
+          if (applied) {
+            window.dispatchEvent(new CustomEvent("grimoire:refresh"));
+          }
+        }
+
+        const {
+          data: { user: freshUser },
+        } = await supabase.auth.getUser();
+        if (cancelled) return;
+        const meta = freshUser?.user_metadata ?? {};
         setActive(meta.onboarding_complete === false);
         setQueryDone(meta.getting_started_query_done === true);
         setSaveDone(meta.getting_started_save_done === true);
