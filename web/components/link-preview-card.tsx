@@ -65,7 +65,6 @@ export function LinkPreviewCard({
   const description = preview?.description || fallbackDescription;
   const image = preview?.image;
   const showImage = !!image && !imageFailed;
-  const siteName = preview?.site_name || hostname(url);
 
   return (
     <section className="mb-8">
@@ -81,9 +80,9 @@ export function LinkPreviewCard({
         rel="noopener noreferrer"
         className="group block overflow-hidden rounded-xl border border-black/[0.06] bg-white shadow-eco-sm transition-shadow duration-eco hover:shadow-eco"
       >
-        <div className="flex flex-col sm:flex-row">
+        <div className="flex flex-row items-stretch">
           {showImage ? (
-            <div className="h-[200px] w-full shrink-0 self-start overflow-hidden bg-eco-border/20 sm:w-48">
+            <div className="w-[5.5rem] shrink-0 self-stretch overflow-hidden bg-eco-border/20 sm:h-[200px] sm:w-48">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewImageUrl(image!)}
@@ -94,26 +93,23 @@ export function LinkPreviewCard({
               />
             </div>
           ) : (
-            <div className="flex h-[200px] w-full shrink-0 self-start items-center justify-center bg-eco-primary/10 sm:w-48">
+            <div className="flex w-[5.5rem] shrink-0 self-stretch items-center justify-center bg-eco-primary/10 sm:h-[200px] sm:w-48">
               {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-eco-foreground/40" />
+                <Loader2 className="h-4 w-4 animate-spin text-eco-foreground/40 sm:h-5 sm:w-5" />
               ) : (
-                <Globe className="h-8 w-8 text-eco-primary/50" />
+                <Globe className="h-5 w-5 text-eco-primary/50 sm:h-8 sm:w-8" />
               )}
             </div>
           )}
 
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate font-sans text-label-md text-eco-foreground/50">
-                {siteName}
-              </span>
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-3 sm:gap-1.5 sm:p-4">
+            <div className="flex items-center gap-2">
               {type && (
                 <Badge variant="default" className="text-[11px]">
                   {formatType(type)}
                 </Badge>
               )}
-              <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-eco-foreground/40 transition-colors duration-eco group-hover:text-eco-primary sm:ml-0" />
+              <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-eco-foreground/40 transition-colors duration-eco group-hover:text-eco-primary" />
             </div>
 
             <h2 className="line-clamp-2 font-sans text-body-md font-semibold leading-snug text-eco-heading transition-colors duration-eco group-hover:text-eco-primary">
@@ -121,12 +117,12 @@ export function LinkPreviewCard({
             </h2>
 
             {description && (
-              <p className="prose-reading line-clamp-2 text-body-md text-eco-foreground/70">
+              <p className="prose-reading line-clamp-1 text-body-md text-eco-foreground/70 sm:line-clamp-2">
                 {truncate(description, 140)}
               </p>
             )}
 
-            <p className="truncate font-mono text-[11px] text-eco-foreground/40">
+            <p className="hidden truncate font-mono text-[11px] text-eco-foreground/40 sm:block">
               {url}
             </p>
           </div>
