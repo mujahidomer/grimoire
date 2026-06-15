@@ -4,7 +4,13 @@ import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 
 // Routes that render standalone, without the sidebar/chat app shell.
-const BARE_ROUTES = new Set(["/login", "/signup", "/share-handler"]);
+const BARE_ROUTES = new Set([
+  "/login",
+  "/signup",
+  "/share-handler",
+  "/landing",
+  "/onboarding",
+]);
 
 export function AuthAwareShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

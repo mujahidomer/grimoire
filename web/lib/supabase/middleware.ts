@@ -10,13 +10,18 @@ function isAuthRoute(pathname: string) {
   );
 }
 
+// Public marketing/auth surfaces an unauthenticated visitor may render.
+function isPublicRoute(pathname: string) {
+  return isAuthRoute(pathname) || pathname.startsWith("/landing");
+}
+
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Allow auth pages to render even when env is misconfigured (avoids 500 loops).
+  // Allow public pages to render even when env is misconfigured (avoids 500 loops).
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (isAuthRoute(request.nextUrl.pathname)) {
+    if (isPublicRoute(request.nextUrl.pathname)) {
       return NextResponse.next();
     }
     const url = request.nextUrl.clone();
@@ -49,25 +54,56 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuth = isAuthRoute(request.nextUrl.pathname);
+  const pathname = request.nextUrl.pathname;
 
-  if (!user && !isAuth && !isDevAuthBypassEnabled()) {
+  // Unauthenticated visitors land on the marketing page, not the login form.
+  if (!user && !isPublicRoute(pathname) && !isDevAuthBypassEnabled()) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    // Keep the original query string (e.g. the link shared into /share-handler)
-    // so it survives the round-trip through login.
-    url.searchParams.set(
-      "next",
-      request.nextUrl.pathname + request.nextUrl.search,
-    );
+    url.pathname = "/landing";
+    // Keep the original target (e.g. the link shared into /share-handler) so the
+    // landing → login/signup links can carry it back after authentication.
+    url.search = "";
+    url.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
 
-  if (user && (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/signup")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.search = "";
-    return NextResponse.redirect(url);
+  if (user) {
+    const onboardingDone =
+      user.user_metadata?.onboarding_complete === true;
+    const dest = onboardingDone ? "/" : "/onboarding";
+
+    // Authenticated users have no business on the marketing/auth surfaces.
+    if (
+      pathname === "/login" ||
+      pathname === "/signup" ||
+      pathname === "/landing"
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = dest;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    // Funnel new users through onboarding until they complete it. /auth/* is
+    // excluded so the OAuth callback can finish exchanging its code first.
+    if (
+      !onboardingDone &&
+      pathname !== "/onboarding" &&
+      !pathname.startsWith("/auth")
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    // Finished users shouldn't be able to re-enter onboarding.
+    if (onboardingDone && pathname === "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
