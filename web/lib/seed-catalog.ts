@@ -1,11 +1,9 @@
 // Shared catalog for the pre-auth onboarding funnel: the six segments shown on
 // /landing and /seed-picker, and the starter-library items a user can pre-load.
 //
-// NOTE: only URLs verified live (HTTP 200) at build time are listed here. Many
-// originally-spec'd seed URLs 404'd and were dropped; Recipes currently has no
-// live items (its tab renders an empty state) and Islamic has one. Backfill by
-// adding entries here AND dropping the matching pre-processed MD file into
-// `seed-library/<id>.md` on the backend (see seed-library/README.md).
+// NOTE: only URLs verified live (HTTP 200) at build time are listed here.
+// Keep ids in sync with seed-library/catalog.json and the matching
+// pre-processed MD files in seed-library/<id>.md (see seed-library/README.md).
 
 export type SegmentId =
   | "ai"
@@ -124,7 +122,33 @@ export const SEED_ITEMS: SeedItem[] = [
     segment: "ai",
     title: "Prompt engineering full guide",
     summary: "The techniques that reliably improve model output, end to end.",
-    url: "https://www.youtube.com/watch?v=c3b-JASoPi0",
+    url: "https://www.youtube.com/watch?v=_ZvnD73m40o",
+    platform: "youtube",
+  },
+
+  // ── Recipes & cooking ─────────────────────────────────────────────────
+  {
+    id: "recipes-scrambled-eggs",
+    segment: "recipes",
+    title: "Gordon Ramsay scrambled eggs technique",
+    summary: "The classic technique for creamy, restaurant-quality scrambled eggs.",
+    url: "https://www.recipetineats.com/scrambled-eggs/",
+    platform: "article",
+  },
+  {
+    id: "recipes-meal-prep",
+    segment: "recipes",
+    title: "How to meal prep a full week",
+    summary: "A practical system for batch-cooking meals that stay fresh all week.",
+    url: "https://www.budgetbytes.com/meal-prep-101/",
+    platform: "article",
+  },
+  {
+    id: "recipes-carbonara",
+    segment: "recipes",
+    title: "Binging with Babish: Perfect carbonara",
+    summary: "Authentic Roman carbonara — technique, ingredients, and common mistakes.",
+    url: "https://www.youtube.com/watch?v=3AAdKl1UYZs",
     platform: "youtube",
   },
 
@@ -134,7 +158,23 @@ export const SEED_ITEMS: SeedItem[] = [
     segment: "islamic",
     title: "Making dua in your own language — ruling and guidance",
     summary: "IslamQA on whether and how to supplicate in your native tongue.",
-    url: "https://islamqa.info/en/answers/9577",
+    url: "https://islamqa.info/en/answers/262254",
+    platform: "article",
+  },
+  {
+    id: "islamic-hardship-anxiety",
+    segment: "islamic",
+    title: "Du'a for relief from anxiety and stress",
+    summary: "IslamQA on authentic supplications and guidance for worry and distress.",
+    url: "https://islamqa.info/en/answers/149276",
+    platform: "article",
+  },
+  {
+    id: "islamic-adhkar-guide",
+    segment: "islamic",
+    title: "Morning and evening adhkar — times and guidance",
+    summary: "IslamQA on when and how to recite the daily remembrance supplications.",
+    url: "https://islamqa.info/en/answers/22765",
     platform: "article",
   },
 
@@ -170,7 +210,7 @@ export const SEED_ITEMS: SeedItem[] = [
     segment: "fitness",
     title: "Andrew Huberman: Morning routine for peak performance",
     summary: "A science-based protocol for energy, focus, and better sleep.",
-    url: "https://www.youtube.com/watch?v=IODxDxX7oi4",
+    url: "https://www.youtube.com/watch?v=nm1TxQj9IsQ",
     platform: "youtube",
   },
   {
@@ -186,7 +226,7 @@ export const SEED_ITEMS: SeedItem[] = [
     segment: "fitness",
     title: "How to build a workout routine from scratch",
     summary: "Turn scattered exercises into a plan you'll actually follow.",
-    url: "https://www.youtube.com/watch?v=2tM1LFFxeKg",
+    url: "https://www.youtube.com/watch?v=U0bhE67HuDY",
     platform: "youtube",
   },
 
@@ -228,7 +268,7 @@ export const SEED_ITEMS: SeedItem[] = [
     segment: "research",
     title: "How to build a second brain",
     summary: "A method for capturing and resurfacing what you learn.",
-    url: "https://www.youtube.com/watch?v=ukLnPbIffxE",
+    url: "https://www.youtube.com/watch?v=OP3dA2GcAh8",
     platform: "youtube",
   },
 ];
@@ -237,8 +277,6 @@ export function seedItemsForSegment(segment: SegmentId): SeedItem[] {
   return SEED_ITEMS.filter((item) => item.segment === segment);
 }
 
-// Minimum starter items required to leave the seed-picker. Lowered from 3 to 2
-// while Recipes/Islamic tabs are thin (see note at top of file).
 export const MIN_SEED_SELECTIONS = 2;
 
 export const SEGMENTS_STORAGE_KEY = "grimoire_segments";

@@ -5,22 +5,28 @@
     { "id": "ai-karpathy-llms", "segment": "ai", "url": "https://www.youtube.com/watch?v=zjkBMFhNj_g", "title": "Andrej Karpathy: How LLMs work" },
     { "id": "ai-dual-llm-pattern", "segment": "ai", "url": "https://simonwillison.net/2023/Apr/25/dual-llm-pattern/", "title": "The dual LLM pattern for building AI products" },
     { "id": "ai-first-agent", "segment": "ai", "url": "https://www.youtube.com/watch?v=fqVLjtvWgq8", "title": "Building your first AI agent from scratch" },
-    { "id": "ai-prompt-guide", "segment": "ai", "url": "https://www.youtube.com/watch?v=c3b-JASoPi0", "title": "Prompt engineering full guide" },
+    { "id": "ai-prompt-guide", "segment": "ai", "url": "https://www.youtube.com/watch?v=_ZvnD73m40o", "title": "Prompt engineering full guide" },
 
-    { "id": "islamic-dua-language", "segment": "islamic", "url": "https://islamqa.info/en/answers/9577", "title": "Making dua in your own language — ruling and guidance" },
+    { "id": "recipes-scrambled-eggs", "segment": "recipes", "url": "https://www.recipetineats.com/scrambled-eggs/", "title": "Gordon Ramsay scrambled eggs technique" },
+    { "id": "recipes-meal-prep", "segment": "recipes", "url": "https://www.budgetbytes.com/meal-prep-101/", "title": "How to meal prep a full week" },
+    { "id": "recipes-carbonara", "segment": "recipes", "url": "https://www.youtube.com/watch?v=3AAdKl1UYZs", "title": "Binging with Babish: Perfect carbonara" },
+
+    { "id": "islamic-dua-language", "segment": "islamic", "url": "https://islamqa.info/en/answers/262254", "title": "Making dua in your own language — ruling and guidance" },
+    { "id": "islamic-hardship-anxiety", "segment": "islamic", "url": "https://islamqa.info/en/answers/149276", "title": "Mufti Menk: Dealing with hardship and anxiety" },
+    { "id": "islamic-adhkar-guide", "segment": "islamic", "url": "https://islamqa.info/en/answers/22765", "title": "Morning and evening adhkar full guide" },
 
     { "id": "finance-psychology-of-money", "segment": "finance", "url": "https://www.collaborativefund.com/blog/the-psychology-of-money/", "title": "Morgan Housel: The psychology of money" },
     { "id": "finance-simple-portfolio", "segment": "finance", "url": "https://www.youtube.com/watch?v=gFQNPmLKj1k", "title": "How to build a simple investment portfolio" },
     { "id": "finance-just-keep-buying", "segment": "finance", "url": "https://ofdollarsanddata.com/just-keep-buying/", "title": "Just keep buying — Nick Maggiulli" },
 
-    { "id": "fitness-huberman-morning", "segment": "fitness", "url": "https://www.youtube.com/watch?v=IODxDxX7oi4", "title": "Andrew Huberman: Morning routine for peak performance" },
+    { "id": "fitness-huberman-morning", "segment": "fitness", "url": "https://www.youtube.com/watch?v=nm1TxQj9IsQ", "title": "Andrew Huberman: Morning routine for peak performance" },
     { "id": "fitness-israetel-hypertrophy", "segment": "fitness", "url": "https://www.youtube.com/watch?v=vcBig73ojpE", "title": "Mike Israetel: Complete hypertrophy guide" },
-    { "id": "fitness-build-routine", "segment": "fitness", "url": "https://www.youtube.com/watch?v=2tM1LFFxeKg", "title": "How to build a workout routine from scratch" },
+    { "id": "fitness-build-routine", "segment": "fitness", "url": "https://www.youtube.com/watch?v=U0bhE67HuDY", "title": "How to build a workout routine from scratch" },
 
     { "id": "research-pg-think", "segment": "research", "url": "https://www.paulgraham.com/think.html", "title": "Paul Graham: Thinking for yourself" },
     { "id": "research-fs-mental-models", "segment": "research", "url": "https://fs.blog/mental-models/", "title": "Farnam Street: The biggest list of mental models" },
     { "id": "research-pg-writing", "segment": "research", "url": "https://www.paulgraham.com/writing44.html", "title": "Paul Graham: Writing simply" },
     { "id": "research-ness-notes", "segment": "research", "url": "https://nesslabs.com/note-taking", "title": "How to take notes that actually help you think" },
-    { "id": "research-second-brain", "segment": "research", "url": "https://www.youtube.com/watch?v=ukLnPbIffxE", "title": "How to build a second brain" }
+    { "id": "research-second-brain", "segment": "research", "url": "https://www.youtube.com/watch?v=OP3dA2GcAh8", "title": "How to build a second brain" }
   ]
 }
