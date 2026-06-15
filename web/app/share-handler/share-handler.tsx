@@ -30,13 +30,14 @@ function firstUrlIn(value: string): string | null {
 
 // The iOS Shortcut hands us shared links whose own query strings contain `&`,
 // which URLSearchParams truncates at the first `&` — so the saved URL loses its
-// trailing params. Read the raw href and take everything after `?url=` verbatim
-// to keep the link whole. This deliberately bypasses URLSearchParams.
-function urlFromRawParam(href: string): string | null {
-  const marker = "?url=";
-  const at = href.indexOf(marker);
-  if (at === -1) return null;
-  let raw = href.slice(at + marker.length);
+// trailing params. Read the raw query string and take everything after `url=`
+// verbatim to keep the link whole. This deliberately bypasses URLSearchParams.
+function urlFromRawParam(search: string): string | null {
+  // Match `url=` only at a real param boundary (?/&) so we don't trip on a
+  // lookalike like `redirect_url=`.
+  const marker = search.match(/[?&]url=/);
+  if (!marker || marker.index === undefined) return null;
+  let raw = search.slice(marker.index + marker[0].length);
   // The share_target also appends &text= and &title= after url=. Cut those off
   // so they aren't glued onto the link — the shared URL's own `&` params (which
   // come before these) are preserved.
@@ -64,9 +65,10 @@ function resolveSharedUrl(
   url: string | null,
   text: string | null,
   rawHref: string,
+  rawSearch: string,
 ): string | null {
   return (
-    urlFromRawParam(rawHref) ??
+    urlFromRawParam(rawSearch) ??
     firstUrlIn(safeDecode(url)) ??
     firstUrlIn(safeDecode(text)) ??
     urlFromRawHref(rawHref)
@@ -78,7 +80,8 @@ export function ShareHandler() {
   const urlParam = searchParams.get("url");
   const textParam = searchParams.get("text");
   const rawHref = typeof window !== "undefined" ? window.location.href : "";
-  const sharedUrl = resolveSharedUrl(urlParam, textParam, rawHref);
+  const rawSearch = typeof window !== "undefined" ? window.location.search : "";
+  const sharedUrl = resolveSharedUrl(urlParam, textParam, rawHref, rawSearch);
 
   // Surface exactly what the share sheet handed us so failures are debuggable.
   useEffect(() => {
