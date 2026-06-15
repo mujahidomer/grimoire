@@ -27,6 +27,21 @@ const notoNaskhArabic = Noto_Naskh_Arabic({
 export const metadata: Metadata = {
   title: "Grimoire",
   description: "Your saved knowledge, searchable and ask-able.",
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    // Renders <link rel="apple-touch-icon"> so iOS uses our artwork when a
+    // user adds Grimoire to the Home Screen.
+    apple: [
+      {
+        url: "/icons/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
