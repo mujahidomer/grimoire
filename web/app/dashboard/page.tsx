@@ -2,7 +2,7 @@ import { ExternalLink } from "lucide-react";
 import { fetchDigest } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateShort } from "@/lib/utils";
-import type { DigestGroup, DigestItem } from "@/lib/types";
+import type { DigestGroup, DigestItem, Highlight } from "@/lib/types";
 import { DashboardSourceLink } from "@/components/dashboard-source-link";
 import {
   DigestSummaryCards,
@@ -48,9 +48,31 @@ function subcategoryLabel(value: string | null | undefined): string {
   return cleaned ? cleaned : "uncategorized";
 }
 
+// The classifier's distilled highlights, stored at key_takeaways.highlights.
+// Defensive: key_takeaways is a free-form value, so narrow to the {label,value}
+// shape and drop anything malformed. Empty array when there are no highlights.
+function itemHighlights(item: DigestItem): Highlight[] {
+  const kt = item.key_takeaways;
+  if (!kt || typeof kt !== "object" || Array.isArray(kt)) return [];
+  const raw = (kt as { highlights?: unknown }).highlights;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (h): h is Highlight =>
+        !!h &&
+        typeof h === "object" &&
+        !Array.isArray(h) &&
+        typeof (h as { label?: unknown }).label === "string" &&
+        typeof (h as { value?: unknown }).value === "string",
+    )
+    .map((h) => ({ label: h.label, value: h.value }));
+}
+
 function digestItemRowCount(item: DigestItem): number {
   const skills = item.skills ?? [];
-  return skills.length > 0 ? skills.length : 1;
+  if (skills.length > 0) return skills.length;
+  const highlights = itemHighlights(item);
+  return highlights.length > 0 ? highlights.length : 1;
 }
 
 function digestGroupRowCount(group: DigestGroup): number {
@@ -157,6 +179,61 @@ function DigestTable({ group }: { group: DigestGroup }) {
                     </td>
                     <td className="py-2">
                       {item.source_url && <DashboardSourceLink itemId={item.id} label="Open item details" />}
+                    </td>
+                  </tr>
+                );
+              });
+            }
+            // Non-skill items with distilled highlights expand to one row per
+            // highlight, read as a grouped block: Name / Link / Saved / Source
+            // appear only on the first row, and the "What it is" column carries
+            // each highlight's label (muted, above) and value (below). v1 data
+            // with no highlights array falls through to the single-row render.
+            const highlights = itemHighlights(item);
+            if (group.type !== "skill" && highlights.length > 0) {
+              return highlights.map((h, i) => {
+                const first = i === 0;
+                return (
+                  <tr
+                    key={`${item.id}-h${i}`}
+                    className="align-top text-body-md text-eco-foreground"
+                  >
+                    <td
+                      className={`py-2 pr-4 font-medium text-eco-on-surface${
+                        first ? "" : " border-l-2 border-indigo-200 pl-2"
+                      }`}
+                    >
+                      {first ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          {item.data_version === "v2" ? (
+                            <span
+                              className="h-1 w-1 rounded-full bg-green-500"
+                              aria-label="v2 item"
+                              title="v2 item"
+                            />
+                          ) : null}
+                          <span>{item.artifact_name ?? item.title}</span>
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-4 text-eco-foreground/85">
+                      <div className="text-label-md uppercase tracking-wide text-eco-foreground/55">
+                        {h.label}
+                      </div>
+                      <div>{h.value}</div>
+                    </td>
+                    <td className="py-2 pr-4">
+                      {first && item.artifact_url && (
+                        <ExternalLinkIcon href={item.artifact_url} label="Open artifact" />
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap py-2 pr-4 text-eco-foreground/65">
+                      {first ? formatDateShort(item.date_saved) : null}
+                    </td>
+                    <td className="py-2">
+                      {first && item.source_url && (
+                        <DashboardSourceLink itemId={item.id} label="Open item details" />
+                      )}
                     </td>
                   </tr>
                 );

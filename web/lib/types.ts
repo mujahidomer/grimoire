@@ -61,6 +61,13 @@ export interface Skill {
   source_url: string | null;
 }
 
+// One at-a-glance highlight distilled by the classifier. Stored inside
+// items.key_takeaways.highlights; present on non-skill artifact types only.
+export interface Highlight {
+  label: string;
+  value: string;
+}
+
 export interface DigestItem {
   id: string;
   title: string;
@@ -68,6 +75,7 @@ export interface DigestItem {
   artifact_name: string | null;
   artifact_url: string | null;
   skills?: Skill[] | null;
+  key_takeaways?: TakeawayValue;
   source_url: string;
   date_saved: string;
   category: string;
