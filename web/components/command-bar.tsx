@@ -153,7 +153,7 @@ export function CommandBar({
         {saveOpen ? (
           <form
             onSubmit={handleSave}
-            className="rounded-2xl border border-black/[0.08] bg-white px-3 py-2 shadow-eco-lg"
+            className="rounded-2xl border border-eco-border-muted bg-eco-surface px-3 py-2 shadow-eco-lg"
           >
             <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
               <input
@@ -214,7 +214,7 @@ export function CommandBar({
           <div className="command-bar-glow">
             <form
               onSubmit={handleAsk}
-              className="relative flex items-center gap-1.5 rounded-full bg-white px-3 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:gap-2 sm:px-4"
+              className="relative flex items-center gap-1.5 rounded-full bg-eco-surface px-3 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:gap-2 sm:px-4"
             >
               <div className="relative min-w-0 flex-1">
                 <input
@@ -236,20 +236,22 @@ export function CommandBar({
                 variant="secondary"
                 size="sm"
                 onClick={() => openSaveMode()}
-                className="shrink-0 rounded-full px-2.5 sm:px-3"
+                className="shrink-0 rounded-full px-2.5 text-black hover:text-black sm:px-3 [&_svg]:text-black"
                 aria-label="Save link"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Save link</span>
               </Button>
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={onOpenChat}
-                className="hidden shrink-0 items-center gap-1.5 rounded-full border border-eco-border-light bg-eco-surface px-3 py-1.5 font-sans text-label-md font-medium text-eco-on-surface transition-colors hover:bg-black/[0.03] sm:inline-flex"
+                className="hidden shrink-0 gap-1.5 rounded-full px-2.5 sm:inline-flex sm:px-3"
               >
                 <MessageCircle className="h-3.5 w-3.5" />
                 Ask anything
-              </button>
+              </Button>
             </form>
           </div>
         )}

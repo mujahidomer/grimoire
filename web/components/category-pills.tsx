@@ -27,7 +27,7 @@ export function CategoryPills({
               "whitespace-nowrap rounded-surface px-3 py-1.5 font-sans text-body-md transition-colors duration-eco",
               isActive
                 ? "bg-eco-surface text-eco-on-surface ring-1 ring-eco-border"
-                : "bg-white/60 text-eco-foreground ring-1 ring-eco-border backdrop-blur-eco hover:bg-eco-primary/10",
+                : "bg-eco-input text-eco-foreground ring-1 ring-eco-border backdrop-blur-eco hover:bg-eco-primary/10",
             )}
           >
             {pill.label}

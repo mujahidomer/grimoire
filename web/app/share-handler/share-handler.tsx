@@ -230,7 +230,7 @@ export function ShareHandler() {
           {/* Link preview — populates once the preview API responds; otherwise
               shows the domain with a globe glyph and skips the thumbnail. */}
           {sharedUrl && (
-            <div className="flex items-center gap-3.5 rounded-xl border border-black/[0.06] bg-white p-3.5 shadow-eco-sm">
+            <div className="flex items-center gap-3.5 rounded-xl border border-eco-border-subtle bg-eco-surface p-3.5 shadow-eco-sm">
               {showImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

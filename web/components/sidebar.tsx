@@ -17,6 +17,7 @@ import { CATEGORIES } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useLibraryFilters } from "@/lib/library-context";
 import { SearchBox } from "@/components/search-box";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { UserMenu } from "@/components/user-menu";
 
 function categoryIcon(category: string) {
@@ -63,7 +64,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="shrink-0 rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+          className="shrink-0 rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-eco-hover-strong hover:text-eco-foreground"
           aria-label="Hide sidebar"
         >
           <PanelLeftClose className="h-4 w-4" />
@@ -81,7 +82,7 @@ export function Sidebar({
             "flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-sans text-body-md transition-colors duration-eco",
             isHome && !category && !chatOpen
               ? "bg-eco-primary/10 text-eco-primary"
-              : "text-eco-foreground hover:bg-black/[0.03]",
+              : "text-eco-foreground hover:bg-eco-hover",
           )}
         >
           <Home className="h-4 w-4 shrink-0 opacity-70" />
@@ -97,7 +98,7 @@ export function Sidebar({
             "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left font-sans text-body-md transition-colors duration-eco",
             chatOpen
               ? "bg-eco-primary/10 text-eco-primary"
-              : "text-eco-foreground hover:bg-black/[0.03]",
+              : "text-eco-foreground hover:bg-eco-hover",
           )}
         >
           <MessageCircle className="h-4 w-4 shrink-0 opacity-70" />
@@ -110,7 +111,7 @@ export function Sidebar({
             "flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-sans text-body-md transition-colors duration-eco",
             pathname === "/dashboard"
               ? "bg-eco-primary/10 text-eco-primary"
-              : "text-eco-foreground hover:bg-black/[0.03]",
+              : "text-eco-foreground hover:bg-eco-hover",
           )}
         >
           <LayoutGrid className="h-4 w-4 shrink-0 opacity-70" />
@@ -123,7 +124,7 @@ export function Sidebar({
             "flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-sans text-body-md transition-colors duration-eco",
             pathname === "/onboarding/shortcut"
               ? "bg-eco-primary/10 text-eco-primary"
-              : "text-eco-foreground hover:bg-black/[0.03]",
+              : "text-eco-foreground hover:bg-eco-hover",
           )}
         >
           <Bookmark className="h-4 w-4 shrink-0 opacity-70" />
@@ -146,7 +147,7 @@ export function Sidebar({
               "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left font-sans text-body-md transition-colors duration-eco",
               isHome && !category
                 ? "bg-eco-primary/10 text-eco-primary"
-                : "text-eco-foreground hover:bg-black/[0.03]",
+                : "text-eco-foreground hover:bg-eco-hover",
             )}
           >
             <Lock className="h-4 w-4 shrink-0 opacity-50" />
@@ -164,7 +165,7 @@ export function Sidebar({
                 "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left font-sans text-body-md transition-colors duration-eco",
                 category === cat
                   ? "bg-eco-primary/10 text-eco-primary"
-                  : "text-eco-foreground hover:bg-black/[0.03]",
+                  : "text-eco-foreground hover:bg-eco-hover",
               )}
             >
               <span className="flex h-4 w-4 shrink-0 items-center justify-center text-xs">
@@ -180,21 +181,21 @@ export function Sidebar({
         <div className="flex items-center gap-1 px-1">
           <button
             type="button"
-            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-eco-hover-strong hover:text-eco-foreground"
             aria-label="Compose"
           >
             <PenLine className="h-4 w-4" />
           </button>
           <button
             type="button"
-            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-eco-hover-strong hover:text-eco-foreground"
             aria-label="People"
           >
             <Users className="h-4 w-4" />
           </button>
           <button
             type="button"
-            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-eco-hover-strong hover:text-eco-foreground"
             aria-label="Library"
           >
             <BookOpen className="h-4 w-4" />
@@ -218,6 +219,8 @@ export function Sidebar({
             </button>
           </div>
         </div>
+
+        <ThemeSwitcher />
 
         <UserMenu />
       </div>

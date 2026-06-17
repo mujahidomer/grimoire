@@ -26,7 +26,7 @@ function LibraryListRow({ item }: { item: Item }) {
   return (
     <Link
       href={`/item/${item.id}`}
-      className="group flex items-start gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-black/[0.03]"
+      className="group flex items-start gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-eco-hover"
     >
       <SourceThumbnail
         url={item.source_url}
@@ -52,7 +52,7 @@ function LibraryGridCard({ item }: { item: Item }) {
   return (
     <Link
       href={`/item/${item.id}`}
-      className="group block overflow-hidden rounded-xl border border-black/[0.06] bg-white shadow-eco-sm transition-shadow duration-eco hover:shadow-eco"
+      className="group block overflow-hidden rounded-xl border border-eco-border-subtle bg-eco-surface shadow-eco-sm transition-shadow duration-eco hover:shadow-eco"
     >
       <SourceThumbnail url={item.source_url} className="aspect-video w-full" />
       <div className="space-y-2 p-4">
@@ -138,7 +138,7 @@ export function RecentSaves({ items }: { items: Item[] }) {
             <li key={item.id}>
               <Link
                 href={`/item/${item.id}`}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors hover:bg-black/[0.02]"
+                className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors hover:bg-eco-hover"
               >
                 <SourceThumbnail
                   url={item.source_url}

@@ -16,11 +16,11 @@ export function ShortcutGuide() {
   }, [markShortcutDone]);
 
   return (
-    <div className="min-h-screen bg-[#EEEAE4] text-[#1C1C1A]">
+    <div className="min-h-screen bg-eco-main text-eco-heading">
       <div className="mx-auto max-w-2xl px-6 py-10">
         <Link
           href="/"
-          className="text-sm text-[#5C5A55] transition-colors hover:text-[#1C1C1A]"
+          className="text-sm text-eco-muted transition-colors hover:text-eco-heading"
         >
           ← Back to library
         </Link>
@@ -29,7 +29,7 @@ export function ShortcutGuide() {
           <h1 className="font-display text-3xl leading-tight tracking-tight">
             Save from anywhere in one tap
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-[#5C5A55]">
+          <p className="mt-3 text-sm leading-relaxed text-eco-muted">
             The Grimoire shortcut lets you save any link from any app without
             opening Grimoire. It&apos;s a one-time setup.
           </p>
@@ -41,7 +41,7 @@ export function ShortcutGuide() {
             href={SHORTCUT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block rounded-full bg-[#2D4B2D] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            className="inline-block rounded-full bg-eco-tertiary px-6 py-3 text-sm font-medium text-[var(--eco-on-accent)] transition-opacity hover:opacity-90"
           >
             Add Shortcut to iPhone
           </a>
@@ -76,8 +76,8 @@ export function ShortcutGuide() {
         </section>
 
         {/* Section 3 — paste fallback */}
-        <section className="mt-12 border-t border-stone-200 pt-8">
-          <p className="text-sm leading-relaxed text-[#5C5A55]">
+        <section className="mt-12 border-t border-eco-border-light pt-8">
+          <p className="text-sm leading-relaxed text-eco-muted">
             Don&apos;t have an iPhone or want to save from desktop? You can always
             paste any link directly into the chat bar in your library.
           </p>
@@ -97,12 +97,12 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5">
+    <div className="rounded-2xl border border-eco-border-light bg-eco-surface p-5">
       <div className="flex items-start gap-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2D4B2D] font-display text-sm text-white">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-eco-tertiary font-display text-sm text-white">
           {n}
         </span>
-        <p className="pt-0.5 text-sm font-medium text-[#1C1C1A]">{text}</p>
+        <p className="pt-0.5 text-sm font-medium text-eco-heading">{text}</p>
       </div>
       <div className="mt-4">{children}</div>
     </div>
@@ -113,8 +113,8 @@ function Step({
 
 function Phone({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-[260px] overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 shadow-sm">
-      <div className="border-b border-stone-100 py-2">
+    <div className="mx-auto max-w-[260px] overflow-hidden rounded-2xl border border-eco-border-light bg-stone-50 shadow-sm">
+      <div className="border-b border-eco-border-light py-2">
         <div className="mx-auto h-1 w-9 rounded-full bg-stone-300" />
       </div>
       {children}
@@ -135,20 +135,20 @@ function Row({
     <div
       className={`flex items-center gap-3 px-4 py-2.5 text-sm ${
         highlight
-          ? "rounded-lg bg-[#2D4B2D]/5 ring-1 ring-[#2D4B2D]/40"
+          ? "rounded-lg bg-eco-tertiary/5 ring-1 ring-eco-tertiary/40"
           : ""
       }`}
     >
       <span
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs ${
           highlight
-            ? "bg-[#2D4B2D] font-display text-white"
+            ? "bg-eco-tertiary font-display text-white"
             : "bg-stone-200 text-stone-400"
         }`}
       >
         {highlight ? "G" : ""}
       </span>
-      <span className={highlight ? "font-medium text-[#2D4B2D]" : "text-stone-600"}>
+      <span className={highlight ? "font-medium text-eco-tertiary" : "text-eco-muted"}>
         {label}
       </span>
       {trailing && <span className="ml-auto">{trailing}</span>}
@@ -164,7 +164,7 @@ function ShareSheetEditActions() {
         <Row label="Add to Reading List" />
         <Row label="Add Bookmark" />
         <div className="mt-1 rounded-lg ring-1 ring-[#2D4B2D]/50">
-          <div className="px-4 py-2.5 text-sm font-medium text-[#2D4B2D]">
+          <div className="px-4 py-2.5 text-sm font-medium text-eco-tertiary">
             Edit Actions…
           </div>
         </div>
@@ -191,7 +191,7 @@ function EditActionsList() {
           label="Save to Grimoire"
           highlight
           trailing={
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2D4B2D] text-white">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-eco-tertiary text-white">
               <Plus className="h-3.5 w-3.5" strokeWidth={3} />
             </span>
           }
@@ -234,7 +234,7 @@ function ShareSheetQuickActions() {
         <QuickAction label="Copy" />
         <QuickAction label="Reading List" />
       </div>
-      <div className="border-t border-stone-100 px-4 py-2.5 text-center text-sm font-medium text-[#2D4B2D]">
+      <div className="border-t border-eco-border-light px-4 py-2.5 text-center text-sm font-medium text-eco-tertiary">
         Done
       </div>
     </Phone>
@@ -253,7 +253,7 @@ function QuickAction({
       <span
         className={`flex h-12 w-12 items-center justify-center rounded-xl text-lg ${
           highlight
-            ? "bg-[#2D4B2D] font-display text-white ring-2 ring-[#2D4B2D]/30"
+            ? "bg-eco-tertiary font-display text-white ring-2 ring-eco-tertiary/30"
             : "bg-stone-200 text-stone-400"
         }`}
       >

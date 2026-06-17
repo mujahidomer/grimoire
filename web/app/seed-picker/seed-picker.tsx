@@ -75,11 +75,11 @@ export function SeedPicker() {
   const ready = count >= MIN_SEED_SELECTIONS;
 
   return (
-    <div className="min-h-screen bg-[#EEEAE4] pb-36 text-[#1C1C1A]">
+    <div className="min-h-screen bg-eco-main pb-36 text-eco-heading">
       <div className="relative z-0 mx-auto max-w-5xl px-6 py-10">
         <Link
           href="/landing"
-          className="text-sm text-[#5C5A55] transition-colors hover:text-[#1C1C1A]"
+          className="text-sm text-eco-muted transition-colors hover:text-eco-heading"
         >
           ← Back
         </Link>
@@ -88,7 +88,7 @@ export function SeedPicker() {
           <h1 className="font-display text-3xl tracking-tight">
             Build your starter library
           </h1>
-          <p className="mt-3 text-sm text-[#5C5A55]">
+          <p className="mt-3 text-sm text-eco-muted">
             Choose at least {MIN_SEED_SELECTIONS}. These will be waiting in your
             library the moment you sign up.
           </p>
@@ -106,8 +106,8 @@ export function SeedPicker() {
                 className={cn(
                   "shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-sm transition-colors",
                   isActive
-                    ? "border-[#2D4B2D] bg-[#2D4B2D] text-white"
-                    : "border-stone-300 bg-white text-[#1C1C1A] hover:border-stone-400",
+                    ? "border-eco-tertiary bg-eco-tertiary text-white"
+                    : "border-eco-border bg-eco-surface text-eco-heading hover:border-eco-border",
                 )}
               >
                 {SEGMENT_BY_ID[id].label}
@@ -119,12 +119,12 @@ export function SeedPicker() {
         {/* Content list */}
         <div className="mt-8">
           {items.length === 0 ? (
-            <p className="py-16 text-center text-sm text-[#5C5A55]">
+            <p className="py-16 text-center text-sm text-eco-muted">
               Starter picks for this topic are coming soon — you can save your own
               once you&apos;re in. Pick from another tab to continue.
             </p>
           ) : (
-            <div className="rounded-2xl border border-stone-200 bg-white p-1 shadow-sm">
+            <div className="rounded-2xl border border-eco-border-light bg-eco-surface p-1 shadow-sm">
               <ul className="divide-y divide-black/[0.05]">
                 {items.map((item) => (
                   <li key={item.id}>
@@ -142,9 +142,9 @@ export function SeedPicker() {
       </div>
 
       {/* Persistent selection bar */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-eco-border-light bg-eco-surface shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
         <div className="mx-auto max-w-5xl px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
-          <p className="mb-3 text-center text-sm text-[#5C5A55]">
+          <p className="mb-3 text-center text-sm text-eco-muted">
             {count} selected
             {!ready && (
               <span> — pick at least {MIN_SEED_SELECTIONS} to continue.</span>
@@ -154,7 +154,7 @@ export function SeedPicker() {
             type="button"
             onClick={addToLibrary}
             disabled={!ready}
-            className="w-full rounded-full bg-[#2D4B2D] py-3.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-full bg-eco-tertiary py-3.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Add to my library →
           </button>
@@ -180,7 +180,7 @@ function SeedListRow({
       aria-pressed={selected}
       className={cn(
         "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors",
-        selected ? "bg-[#2D4B2D]/5" : "hover:bg-black/[0.02]",
+        selected ? "bg-eco-tertiary/5" : "hover:bg-eco-hover",
       )}
     >
       <SourceThumbnail
@@ -189,10 +189,10 @@ function SeedListRow({
         iconClassName="h-4 w-4"
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-sans text-sm font-medium text-[#1C1C1A]">
+        <p className="truncate font-sans text-sm font-medium text-eco-heading">
           {item.title}
         </p>
-        <p className="mt-0.5 truncate text-xs text-[#5C5A55]">
+        <p className="mt-0.5 truncate text-xs text-eco-muted">
           {item.platform === "youtube" ? "Video" : "Article"} · {item.summary}
         </p>
       </div>
@@ -200,8 +200,8 @@ function SeedListRow({
         className={cn(
           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
           selected
-            ? "border-[#2D4B2D] bg-[#2D4B2D] text-white"
-            : "border-stone-300 bg-white",
+            ? "border-eco-tertiary bg-eco-tertiary text-white"
+            : "border-eco-border bg-eco-surface",
         )}
       >
         {selected && <Check className="h-4 w-4" strokeWidth={3} />}

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Gloock, Inter, Noto_Naskh_Arabic } from "next/font/google";
 import { AuthAwareShell } from "@/components/auth-aware-shell";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const gloock = Gloock({
@@ -57,9 +58,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${gloock.variable} ${inter.variable} ${notoNaskhArabic.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${gloock.variable} ${inter.variable} ${notoNaskhArabic.variable}`}
+    >
       <body className={`${gloock.variable} ${inter.variable} ${notoNaskhArabic.variable}`}>
-        <AuthAwareShell>{children}</AuthAwareShell>
+        <ThemeProvider>
+          <AuthAwareShell>{children}</AuthAwareShell>
+        </ThemeProvider>
       </body>
     </html>
   );

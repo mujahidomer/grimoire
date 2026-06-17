@@ -60,7 +60,7 @@ export function DeleteItemButton({
           onClick={() => !deleting && setOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-card border border-eco-border bg-white/90 p-5 shadow-eco-lg backdrop-blur-eco"
+            className="w-full max-w-md rounded-card border border-eco-border bg-eco-surface-raised p-5 shadow-eco-lg backdrop-blur-eco"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">

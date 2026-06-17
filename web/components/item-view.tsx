@@ -103,7 +103,7 @@ function SacredPassageCard({ passage }: { passage: PlainObject }) {
   const source = passage.source;
 
   return (
-    <div className="rounded-xl border border-black/[0.06] bg-white p-5 shadow-eco-sm">
+    <div className="rounded-xl border border-eco-border-subtle bg-eco-surface p-5 shadow-eco-sm">
       {typeLabel && (
         <p className="mb-3 font-sans text-label-md font-medium uppercase tracking-wide text-eco-foreground/65">
           {typeLabel}
@@ -154,7 +154,7 @@ function TakeawayTable({ rows }: { rows: PlainObject[] }) {
             {cols.map((c) => (
               <th
                 key={c}
-                className="border-b border-black/10 py-2 pr-4 font-sans text-label-md font-medium uppercase tracking-wide text-eco-foreground/65"
+                className="border-b border-eco-border-emphasis py-2 pr-4 font-sans text-label-md font-medium uppercase tracking-wide text-eco-foreground/65"
               >
                 {prettyKey(c)}
               </th>
@@ -167,7 +167,7 @@ function TakeawayTable({ rows }: { rows: PlainObject[] }) {
               {cols.map((c) => (
                 <td
                   key={c}
-                  className="border-b border-black/[0.06] py-2 pr-4 prose-reading"
+                  className="border-b border-eco-border-subtle py-2 pr-4 prose-reading"
                 >
                   {cellText(row[c])}
                 </td>
@@ -187,7 +187,7 @@ function TakeawayCards({ items, depth }: { items: PlainObject[]; depth: number }
       {items.map((obj, i) => (
         <div
           key={i}
-          className="rounded-xl border border-black/[0.06] bg-white p-4 shadow-eco-sm"
+          className="rounded-xl border border-eco-border-subtle bg-eco-surface p-4 shadow-eco-sm"
         >
           {renderObject(obj, depth + 1)}
         </div>
@@ -279,13 +279,13 @@ function renderObject(
     : "font-sans text-body-md font-medium capitalize text-eco-foreground/85";
 
   return (
-    <div className={topLevel ? "space-y-6" : "space-y-3 border-l border-black/[0.06] pl-4"}>
+    <div className={topLevel ? "space-y-6" : "space-y-3 border-l border-eco-border-subtle pl-4"}>
       {entries.map(([key, v]) => (
         <div
           key={key}
           className={
             topLevel
-              ? "space-y-2 border-t border-black/[0.06] pt-4 first:border-t-0 first:pt-0"
+              ? "space-y-2 border-t border-eco-border-subtle pt-4 first:border-t-0 first:pt-0"
               : "space-y-1.5"
           }
         >
@@ -401,7 +401,7 @@ export function ItemView({ item }: { item: Item }) {
           <DeleteItemButton itemId={item.id} itemTitle={item.title} />
         </div>
 
-        <hr className="my-8 border-black/[0.06]" />
+        <hr className="my-8 border-eco-border-subtle" />
 
         {item.summary && (
           <section className="mb-10">
@@ -456,7 +456,7 @@ export function ItemView({ item }: { item: Item }) {
               {resources.map((r) => (
                 <li
                   key={r.id ?? r.source_url}
-                  className="rounded-xl border border-black/[0.06] bg-white p-4 shadow-eco-sm"
+                  className="rounded-xl border border-eco-border-subtle bg-eco-surface p-4 shadow-eco-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

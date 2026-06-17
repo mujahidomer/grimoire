@@ -30,8 +30,8 @@ export function Toaster() {
           className={cn(
             "pointer-events-auto flex items-start gap-2 rounded-xl border px-4 py-3 shadow-eco-lg backdrop-blur-eco",
             toast.type === "success"
-              ? "border-eco-border bg-white/95 text-eco-secondary"
-              : "border-rose-200 bg-white/95 text-rose-700",
+              ? "border-eco-border bg-eco-surface-raised text-eco-secondary"
+              : "border-rose-200 bg-eco-surface-raised text-rose-700",
           )}
         >
           {toast.type === "success" ? (

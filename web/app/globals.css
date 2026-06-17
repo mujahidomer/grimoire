@@ -19,7 +19,60 @@
   --eco-on-surface: #2D3B23;
   --eco-inverse: #FFFFFF;
   --eco-muted: #5E6B52;
+  --eco-hover: rgba(0, 0, 0, 0.03);
+  --eco-hover-strong: rgba(0, 0, 0, 0.04);
+  --eco-border-subtle: rgba(0, 0, 0, 0.06);
+  --eco-border-muted: rgba(0, 0, 0, 0.08);
+  --eco-border-emphasis: rgba(0, 0, 0, 0.12);
+  --eco-input: rgba(255, 255, 255, 0.6);
+  --eco-input-solid: rgba(255, 255, 255, 0.8);
+  --eco-surface-raised: rgba(255, 255, 255, 0.9);
+  --eco-surface-hover: rgba(255, 255, 255, 0.9);
+  --eco-kbd-bg: rgba(0, 0, 0, 0.03);
+  --eco-overlay: rgba(45, 59, 35, 0.25);
+  --eco-shadow: rgba(0, 0, 0, 0.08);
+  --eco-glass-bg: rgba(255, 255, 255, 0.6);
+  --eco-badge-bg: rgba(161, 184, 135, 0.1);
+  --eco-badge-text: #5E6B52;
+  --eco-badge-border: rgba(161, 184, 135, 0.14);
+  --eco-on-accent: #0D120D;
   --sidebar-width: 240px;
+}
+
+.dark {
+  --eco-primary: #A8C090;
+  --eco-secondary: #E8EDE4;
+  --eco-tertiary: #8BAD72;
+  --eco-text: #C8D4C0;
+  --eco-border: #3D4F35;
+  --eco-border-light: #2A3528;
+  --eco-card: #1A2118;
+  --eco-background: #121612;
+  --eco-sidebar: #1A1F1A;
+  --eco-canvas: #121612;
+  --eco-main: #0F140F;
+  --eco-surface: #1E241E;
+  --eco-heading: #E8EDE4;
+  --eco-on-surface: #E0E8DA;
+  --eco-inverse: #121612;
+  --eco-muted: #8A9A82;
+  --eco-hover: rgba(255, 255, 255, 0.06);
+  --eco-hover-strong: rgba(255, 255, 255, 0.08);
+  --eco-border-subtle: rgba(255, 255, 255, 0.08);
+  --eco-border-muted: rgba(255, 255, 255, 0.1);
+  --eco-border-emphasis: rgba(255, 255, 255, 0.14);
+  --eco-input: rgba(30, 36, 30, 0.8);
+  --eco-input-solid: rgba(30, 36, 30, 0.95);
+  --eco-surface-raised: rgba(30, 36, 30, 0.95);
+  --eco-surface-hover: rgba(38, 46, 38, 0.95);
+  --eco-kbd-bg: rgba(255, 255, 255, 0.06);
+  --eco-overlay: rgba(0, 0, 0, 0.5);
+  --eco-shadow: rgba(0, 0, 0, 0.35);
+  --eco-glass-bg: rgba(30, 36, 30, 0.75);
+  --eco-badge-bg: rgba(168, 192, 144, 0.1);
+  --eco-badge-text: #9AAD8E;
+  --eco-badge-border: rgba(255, 255, 255, 0.05);
+  --eco-on-accent: #121612;
 }
 
 @layer base {
@@ -88,9 +141,9 @@
     flex-shrink: 0;
     flex-direction: column;
     height: 100%;
-    border-right: 1px solid rgba(0, 0, 0, 0.06);
+    border-right: 1px solid var(--eco-border-subtle);
     background-color: var(--eco-sidebar);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 4px 0 24px var(--eco-shadow);
   }
 
   @media (min-width: 1024px) {
@@ -114,11 +167,11 @@
     width: 100%;
     flex-shrink: 0;
     flex-direction: column;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    border-top: 1px solid var(--eco-border-subtle);
     border-left: none;
     border-radius: 16px 16px 0 0;
     background-color: var(--eco-surface);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -4px 24px var(--eco-shadow);
   }
 
   @media (min-width: 1024px) {
@@ -129,7 +182,7 @@
       max-height: none;
       width: 360px;
       border-top: none;
-      border-left: 1px solid rgba(0, 0, 0, 0.06);
+      border-left: 1px solid var(--eco-border-subtle);
       border-radius: 0;
       background-color: var(--eco-sidebar);
       backdrop-filter: none;
@@ -142,7 +195,7 @@
     position: fixed;
     inset: 0;
     z-index: 40;
-    background-color: rgba(45, 59, 35, 0.25);
+    background-color: var(--eco-overlay);
   }
 
   @media (min-width: 1024px) {
@@ -183,7 +236,7 @@
 
   .glass {
     border: 1px solid color-mix(in srgb, var(--eco-border) 40%, transparent);
-    background: color-mix(in srgb, white 60%, transparent);
+    background: var(--eco-glass-bg);
     backdrop-filter: blur(12px);
   }
 
@@ -283,6 +336,24 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  .digest-table thead tr,
+  .digest-table tbody tr {
+    position: relative;
+    border: none;
+  }
+
+  .digest-table thead tr::after,
+  .digest-table tbody tr:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    right: 1rem;
+    bottom: 0;
+    left: 1rem;
+    height: 1px;
+    background-color: var(--eco-border-subtle);
+    opacity: 0.55;
   }
 
   @media (prefers-reduced-motion: reduce) {
