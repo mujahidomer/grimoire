@@ -73,19 +73,23 @@ export interface Highlight {
 export interface EntityDetail {
   command?: string | null; // skill: the / command
   what_it_does?: string | null; // skill/tool: one-liner
-  arabic?: string | null; // dua/hadith
-  translation?: string | null; // dua/hadith
+  arabic?: string | null; // dua/hadith/quranic_verse
+  translation?: string | null; // dua/hadith/quranic_verse
+  source?: string | null; // dua/hadith/quranic_verse: reference
+  transliteration?: string | null; // quranic_verse: romanized pronunciation
+  when_to_use?: string | null; // dua: when to recite
   [key: string]: unknown;
 }
 
 // One unified, actionable named thing extracted from a save. Stored on
 // items.entities. Replaces the old per-type skills/highlights extraction.
 export interface Entity {
-  type: string; // tool | skill | dua | hadith | book | workflow | resource | ...
+  type: string; // tool | skill | dua | hadith | quranic_verse | book | workflow | resource | ...
   name: string;
   url: string | null;
   category_path: string[]; // broad → specific nesting; may be empty
   detail?: EntityDetail | null;
+  hidden?: boolean; // when true, hidden from the digest view (reversible)
 }
 
 export interface DigestItem {
