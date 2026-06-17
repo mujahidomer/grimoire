@@ -3,10 +3,12 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
+  BookMarked,
   GitBranch,
   Layers,
   Library,
   Lightbulb,
+  Moon,
   UtensilsCrossed,
   Wrench,
   Zap,
@@ -25,6 +27,9 @@ const ICON_BY_TYPE: Record<string, LucideIcon> = {
   concept: Lightbulb,
   workflow: GitBranch,
   islamic: BookOpen,
+  dua: Moon,
+  hadith: BookOpen,
+  book: BookMarked,
   recipe: UtensilsCrossed,
   resource: Library,
 };

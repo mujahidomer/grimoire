@@ -74,7 +74,8 @@ create table if not exists items (
   artifact_name       text,
   artifact_url        text,
   artifact_url_source text,                                -- content|caption|linked resource
-  skills              jsonb,                               -- skill-type saves only: [{name, what_it_does, install_command, source_url}]
+  skills              jsonb,                               -- DEPRECATED — superseded by entities; kept for transition. skill-type saves only.
+  entities            jsonb,                               -- unified actionable entities: [{type, name, url, category_path, detail}]
   -- DEPRECATED — legacy/migration only; null on all new items.
   drive_file_id       text,
   drive_file_link     text,
@@ -98,6 +99,9 @@ create index if not exists items_search_idx       on items using gin (search_vec
 -- Backfill for deployments created before the skills column existed (create
 -- table if not exists is a no-op on an existing table).
 alter table items add column if not exists skills jsonb;
+-- Unified entities array. Replaces the separate skills + highlights extraction;
+-- skills is kept for now during the transition (don't drop yet).
+alter table items add column if not exists entities jsonb;
 alter table items add column if not exists data_version text default 'v1';
 alter table items add column if not exists subcategory text;
 update items set data_version = 'v1' where data_version is null;

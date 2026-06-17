@@ -68,6 +68,26 @@ export interface Highlight {
   value: string;
 }
 
+// Type-specific extras on an entity. Open-ended (the classifier may invent
+// types), but the fields the dashboard reads are named explicitly.
+export interface EntityDetail {
+  command?: string | null; // skill: the / command
+  what_it_does?: string | null; // skill/tool: one-liner
+  arabic?: string | null; // dua/hadith
+  translation?: string | null; // dua/hadith
+  [key: string]: unknown;
+}
+
+// One unified, actionable named thing extracted from a save. Stored on
+// items.entities. Replaces the old per-type skills/highlights extraction.
+export interface Entity {
+  type: string; // tool | skill | dua | hadith | book | workflow | resource | ...
+  name: string;
+  url: string | null;
+  category_path: string[]; // broad → specific nesting; may be empty
+  detail?: EntityDetail | null;
+}
+
 export interface DigestItem {
   id: string;
   title: string;
@@ -75,6 +95,7 @@ export interface DigestItem {
   artifact_name: string | null;
   artifact_url: string | null;
   skills?: Skill[] | null;
+  entities?: Entity[] | null;
   key_takeaways?: TakeawayValue;
   source_url: string;
   date_saved: string;
@@ -84,14 +105,10 @@ export interface DigestItem {
   tags: Tag[];
 }
 
-export interface DigestGroup {
-  type: string;
-  label: string;
-  items: DigestItem[];
-}
-
+// The digest is now a flat list of items carrying entities; the dashboard
+// flattens, dedupes, and groups by entity.type client-side.
 export interface DigestResponse {
-  groups: DigestGroup[];
+  items: DigestItem[];
 }
 
 export interface ChatSource {
