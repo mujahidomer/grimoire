@@ -66,7 +66,7 @@ export function ChatDock() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-surface border border-black/[0.12] bg-eco-surface px-4 py-3 font-sans text-body-md font-medium text-eco-on-surface shadow-eco-lg transition-colors duration-eco hover:bg-white/90"
+          className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-surface border border-eco-border-emphasis bg-eco-surface px-4 py-3 font-sans text-body-md font-medium text-eco-on-surface shadow-eco-lg transition-colors duration-eco hover:bg-eco-surface-raised"
         >
           <MessageCircle className="h-4 w-4" />
           Ask Grimoire
@@ -79,7 +79,7 @@ export function ChatDock() {
             className="fixed inset-0 z-30 bg-eco-secondary/20 sm:bg-transparent"
             onClick={close}
           />
-          <div className="fixed inset-x-0 bottom-0 z-40 flex h-[80vh] flex-col rounded-t-card border border-eco-border bg-white/80 shadow-eco-lg backdrop-blur-eco sm:inset-y-0 sm:left-auto sm:right-0 sm:h-full sm:w-[400px] sm:rounded-none sm:border-y-0 sm:border-r-0">
+          <div className="fixed inset-x-0 bottom-0 z-40 flex h-[80vh] flex-col rounded-t-card border border-eco-border bg-eco-input-solid shadow-eco-lg backdrop-blur-eco sm:inset-y-0 sm:left-auto sm:right-0 sm:h-full sm:w-[400px] sm:rounded-none sm:border-y-0 sm:border-r-0">
             <div className="flex items-center justify-between border-b border-eco-border/40 px-5 py-4">
               <span className="font-display text-lg font-light text-eco-on-surface">
                 Ask Grimoire
@@ -122,7 +122,7 @@ export function ChatDock() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask a question…"
-                className="h-10 flex-1 rounded-surface border border-eco-border bg-white/60 px-3 font-sans text-body-md text-eco-text backdrop-blur-eco placeholder:text-eco-text/60 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
+                className="h-10 flex-1 rounded-surface border border-eco-border bg-eco-input px-3 font-sans text-body-md text-eco-text backdrop-blur-eco placeholder:text-eco-text/60 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
               />
               <Button type="submit" size="icon" disabled={loading || !input.trim()}>
                 <Send className="h-4 w-4" />

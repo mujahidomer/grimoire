@@ -57,7 +57,7 @@ export function ChatTurn({
         <div className="space-y-3">
           <ChatMarkdown content={turn.answer} />
           {turn.sources.length > 0 && (
-            <div className="space-y-1.5 border-t border-black/[0.06] pt-3">
+            <div className="space-y-1.5 border-t border-eco-border-subtle pt-3">
               <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
                 Sources
               </p>

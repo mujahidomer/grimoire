@@ -25,7 +25,7 @@ export function ChatSourceLink({
     <Link
       href={`/item/${source.id}`}
       onClick={onNavigate}
-      className="group flex items-center gap-3 rounded-lg border border-black/[0.06] bg-white/60 p-2 transition-colors duration-eco hover:border-eco-primary/30 hover:bg-white"
+      className="group flex items-center gap-3 rounded-lg border border-eco-border-subtle bg-eco-input p-2 transition-colors duration-eco hover:border-eco-primary/30 hover:bg-eco-surface"
     >
       <SourceThumbnail
         url={source.source_url}

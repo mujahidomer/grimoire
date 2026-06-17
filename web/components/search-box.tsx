@@ -27,12 +27,12 @@ export function SearchBox({
         className={cn(
           "h-9 w-full rounded-lg border pl-9 font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/55 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary",
           isSidebar
-            ? "border-black/[0.08] bg-white/80 pr-12"
-            : "border-eco-border bg-white/60 pr-3 backdrop-blur-eco",
+            ? "border-eco-border-muted bg-eco-input-solid pr-12"
+            : "border-eco-border bg-eco-input pr-3 backdrop-blur-eco",
         )}
       />
       {isSidebar && (
-        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-black/[0.08] bg-black/[0.03] px-1.5 py-0.5 font-sans text-[10px] text-eco-foreground/55">
+        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-eco-border-muted bg-eco-kbd-bg px-1.5 py-0.5 font-sans text-[10px] text-eco-foreground/55">
           ⌘K
         </kbd>
       )}

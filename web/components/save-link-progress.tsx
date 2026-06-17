@@ -12,7 +12,7 @@ export function SaveLinkProgress({ stepIndex }: { stepIndex: number }) {
       role="status"
       aria-live="polite"
       aria-busy="true"
-      className="w-full border-t border-black/[0.06] px-1 pt-3"
+      className="w-full border-t border-eco-border-subtle px-1 pt-3"
     >
       <p className="font-sans text-label-md font-medium text-eco-secondary">
         {currentStep.label}…

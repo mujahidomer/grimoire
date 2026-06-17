@@ -51,7 +51,7 @@ export default function SettingsPage() {
               href={SHORTCUT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-surface border border-black/[0.12] bg-eco-surface px-4 py-2 font-sans text-body-md font-medium text-eco-on-surface transition-colors duration-eco hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary focus-visible:ring-offset-2"
+              className="inline-flex items-center justify-center gap-2 rounded-surface border border-eco-border-emphasis bg-eco-surface px-4 py-2 font-sans text-body-md font-medium text-eco-on-surface transition-colors duration-eco hover:bg-eco-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary focus-visible:ring-offset-2"
             >
               Add iOS Shortcut
             </a>

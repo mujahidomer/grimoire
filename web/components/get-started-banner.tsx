@@ -26,11 +26,11 @@ export function GetStartedBanner() {
 
   if (allDone) {
     return (
-      <div className="relative mb-6 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+      <div className="relative mb-6 overflow-hidden rounded-2xl border border-eco-border-light bg-eco-surface">
         <button
           type="button"
           onClick={dismissWelcome}
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-eco-foreground/55 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground/85"
+          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-eco-foreground/55 transition-colors hover:bg-eco-hover-strong hover:text-eco-foreground/85"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
@@ -49,7 +49,7 @@ export function GetStartedBanner() {
   }
 
   return (
-    <div className="mb-6 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+    <div className="mb-6 overflow-hidden rounded-2xl border border-eco-border-light bg-eco-surface">
       <div className="px-5 py-4">
         <h2 className="font-display text-lg tracking-tight text-eco-heading">
           Get started with Grimoire
@@ -90,7 +90,7 @@ function ChecklistItem({
   const content = (
     <>
       {done ? (
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2D4B2D] text-white">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-eco-tertiary text-white">
           <Check className="h-3 w-3" strokeWidth={3} />
         </span>
       ) : (
@@ -109,7 +109,7 @@ function ChecklistItem({
   );
 
   const itemClass =
-    "flex items-center gap-2.5 rounded-lg -mx-1 px-1 py-0.5 transition-colors hover:bg-black/[0.03]";
+    "flex items-center gap-2.5 rounded-lg -mx-1 px-1 py-0.5 transition-colors hover:bg-eco-hover";
 
   if (done) {
     return <li className="flex items-center gap-2.5">{content}</li>;

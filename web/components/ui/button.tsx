@@ -6,13 +6,13 @@ type Size = "default" | "sm" | "icon";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-eco-surface text-eco-on-surface hover:bg-white/90 border border-black/[0.12] focus-visible:ring-eco-primary",
+    "bg-eco-surface text-eco-on-surface hover:bg-eco-surface-raised border border-eco-border-emphasis focus-visible:ring-eco-primary",
   secondary:
-    "bg-eco-primary text-eco-on-surface hover:bg-eco-tertiary hover:text-white focus-visible:ring-eco-primary",
+    "bg-eco-primary text-eco-on-accent hover:bg-eco-tertiary hover:text-eco-on-accent [&_svg]:text-eco-on-accent focus-visible:ring-eco-primary",
   ghost:
     "text-eco-foreground hover:bg-eco-primary/10 focus-visible:ring-eco-border",
   outline:
-    "border border-eco-border bg-white/60 text-eco-text hover:bg-eco-primary/10 focus-visible:ring-eco-border",
+    "border border-eco-border bg-eco-input text-eco-text hover:bg-eco-primary/10 focus-visible:ring-eco-border",
 };
 
 const sizes: Record<Size, string> = {

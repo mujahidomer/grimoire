@@ -101,7 +101,7 @@ export function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-black/[0.03]"
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-eco-hover"
       >
         {userInfo.avatarUrl ? (
           <img
@@ -139,7 +139,7 @@ export function UserMenu() {
             href="/settings"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex w-full items-center gap-2 px-3 py-2.5 font-sans text-body-md text-eco-foreground transition-colors hover:bg-black/[0.03]"
+            className="flex w-full items-center gap-2 px-3 py-2.5 font-sans text-body-md text-eco-foreground transition-colors hover:bg-eco-hover"
           >
             <Settings className="h-4 w-4 opacity-60" />
             Settings
@@ -149,7 +149,7 @@ export function UserMenu() {
             role="menuitem"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="flex w-full items-center gap-2 px-3 py-2.5 font-sans text-body-md text-eco-foreground transition-colors hover:bg-black/[0.03] disabled:opacity-50"
+            className="flex w-full items-center gap-2 px-3 py-2.5 font-sans text-body-md text-eco-foreground transition-colors hover:bg-eco-hover disabled:opacity-50"
           >
             <LogOut className="h-4 w-4 opacity-60" />
             {signingOut ? "Signing out…" : "Sign out"}

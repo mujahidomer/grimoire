@@ -17,7 +17,7 @@ export function StarterLibraryLoader({
   return (
     <div className="py-20 text-center">
       <Loader2
-        className="mx-auto h-8 w-8 animate-spin text-[#2D4B2D]"
+        className="mx-auto h-8 w-8 animate-spin text-eco-tertiary"
         aria-hidden
       />
       <h2 className="mt-6 font-display text-xl tracking-tight text-eco-heading">
@@ -31,9 +31,9 @@ export function StarterLibraryLoader({
 
       {expected > 0 && (
         <div className="mx-auto mt-8 max-w-xs">
-          <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+          <div className="h-1.5 overflow-hidden rounded-full bg-eco-border-subtle">
             <div
-              className="h-full rounded-full bg-[#2D4B2D] transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-eco-tertiary transition-all duration-500 ease-out"
               style={{ width: `${Math.max(progress, phase === "seeding" ? 8 : 15)}%` }}
             />
           </div>

@@ -46,10 +46,10 @@ export function Landing() {
   const problem = SEGMENT_BY_ID[active].problem;
 
   return (
-    <div className="min-h-screen bg-[#EEEAE4] text-[#1C1C1A]">
+    <div className="min-h-screen bg-eco-main text-eco-heading">
       {/* Nav */}
       <nav className="flex justify-center px-6 py-8">
-        <span className="font-display text-2xl tracking-tight text-[#1C1C1A]">
+        <span className="font-display text-2xl tracking-tight text-eco-heading">
           Grimoire
         </span>
       </nav>
@@ -63,10 +63,10 @@ export function Landing() {
           height={80}
           className="mx-auto mb-8 h-20 w-20"
         />
-        <h1 className="font-display text-4xl leading-[1.1] tracking-tight text-[#1C1C1A] sm:text-5xl">
+        <h1 className="font-display text-4xl leading-[1.1] tracking-tight text-eco-heading sm:text-5xl">
           Your saved knowledge, finally answerable.
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[#5C5A55]">
+        <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-eco-muted">
           You bookmark things meaning to come back. Grimoire extracts the
           knowledge inside every link so you can ask questions across everything
           you&apos;ve ever saved.
@@ -74,13 +74,13 @@ export function Landing() {
         <div className="mt-10 flex flex-col items-center gap-4">
           <a
             href="#pick"
-            className="rounded-full bg-[#2D4B2D] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            className="rounded-full bg-eco-tertiary px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
           >
             Get started
           </a>
           <Link
             href="/login"
-            className="text-sm font-medium text-[#2D4B2D] hover:underline"
+            className="text-sm font-medium text-eco-tertiary hover:underline"
           >
             Sign in
           </Link>
@@ -88,22 +88,22 @@ export function Landing() {
       </header>
 
       {/* How it works */}
-      <section className="border-t border-stone-200/70 px-6 py-20">
+      <section className="border-t border-eco-border-light/70 px-6 py-20">
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-center font-display text-3xl tracking-tight text-[#1C1C1A]">
+          <h2 className="text-center font-display text-3xl tracking-tight text-eco-heading">
             How it works
           </h2>
           <div className="mt-12 grid gap-10 md:grid-cols-3">
             {STEPS.map((s) => (
               <div
                 key={s.n}
-                className="rounded-2xl border border-stone-200 bg-white p-6"
+                className="rounded-2xl border border-eco-border-light bg-eco-surface p-6"
               >
-                <span className="font-display text-2xl text-[#2D4B2D]">{s.n}</span>
-                <h3 className="mt-3 font-display text-lg tracking-tight text-[#1C1C1A]">
+                <span className="font-display text-2xl text-eco-tertiary">{s.n}</span>
+                <h3 className="mt-3 font-display text-lg tracking-tight text-eco-heading">
                   {s.title}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-[#5C5A55]">
+                <p className="mt-2 text-sm leading-relaxed text-eco-muted">
                   {s.body}
                 </p>
               </div>
@@ -113,12 +113,12 @@ export function Landing() {
       </section>
 
       {/* Segment picker */}
-      <section id="pick" className="border-t border-stone-200/70 px-6 py-20">
+      <section id="pick" className="border-t border-eco-border-light/70 px-6 py-20">
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="font-display text-3xl tracking-tight text-[#1C1C1A]">
+          <h2 className="font-display text-3xl tracking-tight text-eco-heading">
             What do you save most?
           </h2>
-          <p className="mt-3 text-sm text-[#5C5A55]">
+          <p className="mt-3 text-sm text-eco-muted">
             Pick what fits. We&apos;ll build you a starter library.
           </p>
 
@@ -134,8 +134,8 @@ export function Landing() {
                   disabled={disabled}
                   className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                     selected
-                      ? "border-[#2D4B2D] bg-[#2D4B2D] text-white"
-                      : "border-stone-300 bg-white text-[#1C1C1A] hover:border-stone-400"
+                      ? "border-eco-tertiary bg-eco-tertiary text-white"
+                      : "border-eco-border bg-eco-surface text-eco-heading hover:border-eco-border"
                   } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
                 >
                   {s.label}
@@ -147,7 +147,7 @@ export function Landing() {
           {/* Problem copy for the selected segment */}
           {picked.length > 0 && (
             <div key={active} className="mx-auto mt-10 max-w-xl fade-in">
-              <p className="text-base leading-relaxed text-[#1C1C1A]">{problem}</p>
+              <p className="text-base leading-relaxed text-eco-heading">{problem}</p>
             </div>
           )}
 
@@ -156,7 +156,7 @@ export function Landing() {
               type="button"
               onClick={getStarted}
               disabled={picked.length === 0}
-              className="rounded-full bg-[#2D4B2D] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-full bg-eco-tertiary px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Get started →
             </button>
@@ -165,9 +165,9 @@ export function Landing() {
       </section>
 
       {/* Limitation / preview footer */}
-      <section className="border-t border-stone-200/70 px-6 py-20">
+      <section className="border-t border-eco-border-light/70 px-6 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs leading-relaxed text-[#5C5A55]">
+          <p className="text-xs leading-relaxed text-eco-muted">
             This is an early version. Saving works via iOS Shortcut today. A
             native share extension, richer UI, and MCP integrations are coming.
           </p>

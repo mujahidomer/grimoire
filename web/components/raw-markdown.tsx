@@ -44,7 +44,7 @@ export function RawMarkdownButton({ itemId }: { itemId: string }) {
           onClick={() => setOpen(false)}
         >
           <div
-            className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-card border border-eco-border bg-white/90 shadow-eco-lg backdrop-blur-eco"
+            className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-card border border-eco-border bg-eco-surface-raised shadow-eco-lg backdrop-blur-eco"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-eco-border/40 px-5 py-3">

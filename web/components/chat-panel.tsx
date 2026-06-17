@@ -146,7 +146,7 @@ export function ChatPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask a question…"
-          className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-3 font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/55 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
+          className="h-9 min-w-0 flex-1 rounded-lg border border-eco-border-muted bg-eco-surface px-3 font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/55 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
         />
         <Button type="submit" size="sm" disabled={loading || !input.trim()}>
           Send

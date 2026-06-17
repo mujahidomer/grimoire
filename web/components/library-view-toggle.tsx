@@ -13,7 +13,7 @@ export function LibraryViewToggle({
 }) {
   return (
     <div
-      className="inline-flex rounded-lg border border-black/[0.08] bg-white/60 p-0.5"
+      className="inline-flex rounded-lg border border-eco-border-muted bg-eco-input p-0.5"
       role="group"
       aria-label="Library view"
     >

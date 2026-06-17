@@ -176,7 +176,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
               onClick={refresh}
               disabled={loading}
               className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/[0.08] bg-white/60 text-eco-foreground/65 transition-colors duration-eco hover:text-eco-heading disabled:opacity-50",
+                "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-eco-border-muted bg-eco-input text-eco-foreground/65 transition-colors duration-eco hover:text-eco-heading disabled:opacity-50",
               )}
               aria-label="Refresh library"
             >

@@ -78,7 +78,7 @@ export function LinkPreviewCard({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="group block overflow-hidden rounded-xl border border-black/[0.06] bg-white shadow-eco-sm transition-shadow duration-eco hover:shadow-eco"
+        className="group block overflow-hidden rounded-xl border border-eco-border-subtle bg-eco-surface shadow-eco-sm transition-shadow duration-eco hover:shadow-eco"
       >
         <div className="flex flex-row items-stretch">
           {showImage ? (
