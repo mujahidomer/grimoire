@@ -20,7 +20,7 @@ export function ShortcutGuide() {
       <div className="mx-auto max-w-2xl px-6 py-10">
         <Link
           href="/"
-          className="text-sm text-[#8A8780] transition-colors hover:text-[#1C1C1A]"
+          className="text-sm text-[#5C5A55] transition-colors hover:text-[#1C1C1A]"
         >
           ← Back to library
         </Link>
@@ -29,7 +29,7 @@ export function ShortcutGuide() {
           <h1 className="font-display text-3xl leading-tight tracking-tight">
             Save from anywhere in one tap
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-[#8A8780]">
+          <p className="mt-3 text-sm leading-relaxed text-[#5C5A55]">
             The Grimoire shortcut lets you save any link from any app without
             opening Grimoire. It&apos;s a one-time setup.
           </p>
@@ -77,7 +77,7 @@ export function ShortcutGuide() {
 
         {/* Section 3 — paste fallback */}
         <section className="mt-12 border-t border-stone-200 pt-8">
-          <p className="text-sm leading-relaxed text-[#8A8780]">
+          <p className="text-sm leading-relaxed text-[#5C5A55]">
             Don&apos;t have an iPhone or want to save from desktop? You can always
             paste any link directly into the chat bar in your library.
           </p>

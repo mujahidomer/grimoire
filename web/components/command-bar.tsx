@@ -164,7 +164,7 @@ export function CommandBar({
                 autoFocus
                 disabled={saving}
                 aria-busy={saving}
-                className="h-9 min-w-0 flex-1 basis-full bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/40 focus:outline-none disabled:opacity-60 sm:basis-auto"
+                className="h-9 min-w-0 flex-1 basis-full bg-transparent font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/55 focus:outline-none disabled:opacity-60 sm:basis-auto"
               />
               <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
                 <input

@@ -205,7 +205,7 @@ export function ShareHandler() {
       <div className="w-full max-w-md space-y-7">
         <div className="text-center">
           <h1 className="font-display text-2xl text-eco-heading">Grimoire</h1>
-          <p className="mt-1.5 font-sans text-body-md text-eco-foreground/60">
+          <p className="mt-1.5 font-sans text-body-md text-eco-foreground/75">
             {status === "saved"
               ? "Saved to your library"
               : status === "error"
@@ -218,7 +218,7 @@ export function ShareHandler() {
           {sharedUrl && (
             <div className="flex items-center gap-2.5 rounded-lg bg-eco-main px-3 py-2.5">
               <Link2
-                className="h-4 w-4 shrink-0 text-eco-foreground/40"
+                className="h-4 w-4 shrink-0 text-eco-foreground/55"
                 aria-hidden
               />
               <span className="min-w-0 flex-1 truncate font-sans text-body-md text-eco-on-surface">
@@ -242,7 +242,7 @@ export function ShareHandler() {
                 />
               ) : (
                 <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-eco-primary/10">
-                  <Globe className="h-6 w-6 text-eco-primary/50" aria-hidden />
+                  <Globe className="h-6 w-6 text-eco-primary/65" aria-hidden />
                 </span>
               )}
               <div className="min-w-0 flex-1">
@@ -251,11 +251,11 @@ export function ShareHandler() {
                     {truncate(cardTitle, 90)}
                   </p>
                 ) : (
-                  <p className="font-sans text-base font-semibold text-eco-heading/40">
+                  <p className="font-sans text-base font-semibold text-eco-heading/60">
                     Reading link…
                   </p>
                 )}
-                <p className="mt-1 truncate font-sans text-sm text-eco-foreground/50">
+                <p className="mt-1 truncate font-sans text-sm text-eco-foreground/65">
                   {domain}
                 </p>
               </div>
@@ -290,7 +290,7 @@ export function ShareHandler() {
                         "flex items-center gap-3 font-sans text-label-md",
                         done && "font-medium text-eco-on-surface",
                         active && "font-medium text-eco-secondary",
-                        !done && !active && "font-normal text-eco-foreground/40",
+                        !done && !active && "font-normal text-eco-foreground/55",
                       )}
                     >
                       {done ? (

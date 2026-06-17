@@ -23,7 +23,7 @@ export function StarterLibraryLoader({
       <h2 className="mt-6 font-display text-xl tracking-tight text-eco-heading">
         Building your starter library
       </h2>
-      <p className="mx-auto mt-2 max-w-sm font-sans text-body-md text-eco-foreground/60">
+      <p className="mx-auto mt-2 max-w-sm font-sans text-body-md text-eco-foreground/75">
         {phase === "seeding"
           ? "Your selected items are being prepared — this usually takes a few seconds."
           : "Almost there — loading your items into the library."}

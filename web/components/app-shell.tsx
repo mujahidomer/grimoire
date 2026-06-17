@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <LibraryProvider>
       <div className="app-shell">
         {isDevAuthBypassEnabled() && (
-          <p className="shrink-0 border-b border-black/[0.06] bg-black/[0.02] px-3 py-1 text-center font-sans text-[11px] leading-none text-eco-foreground/45">
+          <p className="shrink-0 border-b border-black/[0.06] bg-black/[0.02] px-3 py-1 text-center font-sans text-[11px] leading-none text-eco-foreground/75">
             Local dev mode
           </p>
         )}
@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={handleToggleSidebar}
-                className="rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+                className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
                 aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               >
                 <PanelLeft className="h-4 w-4" />
@@ -155,7 +155,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   "rounded-lg p-2 transition-colors hover:bg-black/[0.04]",
                   chatOpen
                     ? "text-eco-primary"
-                    : "text-eco-foreground/50 hover:text-eco-foreground",
+                    : "text-eco-foreground/65 hover:text-eco-foreground",
                 )}
                 aria-label={chatOpen ? "Close chat" : "Open chat"}
               >
@@ -167,7 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={handleToggleSidebar}
-              className="app-sidebar-show-btn hidden rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground lg:block"
+              className="app-sidebar-show-btn hidden rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground lg:block"
               aria-label="Show sidebar"
             >
               <PanelLeft className="h-4 w-4" />

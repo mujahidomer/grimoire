@@ -80,7 +80,7 @@ export function RawMarkdownButton({ itemId }: { itemId: string }) {
             </div>
             <div className="overflow-auto p-5 scrollbar-thin">
               {loading ? (
-                <div className="flex justify-center py-12 text-eco-foreground/50">
+                <div className="flex justify-center py-12 text-eco-foreground/65">
                   <Loader2 className="h-5 w-5 animate-spin" />
                 </div>
               ) : (

@@ -6,7 +6,7 @@ const SHORTCUT_URL = "SHORTCUT_URL_HERE";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50">
+    <h2 className="mb-3 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
       {children}
     </h2>
   );
@@ -17,7 +17,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
       <Link
         href="/"
-        className="mb-6 inline-flex items-center gap-1.5 font-sans text-body-md text-eco-foreground/70 transition-colors duration-eco hover:text-eco-primary"
+        className="mb-6 inline-flex items-center gap-1.5 font-sans text-body-md text-eco-foreground/85 transition-colors duration-eco hover:text-eco-primary"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
@@ -33,7 +33,7 @@ export default function SettingsPage() {
             <h3 className="mb-1.5 font-sans text-body-md font-medium text-eco-on-surface">
               Android
             </h3>
-            <p className="font-sans text-body-md text-eco-foreground/70">
+            <p className="font-sans text-body-md text-eco-foreground/85">
               Install Grimoire in Chrome, then use the Share button in any app
               to save directly to Grimoire.
             </p>
@@ -43,7 +43,7 @@ export default function SettingsPage() {
             <h3 className="mb-1.5 font-sans text-body-md font-medium text-eco-on-surface">
               iOS
             </h3>
-            <p className="mb-4 font-sans text-body-md text-eco-foreground/70">
+            <p className="mb-4 font-sans text-body-md text-eco-foreground/85">
               Add the Grimoire Shortcut, then use the Share button in any app to
               save directly to Grimoire.
             </p>

@@ -176,7 +176,7 @@ export function SourceIcon({
   const platform = getSourcePlatform(url);
 
   if (!platform) {
-    return <Globe className={cn("shrink-0 text-eco-foreground/40", className)} aria-hidden="true" />;
+    return <Globe className={cn("shrink-0 text-eco-foreground/55", className)} aria-hidden="true" />;
   }
 
   const { Icon, label } = platform;
@@ -196,11 +196,11 @@ export function SourceBadge({
     return (
       <span
         className={cn(
-          "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/[0.04] px-2.5 py-1 font-sans text-label-md text-eco-foreground/60",
+          "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/[0.04] px-2.5 py-1 font-sans text-label-md text-eco-foreground/75",
           className,
         )}
       >
-        <Globe className="h-3.5 w-3.5 shrink-0 text-eco-foreground/40" aria-hidden="true" />
+        <Globe className="h-3.5 w-3.5 shrink-0 text-eco-foreground/55" aria-hidden="true" />
         Web
       </span>
     );

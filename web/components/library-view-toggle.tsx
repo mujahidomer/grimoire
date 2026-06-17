@@ -25,7 +25,7 @@ export function LibraryViewToggle({
           "inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-eco",
           view === "list"
             ? "bg-eco-primary/20 text-eco-heading"
-            : "text-eco-foreground/50 hover:text-eco-heading",
+            : "text-eco-foreground/65 hover:text-eco-heading",
         )}
         aria-label="List view"
       >
@@ -39,7 +39,7 @@ export function LibraryViewToggle({
           "inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-eco",
           view === "grid"
             ? "bg-eco-primary/20 text-eco-heading"
-            : "text-eco-foreground/50 hover:text-eco-heading",
+            : "text-eco-foreground/65 hover:text-eco-heading",
         )}
         aria-label="Grid view"
       >

@@ -18,7 +18,7 @@ export function ItemCard({ item }: { item: Item }) {
     <Link href={`/item/${item.id}`} className="group block">
       <Card className="h-full p-8 shadow-eco-lg transition-shadow duration-eco group-hover:shadow-eco">
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3 text-label-md text-eco-primary/60">
+          <div className="flex items-center justify-between gap-3 text-label-md text-eco-primary/75">
             <span className="font-sans">
               {item.category} · {formatType(item.type)}
             </span>
@@ -32,7 +32,7 @@ export function ItemCard({ item }: { item: Item }) {
           </h3>
 
           {item.summary && (
-            <p className="prose-reading text-body-md text-eco-primary/70">
+            <p className="prose-reading text-body-md text-eco-primary/85">
               {truncate(item.summary, 120)}
             </p>
           )}
@@ -52,12 +52,12 @@ export function ItemCard({ item }: { item: Item }) {
                 <Badge key={tag.name} variant="default" className="bg-eco-secondary/15">
                   {tag.name}
                   {tag.confidence_pending && (
-                    <span className="text-eco-primary/50">?</span>
+                    <span className="text-eco-primary/65">?</span>
                   )}
                 </Badge>
               ))}
               {extraTags > 0 && (
-                <span className="font-sans text-label-md text-eco-primary/50">
+                <span className="font-sans text-label-md text-eco-primary/65">
                   +{extraTags} more
                 </span>
               )}

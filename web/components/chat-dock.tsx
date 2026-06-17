@@ -94,7 +94,7 @@ export function ChatDock() {
               className="flex-1 space-y-6 overflow-y-auto px-5 py-5 scrollbar-thin"
             >
               {turns.length === 0 && !loading && (
-                <p className="font-sans text-body-md text-eco-foreground/50">
+                <p className="font-sans text-body-md text-eco-foreground/65">
                   Ask a question about anything in your library.
                 </p>
               )}
@@ -107,7 +107,7 @@ export function ChatDock() {
               ))}
 
               {loading && (
-                <div className="flex items-center gap-2 text-eco-text/50">
+                <div className="flex items-center gap-2 text-eco-text/65">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="font-sans text-body-md">Thinking…</span>
                 </div>
@@ -122,7 +122,7 @@ export function ChatDock() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask a question…"
-                className="h-10 flex-1 rounded-surface border border-eco-border bg-white/60 px-3 font-sans text-body-md text-eco-text backdrop-blur-eco placeholder:text-eco-text/50 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
+                className="h-10 flex-1 rounded-surface border border-eco-border bg-white/60 px-3 font-sans text-body-md text-eco-text backdrop-blur-eco placeholder:text-eco-text/60 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
               />
               <Button type="submit" size="icon" disabled={loading || !input.trim()}>
                 <Send className="h-4 w-4" />

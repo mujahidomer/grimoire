@@ -17,7 +17,7 @@ export function SaveLinkProgress({ stepIndex }: { stepIndex: number }) {
       <p className="font-sans text-label-md font-medium text-eco-secondary">
         {currentStep.label}…
       </p>
-      <p className="mt-0.5 font-sans text-label-md text-eco-foreground/60">
+      <p className="mt-0.5 font-sans text-label-md text-eco-foreground/75">
         {currentStep.hint} This usually takes 10–30 seconds — please keep this
         tab open.
       </p>
@@ -32,7 +32,7 @@ export function SaveLinkProgress({ stepIndex }: { stepIndex: number }) {
               key={step.id}
               className={cn(
                 "flex items-start gap-2 font-sans text-label-md",
-                done && "text-eco-foreground/70",
+                done && "text-eco-foreground/85",
                 active && "text-eco-secondary",
                 !done && !active && "text-eco-foreground/35",
               )}

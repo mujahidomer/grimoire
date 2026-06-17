@@ -64,7 +64,7 @@ export function AnimatedPlaceholder({
     <span
       aria-hidden
       className={cn(
-        "pointer-events-none absolute inset-0 flex items-center truncate font-sans text-body-md text-eco-foreground/45 transition-all duration-300 ease-out motion-reduce:transition-none",
+        "pointer-events-none absolute inset-0 flex items-center truncate font-sans text-body-md text-eco-foreground/75 transition-all duration-300 ease-out motion-reduce:transition-none",
         shown ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
         className,
       )}

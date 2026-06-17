@@ -49,7 +49,7 @@ export function ChatTurn({
       <ChatQuestionBubble>{turn.question}</ChatQuestionBubble>
 
       {turn.empty ? (
-        <p className="prose-reading text-body-md text-eco-foreground/50">
+        <p className="prose-reading text-body-md text-eco-foreground/65">
           I don&apos;t have anything saved on that. Save some links on this
           topic and ask again.
         </p>
@@ -58,7 +58,7 @@ export function ChatTurn({
           <ChatMarkdown content={turn.answer} />
           {turn.sources.length > 0 && (
             <div className="space-y-1.5 border-t border-black/[0.06] pt-3">
-              <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50">
+              <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
                 Sources
               </p>
               <ul className="space-y-2">

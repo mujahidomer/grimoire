@@ -38,7 +38,7 @@ export function ChatSourceLink({
           {source.title}
         </p>
         {site && (
-          <p className="truncate font-sans text-label-md text-eco-foreground/45">
+          <p className="truncate font-sans text-label-md text-eco-foreground/75">
             {site}
           </p>
         )}

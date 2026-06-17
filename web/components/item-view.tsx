@@ -28,7 +28,7 @@ import { LinkPreviewCard } from "@/components/link-preview-card";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50">
+    <h2 className="mb-3 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
       {children}
     </h2>
   );
@@ -105,7 +105,7 @@ function SacredPassageCard({ passage }: { passage: PlainObject }) {
   return (
     <div className="rounded-xl border border-black/[0.06] bg-white p-5 shadow-eco-sm">
       {typeLabel && (
-        <p className="mb-3 font-sans text-label-md font-medium uppercase tracking-wide text-eco-foreground/50">
+        <p className="mb-3 font-sans text-label-md font-medium uppercase tracking-wide text-eco-foreground/65">
           {typeLabel}
         </p>
       )}
@@ -115,7 +115,7 @@ function SacredPassageCard({ passage }: { passage: PlainObject }) {
         </p>
       )}
       {typeof transliteration === "string" && transliteration.trim() && (
-        <p className="mt-3 font-sans text-body-md italic text-eco-foreground/70">
+        <p className="mt-3 font-sans text-body-md italic text-eco-foreground/85">
           {transliteration.trim()}
         </p>
       )}
@@ -125,7 +125,7 @@ function SacredPassageCard({ passage }: { passage: PlainObject }) {
         </p>
       )}
       {typeof source === "string" && source.trim() && (
-        <p className="mt-2 font-sans text-label-md text-eco-foreground/50">
+        <p className="mt-2 font-sans text-label-md text-eco-foreground/65">
           {source.trim()}
         </p>
       )}
@@ -154,7 +154,7 @@ function TakeawayTable({ rows }: { rows: PlainObject[] }) {
             {cols.map((c) => (
               <th
                 key={c}
-                className="border-b border-black/10 py-2 pr-4 font-sans text-label-md font-medium uppercase tracking-wide text-eco-foreground/50"
+                className="border-b border-black/10 py-2 pr-4 font-sans text-label-md font-medium uppercase tracking-wide text-eco-foreground/65"
               >
                 {prettyKey(c)}
               </th>
@@ -276,7 +276,7 @@ function renderObject(
   const topLevel = depth === 0;
   const headingClass = topLevel
     ? "font-sans text-base font-semibold capitalize text-eco-heading"
-    : "font-sans text-body-md font-medium capitalize text-eco-foreground/70";
+    : "font-sans text-body-md font-medium capitalize text-eco-foreground/85";
 
   return (
     <div className={topLevel ? "space-y-6" : "space-y-3 border-l border-black/[0.06] pl-4"}>
@@ -326,7 +326,7 @@ export function ItemView({ item }: { item: Item }) {
     <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
       <Link
         href="/"
-        className="mb-6 inline-flex items-center gap-1.5 font-sans text-body-md text-eco-foreground/70 transition-colors duration-eco hover:text-eco-primary"
+        className="mb-6 inline-flex items-center gap-1.5 font-sans text-body-md text-eco-foreground/85 transition-colors duration-eco hover:text-eco-primary"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
@@ -346,7 +346,7 @@ export function ItemView({ item }: { item: Item }) {
           {item.title}
         </h1>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-body-md text-eco-foreground/70">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-body-md text-eco-foreground/85">
           <span>{item.category}</span>
           <span aria-hidden>·</span>
           <span>{formatType(item.type)}</span>
@@ -423,7 +423,7 @@ export function ItemView({ item }: { item: Item }) {
           <section className="mb-10">
             <button
               onClick={() => setShowTranscript((s) => !s)}
-              className="flex items-center gap-1.5 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50 transition-colors duration-eco hover:text-eco-foreground"
+              className="flex items-center gap-1.5 font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65 transition-colors duration-eco hover:text-eco-foreground"
             >
               {showTranscript ? (
                 <ChevronDown className="h-4 w-4" />
@@ -470,7 +470,7 @@ export function ItemView({ item }: { item: Item }) {
                         <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                       </a>
                       {r.body_content && (
-                        <p className="prose-reading mt-1 text-body-md text-eco-foreground/70">
+                        <p className="prose-reading mt-1 text-body-md text-eco-foreground/85">
                           {truncate(r.body_content, 140)}
                         </p>
                       )}

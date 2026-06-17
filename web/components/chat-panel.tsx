@@ -117,7 +117,7 @@ export function ChatPanel({
         className="flex-1 space-y-6 overflow-y-auto px-4 py-5 scrollbar-thin"
       >
         {turns.length === 0 && !loading && (
-          <p className="font-sans text-body-md text-eco-foreground/50">
+          <p className="font-sans text-body-md text-eco-foreground/65">
             Ask a question about anything in your library.
           </p>
         )}
@@ -130,7 +130,7 @@ export function ChatPanel({
         ))}
 
         {loading && (
-          <div className="flex items-center gap-2 text-eco-foreground/50">
+          <div className="flex items-center gap-2 text-eco-foreground/65">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="font-sans text-body-md">Thinking…</span>
           </div>
@@ -146,7 +146,7 @@ export function ChatPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask a question…"
-          className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-3 font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/40 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
+          className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-3 font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/55 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
         />
         <Button type="submit" size="sm" disabled={loading || !input.trim()}>
           Send

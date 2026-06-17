@@ -54,7 +54,7 @@ export function LoginForm() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="font-display text-2xl text-eco-heading">Grimoire</h1>
-          <p className="mt-1 font-sans text-body-md text-eco-foreground/60">
+          <p className="mt-1 font-sans text-body-md text-eco-foreground/75">
             Sign in to your library
           </p>
         </div>
@@ -67,7 +67,7 @@ export function LoginForm() {
           <div className="space-y-1.5">
             <label
               htmlFor="email"
-              className="font-sans text-label-md font-medium text-eco-foreground/70"
+              className="font-sans text-label-md font-medium text-eco-foreground/85"
             >
               Email
             </label>
@@ -85,7 +85,7 @@ export function LoginForm() {
           <div className="space-y-1.5">
             <label
               htmlFor="password"
-              className="font-sans text-label-md font-medium text-eco-foreground/70"
+              className="font-sans text-label-md font-medium text-eco-foreground/85"
             >
               Password
             </label>
@@ -115,7 +115,7 @@ export function LoginForm() {
           </form>
         </div>
 
-        <p className="text-center font-sans text-body-md text-eco-foreground/60">
+        <p className="text-center font-sans text-body-md text-eco-foreground/75">
           No account?{" "}
           <Link
             href={`/signup${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}

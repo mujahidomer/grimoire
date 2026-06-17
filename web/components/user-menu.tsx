@@ -119,7 +119,7 @@ export function UserMenu() {
         </span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-eco-foreground/40 transition-transform",
+            "h-4 w-4 shrink-0 text-eco-foreground/55 transition-transform",
             open && "rotate-180",
           )}
         />
@@ -131,7 +131,7 @@ export function UserMenu() {
           className="absolute bottom-full left-0 right-0 z-50 mb-1 overflow-hidden rounded-lg border border-eco-border-light bg-eco-surface shadow-eco-sm"
         >
           {userInfo.email && (
-            <p className="truncate border-b border-eco-border-light px-3 py-2 font-sans text-label-md text-eco-foreground/50">
+            <p className="truncate border-b border-eco-border-light px-3 py-2 font-sans text-label-md text-eco-foreground/65">
               {userInfo.email}
             </p>
           )}

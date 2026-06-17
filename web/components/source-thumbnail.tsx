@@ -75,7 +75,7 @@ export function SourceThumbnail({
         </div>
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-eco-primary/10">
-          <FileText className={cn("h-5 w-5 text-eco-primary/50", iconClassName)} />
+          <FileText className={cn("h-5 w-5 text-eco-primary/65", iconClassName)} />
         </div>
       )}
     </div>

@@ -176,7 +176,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
               onClick={refresh}
               disabled={loading}
               className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/[0.08] bg-white/60 text-eco-foreground/50 transition-colors duration-eco hover:text-eco-heading disabled:opacity-50",
+                "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/[0.08] bg-white/60 text-eco-foreground/65 transition-colors duration-eco hover:text-eco-heading disabled:opacity-50",
               )}
               aria-label="Refresh library"
             >
@@ -200,7 +200,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
           phase={starterLibraryPhase}
         />
       ) : loading && items.length === 0 ? (
-        <div className="flex items-center justify-center py-24 text-eco-foreground/50">
+        <div className="flex items-center justify-center py-24 text-eco-foreground/65">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : error ? (
@@ -209,7 +209,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
         </p>
       ) : items.length === 0 ? (
         <div className="py-16 text-center">
-          <p className="font-sans text-body-md text-eco-foreground/70">
+          <p className="font-sans text-body-md text-eco-foreground/85">
             {isFiltered
               ? "Nothing saved on that yet."
               : "Your library is empty. Save a link to get started."}

@@ -69,7 +69,7 @@ export function LinkPreviewCard({
   return (
     <section className="mb-8">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/50">
+        <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
           Saved link
         </p>
         <SourceBadge url={url} />
@@ -95,9 +95,9 @@ export function LinkPreviewCard({
           ) : (
             <div className="flex w-[5.5rem] shrink-0 self-stretch items-center justify-center bg-eco-primary/10 sm:h-[200px] sm:w-48">
               {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin text-eco-foreground/40 sm:h-5 sm:w-5" />
+                <Loader2 className="h-4 w-4 animate-spin text-eco-foreground/55 sm:h-5 sm:w-5" />
               ) : (
-                <Globe className="h-5 w-5 text-eco-primary/50 sm:h-8 sm:w-8" />
+                <Globe className="h-5 w-5 text-eco-primary/65 sm:h-8 sm:w-8" />
               )}
             </div>
           )}
@@ -109,7 +109,7 @@ export function LinkPreviewCard({
                   {formatType(type)}
                 </Badge>
               )}
-              <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-eco-foreground/40 transition-colors duration-eco group-hover:text-eco-primary" />
+              <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-eco-foreground/55 transition-colors duration-eco group-hover:text-eco-primary" />
             </div>
 
             <h2 className="line-clamp-2 font-sans text-body-md font-semibold leading-snug text-eco-heading transition-colors duration-eco group-hover:text-eco-primary">
@@ -117,12 +117,12 @@ export function LinkPreviewCard({
             </h2>
 
             {description && (
-              <p className="prose-reading line-clamp-1 text-body-md text-eco-foreground/70 sm:line-clamp-2">
+              <p className="prose-reading line-clamp-1 text-body-md text-eco-foreground/85 sm:line-clamp-2">
                 {truncate(description, 140)}
               </p>
             )}
 
-            <p className="hidden truncate font-mono text-[11px] text-eco-foreground/40 sm:block">
+            <p className="hidden truncate font-mono text-[11px] text-eco-foreground/55 sm:block">
               {url}
             </p>
           </div>

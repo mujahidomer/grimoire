@@ -37,11 +37,11 @@ function LibraryListRow({ item }: { item: Item }) {
         <p className="truncate font-sans text-body-md font-medium text-eco-heading group-hover:text-eco-primary">
           {item.title}
         </p>
-        <p className="mt-0.5 truncate font-sans text-label-md text-eco-foreground/50">
+        <p className="mt-0.5 truncate font-sans text-label-md text-eco-foreground/65">
           {item.category} · {formatType(item.type)}
         </p>
       </div>
-      <span className="shrink-0 pt-0.5 font-sans text-label-md tabular-nums text-eco-foreground/40">
+      <span className="shrink-0 pt-0.5 font-sans text-label-md tabular-nums text-eco-foreground/55">
         {formatTime(item.created_at)}
       </span>
     </Link>
@@ -56,7 +56,7 @@ function LibraryGridCard({ item }: { item: Item }) {
     >
       <SourceThumbnail url={item.source_url} className="aspect-video w-full" />
       <div className="space-y-2 p-4">
-        <div className="flex items-center justify-between gap-2 font-sans text-label-md text-eco-foreground/50">
+        <div className="flex items-center justify-between gap-2 font-sans text-label-md text-eco-foreground/65">
           <span className="truncate">
             {item.category} · {formatType(item.type)}
           </span>
@@ -68,7 +68,7 @@ function LibraryGridCard({ item }: { item: Item }) {
           {item.title}
         </h3>
         {item.summary && (
-          <p className="line-clamp-2 prose-reading text-body-md text-eco-foreground/60">
+          <p className="line-clamp-2 prose-reading text-body-md text-eco-foreground/75">
             {truncate(item.summary, 100)}
           </p>
         )}
@@ -92,7 +92,7 @@ export function ActivityFeed({
     <div className="space-y-8">
       {groups.map((group) => (
         <section key={group.label}>
-          <h2 className="mb-4 font-sans text-label-md font-medium text-eco-foreground/45">
+          <h2 className="mb-4 font-sans text-label-md font-medium text-eco-foreground/75">
             {group.label}
           </h2>
           {view === "grid" ? (
@@ -149,11 +149,11 @@ export function RecentSaves({ items }: { items: Item[] }) {
                   <p className="truncate font-sans text-body-md font-medium text-eco-heading">
                     {item.title}
                   </p>
-                  <p className="truncate font-sans text-label-md text-eco-foreground/50">
+                  <p className="truncate font-sans text-label-md text-eco-foreground/65">
                     {item.summary ? item.summary.slice(0, 80) : item.category}
                   </p>
                 </div>
-                <span className="shrink-0 font-sans text-label-md text-eco-foreground/40">
+                <span className="shrink-0 font-sans text-label-md text-eco-foreground/55">
                   {formatTime(item.created_at)}
                 </span>
               </Link>

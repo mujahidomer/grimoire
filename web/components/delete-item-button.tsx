@@ -68,7 +68,7 @@ export function DeleteItemButton({
                 <h3 className="font-sans text-body-md font-semibold text-eco-secondary">
                   Delete this saved link?
                 </h3>
-                <p className="mt-2 font-sans text-body-md text-eco-foreground/70">
+                <p className="mt-2 font-sans text-body-md text-eco-foreground/85">
                   {itemTitle
                     ? `"${itemTitle}" will be permanently removed from your library.`
                     : "This link will be permanently removed from your library."}

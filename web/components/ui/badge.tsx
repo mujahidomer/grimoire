@@ -5,7 +5,7 @@ type Variant = "default" | "muted" | "accent";
 
 const variants: Record<Variant, string> = {
   default: "bg-eco-primary/10 text-eco-primary",
-  muted: "bg-transparent text-eco-foreground/60 border border-eco-border/50",
+  muted: "bg-transparent text-eco-foreground/75 border border-eco-border/50",
   accent: "bg-eco-primary/20 text-eco-primary",
 };
 

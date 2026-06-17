@@ -6,7 +6,7 @@
   --eco-primary: #A1B887;
   --eco-secondary: #2D3B23;
   --eco-tertiary: #4F663C;
-  --eco-text: #5E6B52;
+  --eco-text: #3A4535;
   --eco-border: #B6CC9D;
   --eco-border-light: #E0E3D5;
   --eco-card: #0D120D;
@@ -18,7 +18,7 @@
   --eco-heading: #2D3B23;
   --eco-on-surface: #2D3B23;
   --eco-inverse: #FFFFFF;
-  --eco-muted: #4d5744;
+  --eco-muted: #5E6B52;
   --sidebar-width: 240px;
 }
 
@@ -42,7 +42,7 @@
     line-height: 1.625;
     font-size: 14px;
     line-height: 20px;
-    color: color-mix(in srgb, var(--eco-text) 90%, transparent);
+    color: var(--eco-text);
   }
   .prose-arabic {
     font-family: var(--font-arabic), "Traditional Arabic", "Segoe UI", serif;

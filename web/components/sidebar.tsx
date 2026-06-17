@@ -62,7 +62,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="shrink-0 rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+          className="shrink-0 rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
           aria-label="Hide sidebar"
         >
           <PanelLeftClose className="h-4 w-4" />
@@ -118,7 +118,7 @@ export function Sidebar({
       </nav>
 
       <div className="mt-2 px-4">
-        <p className="mb-1.5 font-sans text-label-md font-medium text-eco-foreground/45">
+        <p className="mb-1.5 font-sans text-label-md font-medium text-eco-foreground/75">
           Spaces
         </p>
         <div className="flex flex-col gap-0.5">
@@ -166,21 +166,21 @@ export function Sidebar({
         <div className="flex items-center gap-1 px-1">
           <button
             type="button"
-            className="rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
             aria-label="Compose"
           >
             <PenLine className="h-4 w-4" />
           </button>
           <button
             type="button"
-            className="rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
             aria-label="People"
           >
             <Users className="h-4 w-4" />
           </button>
           <button
             type="button"
-            className="rounded-lg p-2 text-eco-foreground/50 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
+            className="rounded-lg p-2 text-eco-foreground/65 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground"
             aria-label="Library"
           >
             <BookOpen className="h-4 w-4" />
@@ -192,7 +192,7 @@ export function Sidebar({
             <p className="font-sans text-body-md font-medium text-eco-on-surface">
               New: Ask Grimoire
             </p>
-            <p className="font-sans text-label-md text-eco-foreground/60">
+            <p className="font-sans text-label-md text-eco-foreground/75">
               Search everything you&apos;ve saved.
             </p>
             <button

@@ -79,7 +79,7 @@ export function SeedPicker() {
       <div className="relative z-0 mx-auto max-w-5xl px-6 py-10">
         <Link
           href="/landing"
-          className="text-sm text-[#8A8780] transition-colors hover:text-[#1C1C1A]"
+          className="text-sm text-[#5C5A55] transition-colors hover:text-[#1C1C1A]"
         >
           ← Back
         </Link>
@@ -88,7 +88,7 @@ export function SeedPicker() {
           <h1 className="font-display text-3xl tracking-tight">
             Build your starter library
           </h1>
-          <p className="mt-3 text-sm text-[#8A8780]">
+          <p className="mt-3 text-sm text-[#5C5A55]">
             Choose at least {MIN_SEED_SELECTIONS}. These will be waiting in your
             library the moment you sign up.
           </p>
@@ -119,7 +119,7 @@ export function SeedPicker() {
         {/* Content list */}
         <div className="mt-8">
           {items.length === 0 ? (
-            <p className="py-16 text-center text-sm text-[#8A8780]">
+            <p className="py-16 text-center text-sm text-[#5C5A55]">
               Starter picks for this topic are coming soon — you can save your own
               once you&apos;re in. Pick from another tab to continue.
             </p>
@@ -144,7 +144,7 @@ export function SeedPicker() {
       {/* Persistent selection bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
         <div className="mx-auto max-w-5xl px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
-          <p className="mb-3 text-center text-sm text-[#8A8780]">
+          <p className="mb-3 text-center text-sm text-[#5C5A55]">
             {count} selected
             {!ready && (
               <span> — pick at least {MIN_SEED_SELECTIONS} to continue.</span>
@@ -192,7 +192,7 @@ function SeedListRow({
         <p className="truncate font-sans text-sm font-medium text-[#1C1C1A]">
           {item.title}
         </p>
-        <p className="mt-0.5 truncate text-xs text-[#8A8780]">
+        <p className="mt-0.5 truncate text-xs text-[#5C5A55]">
           {item.platform === "youtube" ? "Video" : "Article"} · {item.summary}
         </p>
       </div>

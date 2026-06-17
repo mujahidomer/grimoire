@@ -30,7 +30,7 @@ export function GetStartedBanner() {
         <button
           type="button"
           onClick={dismissWelcome}
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-eco-foreground/40 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground/70"
+          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-eco-foreground/55 transition-colors hover:bg-black/[0.04] hover:text-eco-foreground/85"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
@@ -99,7 +99,7 @@ function ChecklistItem({
       <span
         className={`font-sans text-body-md ${
           done
-            ? "text-eco-foreground/50 line-through"
+            ? "text-eco-foreground/65 line-through"
             : "text-eco-primary underline decoration-eco-primary/30 underline-offset-2"
         }`}
       >

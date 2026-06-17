@@ -66,7 +66,7 @@ export function Landing() {
         <h1 className="font-display text-4xl leading-[1.1] tracking-tight text-[#1C1C1A] sm:text-5xl">
           Your saved knowledge, finally answerable.
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[#8A8780]">
+        <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[#5C5A55]">
           You bookmark things meaning to come back. Grimoire extracts the
           knowledge inside every link so you can ask questions across everything
           you&apos;ve ever saved.
@@ -103,7 +103,7 @@ export function Landing() {
                 <h3 className="mt-3 font-display text-lg tracking-tight text-[#1C1C1A]">
                   {s.title}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-[#8A8780]">
+                <p className="mt-2 text-sm leading-relaxed text-[#5C5A55]">
                   {s.body}
                 </p>
               </div>
@@ -118,7 +118,7 @@ export function Landing() {
           <h2 className="font-display text-3xl tracking-tight text-[#1C1C1A]">
             What do you save most?
           </h2>
-          <p className="mt-3 text-sm text-[#8A8780]">
+          <p className="mt-3 text-sm text-[#5C5A55]">
             Pick what fits. We&apos;ll build you a starter library.
           </p>
 
@@ -167,7 +167,7 @@ export function Landing() {
       {/* Limitation / preview footer */}
       <section className="border-t border-stone-200/70 px-6 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs leading-relaxed text-[#8A8780]">
+          <p className="text-xs leading-relaxed text-[#5C5A55]">
             This is an early version. Saving works via iOS Shortcut today. A
             native share extension, richer UI, and MCP integrations are coming.
           </p>
