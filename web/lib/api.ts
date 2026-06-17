@@ -11,6 +11,16 @@ import { devAuthUserId } from "./dev-auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const REQUEST_TIMEOUT_MS = 15000;
+// Save runs scraping, transcription, and classification — often >15s on Railway.
+const SAVE_REQUEST_TIMEOUT_MS = 120000;
+
+function timeoutMessage(timeoutMs: number): string {
+  const seconds = Math.round(timeoutMs / 1000);
+  if (/localhost|127\.0\.0\.1/.test(BASE)) {
+    return `Request timed out after ${seconds}s. Check that localhost services are running.`;
+  }
+  return `Request timed out after ${seconds}s. The server may still be processing — try again in a moment.`;
+}
 
 function withTimeout(
   input: RequestInfo | URL,
@@ -24,9 +34,7 @@ function withTimeout(
   return fetch(input, mergedInit)
     .catch((error: unknown) => {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(
-          `Request timed out after ${Math.round(timeoutMs / 1000)}s. Check that localhost services are running.`,
-        );
+        throw new Error(timeoutMessage(timeoutMs));
       }
       throw error;
     })
@@ -196,14 +204,18 @@ export async function saveUrl(
   url: string,
   opts: { keepalive?: boolean } = {},
 ): Promise<SaveResponse> {
-  const res = await withTimeout(`${BASE}/api/save`, {
-    method: "POST",
-    headers: await clientAuthHeaders(),
-    body: JSON.stringify({ url }),
-    // keepalive lets the request finish even if the tab is backgrounded or
-    // closed (e.g. the iOS share sheet bouncing back to the source app).
-    keepalive: opts.keepalive,
-  });
+  const res = await withTimeout(
+    `${BASE}/api/save`,
+    {
+      method: "POST",
+      headers: await clientAuthHeaders(),
+      body: JSON.stringify({ url }),
+      // keepalive lets the request finish even if the tab is backgrounded or
+      // closed (e.g. the iOS share sheet bouncing back to the source app).
+      keepalive: opts.keepalive,
+    },
+    SAVE_REQUEST_TIMEOUT_MS,
+  );
   const data = (await res.json().catch(() => ({}))) as SaveResponse;
   if (!res.ok || !data.success) {
     throw new Error(data.message || data.error || "Couldn't save that link.");
