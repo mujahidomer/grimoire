@@ -22,6 +22,19 @@ export function formatDate(iso: string): string {
   });
 }
 
+// "Jun 12" — compact month + day, used in dense tables like the digest.
+// A plain YYYY-MM-DD (date_saved) is parsed as local, not UTC, so the day
+// doesn't slip backwards in negative-offset timezones.
+export function formatDateShort(iso: string): string {
+  if (!iso) return "";
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const d = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 /** When the item was last saved or updated in the library (not publication date). */
 export function itemRecencyMs(item: {
   created_at: string;

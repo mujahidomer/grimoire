@@ -1,5 +1,6 @@
 import type {
   ChatResponse,
+  DigestResponse,
   Item,
   LinkedResource,
   LinkPreview,
@@ -88,6 +89,22 @@ export async function fetchItems(
   });
   const data = await json<{ count: number; items: Item[] }>(res);
   return data.items;
+}
+
+// Library Digest — structured artifacts grouped by artifact_type. Grouping and
+// sorting happen server-side; we just pass through the shaped response.
+export async function fetchDigest(
+  accessToken?: string | null,
+): Promise<DigestResponse> {
+  const headers =
+    accessToken !== undefined
+      ? serverAuthHeaders(accessToken)
+      : await clientAuthHeaders();
+  const res = await fetch(`${BASE}/api/digest`, {
+    headers,
+    cache: "no-store",
+  });
+  return json<DigestResponse>(res);
 }
 
 export function previewImageUrl(imageUrl: string): string {

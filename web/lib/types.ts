@@ -50,6 +50,30 @@ export interface Item {
   linked_resources?: LinkedResource[];
 }
 
+// One artifact row in the Library Digest. A trimmed projection of Item — only
+// the columns the digest table renders, plus tags for the "What it is" column.
+export interface DigestItem {
+  id: string;
+  title: string;
+  artifact_type: string;
+  artifact_name: string | null;
+  artifact_url: string | null;
+  source_url: string;
+  date_saved: string;
+  category: string;
+  tags: Tag[];
+}
+
+export interface DigestGroup {
+  type: string;
+  label: string;
+  items: DigestItem[];
+}
+
+export interface DigestResponse {
+  groups: DigestGroup[];
+}
+
 export interface ChatSource {
   id: string;
   title: string;
