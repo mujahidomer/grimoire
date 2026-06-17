@@ -102,7 +102,7 @@ export default async function DashboardPage() {
   const groups = groupByType(dedupeEntities(flattenEntities(items)));
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8 lg:py-10">
       <h1 className="mb-8 font-display text-2xl text-eco-heading">
         Library Digest
       </h1>

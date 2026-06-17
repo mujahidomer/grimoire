@@ -100,14 +100,22 @@ function lastSavedDate(entities: FlatEntity[]): string | null {
 
 function CategoryBreadcrumb({ entity }: { entity: FlatEntity }) {
   const path = categoryPath(entity);
+  const hasMore = path.length > 1;
+  // Show only the top-level category to keep rows compact; the full chain is
+  // revealed on hover via the native title tooltip.
   return (
-    <div className="mb-0.5 flex flex-wrap items-center gap-1 text-[12px] leading-none text-eco-foreground/45">
-      {path.map((segment, idx) => (
-        <span key={`${segment}-${idx}`} className="flex items-center gap-1">
-          {idx > 0 ? <span aria-hidden>›</span> : null}
-          <span>{segment}</span>
+    <div
+      title={hasMore ? path.join(" › ") : undefined}
+      className={`mb-0.5 inline-flex max-w-full items-center gap-1 truncate text-[12px] leading-none text-eco-foreground/45 ${
+        hasMore ? "cursor-help" : ""
+      }`}
+    >
+      <span className="truncate">{path[0]}</span>
+      {hasMore ? (
+        <span aria-hidden className="text-eco-foreground/30">
+          ›
         </span>
-      ))}
+      ) : null}
     </div>
   );
 }
@@ -180,10 +188,10 @@ function EntityRow({
     >
       <td className="py-2 pr-4 font-medium text-eco-on-surface">
         <CategoryBreadcrumb entity={entity} />
-        <span className="inline-flex flex-wrap items-center gap-2">
-          <span>{entity.name}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="break-words">{entity.name}</span>
           {command ? (
-            <code className="rounded bg-eco-hover px-1.5 py-0.5 font-mono text-label-md text-eco-foreground/70">
+            <code className="break-all rounded bg-eco-hover px-1.5 py-0.5 font-mono text-label-md text-eco-foreground/70">
               {command}
             </code>
           ) : null}
@@ -405,7 +413,15 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
               : ""}
           </p>
         ) : (
-          <table className="digest-table w-full border-collapse text-left">
+          <table className="digest-table w-full table-fixed border-collapse text-left">
+            <colgroup>
+              <col className="w-[24%]" />
+              <col className="w-[48%]" />
+              <col className="w-[6%]" />
+              <col className="w-[11%]" />
+              <col className="w-[6%]" />
+              <col className="w-[5%]" />
+            </colgroup>
             <thead>
               <tr className="text-label-md font-medium uppercase tracking-wide text-eco-foreground/55">
                 <th className="py-2 pr-4 font-normal">Name</th>
