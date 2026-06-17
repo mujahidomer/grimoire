@@ -6,8 +6,10 @@ const { extractContent } = require('./lib/extractor');
 const { processContent, researchUrl, processLinkedResource } = require('./lib/classifier');
 const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
-  upsertItem, upsertItemTags, upsertLinkedResource, findItemBySourceUrl, getItemById
+  upsertItem, upsertItemTags, upsertLinkedResource, findItemBySourceUrl, getItemById,
+  promotedArtifactUrl
 } = require('./lib/repository');
+const { normalizeUrl } = require('./lib/url');
 const { embedItemInBackground } = require('./lib/embeddings');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
@@ -55,7 +57,13 @@ async function saveItem(item, sourceUrl, userId) {
   const itemId = await upsertItem(item, { userId, source: item.source || 'telegram' });
   await upsertItemTags(itemId, userId, finalTags);
 
+  // If artifact_url was just promoted from a linked resource, don't also write
+  // that same URL as a linked_resources row (mirrors the Drive path's dedup).
+  const promoted = promotedArtifactUrl(item);
+
   for (const lr of Array.isArray(item.linked_resources) ? item.linked_resources : []) {
+    const lrUrl = normalizeUrl(typeof lr === 'string' ? lr : (lr.source_url || lr.sourceUrl || lr.url));
+    if (promoted && lrUrl === promoted) continue;
     if (typeof lr === 'string') await upsertLinkedResource(itemId, userId, { source_url: lr });
     else await upsertLinkedResource(itemId, userId, lr);
   }
