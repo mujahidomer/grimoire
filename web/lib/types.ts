@@ -71,6 +71,8 @@ export interface DigestItem {
   source_url: string;
   date_saved: string;
   category: string;
+  data_version?: string | null;
+  subcategory?: string | null;
   tags: Tag[];
 }
 

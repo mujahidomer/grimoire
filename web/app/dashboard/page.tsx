@@ -3,6 +3,7 @@ import { fetchDigest } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateShort } from "@/lib/utils";
 import type { DigestGroup, DigestItem } from "@/lib/types";
+import { DashboardSourceLink } from "@/components/dashboard-source-link";
 
 // Server-render the digest each request; it's read-only and small (~50 items),
 // so there's nothing to hydrate on the client.
@@ -32,7 +33,29 @@ function ExternalLinkIcon({ href, label }: { href: string; label: string }) {
   );
 }
 
+function subcategoryLabel(value: string | null | undefined): string {
+  const cleaned = (value ?? "").trim();
+  return cleaned ? cleaned : "uncategorized";
+}
+
+function groupBySubcategory(items: DigestItem[]): Array<{ key: string; items: DigestItem[] }> {
+  const bySubcategory = new Map<string, DigestItem[]>();
+  for (const item of items) {
+    const key = subcategoryLabel(item.subcategory).toLowerCase();
+    if (!bySubcategory.has(key)) bySubcategory.set(key, []);
+    bySubcategory.get(key)?.push(item);
+  }
+  return Array.from(bySubcategory.entries())
+    .sort(([a], [b]) => {
+      if (a === "uncategorized") return 1;
+      if (b === "uncategorized") return -1;
+      return a.localeCompare(b);
+    })
+    .map(([key, grouped]) => ({ key, items: grouped }));
+}
+
 function DigestTable({ group }: { group: DigestGroup }) {
+  const grouped = groupBySubcategory(group.items);
   return (
     <section className="mb-10">
       <h2 className="mb-3 flex items-baseline gap-2 font-display text-xl text-eco-heading">
@@ -53,7 +76,8 @@ function DigestTable({ group }: { group: DigestGroup }) {
           </tr>
         </thead>
         <tbody>
-          {group.items.flatMap((item) => {
+          {grouped.flatMap(({ key, items }) => {
+            const rows = items.flatMap((item) => {
             const skills = item.skills ?? [];
             // Skill-type saves with an extracted skills[] expand to one row per
             // skill. Everything else (older saves, other artifact types) keeps
@@ -67,7 +91,16 @@ function DigestTable({ group }: { group: DigestGroup }) {
                     className="border-b border-eco-border-light/60 align-top text-body-md text-eco-foreground"
                   >
                     <td className="py-2 pr-4 font-medium text-eco-on-surface">
-                      {skill.name}
+                      <span className="inline-flex items-center gap-1.5">
+                        {item.data_version === "v2" ? (
+                          <span
+                            className="h-1 w-1 rounded-full bg-green-500"
+                            aria-label="v2 item"
+                            title="v2 item"
+                          />
+                        ) : null}
+                        <span>{skill.name}</span>
+                      </span>
                     </td>
                     <td className="py-2 pr-4 text-eco-foreground/85">
                       {skill.what_it_does ?? ""}
@@ -79,9 +112,7 @@ function DigestTable({ group }: { group: DigestGroup }) {
                       {formatDateShort(item.date_saved)}
                     </td>
                     <td className="py-2">
-                      {item.source_url && (
-                        <ExternalLinkIcon href={item.source_url} label="Open source" />
-                      )}
+                      {item.source_url && <DashboardSourceLink itemId={item.id} label="Open item details" />}
                     </td>
                   </tr>
                 );
@@ -93,7 +124,16 @@ function DigestTable({ group }: { group: DigestGroup }) {
                 className="border-b border-eco-border-light/60 align-top text-body-md text-eco-foreground"
               >
                 <td className="py-2 pr-4 font-medium text-eco-on-surface">
-                  {item.artifact_name ?? item.title}
+                  <span className="inline-flex items-center gap-1.5">
+                    {item.data_version === "v2" ? (
+                      <span
+                        className="h-1 w-1 rounded-full bg-green-500"
+                        aria-label="v2 item"
+                        title="v2 item"
+                      />
+                    ) : null}
+                    <span>{item.artifact_name ?? item.title}</span>
+                  </span>
                 </td>
                 <td className="py-2 pr-4 text-eco-foreground/85">
                   {whatItIs(item)}
@@ -107,12 +147,22 @@ function DigestTable({ group }: { group: DigestGroup }) {
                   {formatDateShort(item.date_saved)}
                 </td>
                 <td className="py-2">
-                  {item.source_url && (
-                    <ExternalLinkIcon href={item.source_url} label="Open source" />
-                  )}
+                  {item.source_url && <DashboardSourceLink itemId={item.id} label="Open item details" />}
                 </td>
               </tr>
             );
+            });
+            return [
+              <tr key={`subcategory-${group.type}-${key}`}>
+                <td
+                  colSpan={5}
+                  className="border-b border-eco-border-light/60 py-2 pr-4 text-label-md tracking-wide text-eco-foreground/55"
+                >
+                  {key}
+                </td>
+              </tr>,
+              ...rows,
+            ];
           })}
         </tbody>
       </table>

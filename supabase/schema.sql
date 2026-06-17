@@ -98,6 +98,9 @@ create index if not exists items_search_idx       on items using gin (search_vec
 -- Backfill for deployments created before the skills column existed (create
 -- table if not exists is a no-op on an existing table).
 alter table items add column if not exists skills jsonb;
+alter table items add column if not exists data_version text default 'v1';
+alter table items add column if not exists subcategory text;
+update items set data_version = 'v1' where data_version is null;
 
 -- ─── tags (canonical vocabulary) ──────────────────────────────────────────────
 create table if not exists tags (
