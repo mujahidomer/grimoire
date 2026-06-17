@@ -53,32 +53,67 @@ function DigestTable({ group }: { group: DigestGroup }) {
           </tr>
         </thead>
         <tbody>
-          {group.items.map((item) => (
-            <tr
-              key={item.id}
-              className="border-b border-eco-border-light/60 align-top text-body-md text-eco-foreground"
-            >
-              <td className="py-2 pr-4 font-medium text-eco-on-surface">
-                {item.artifact_name ?? item.title}
-              </td>
-              <td className="py-2 pr-4 text-eco-foreground/85">
-                {whatItIs(item)}
-              </td>
-              <td className="py-2 pr-4">
-                {item.artifact_url && (
-                  <ExternalLinkIcon href={item.artifact_url} label="Open artifact" />
-                )}
-              </td>
-              <td className="whitespace-nowrap py-2 pr-4 text-eco-foreground/65">
-                {formatDateShort(item.date_saved)}
-              </td>
-              <td className="py-2">
-                {item.source_url && (
-                  <ExternalLinkIcon href={item.source_url} label="Open source" />
-                )}
-              </td>
-            </tr>
-          ))}
+          {group.items.flatMap((item) => {
+            const skills = item.skills ?? [];
+            // Skill-type saves with an extracted skills[] expand to one row per
+            // skill. Everything else (older saves, other artifact types) keeps
+            // the original single-row rendering.
+            if (skills.length > 0) {
+              return skills.map((skill, i) => {
+                const link = skill.source_url ?? item.artifact_url;
+                return (
+                  <tr
+                    key={`${item.id}-${i}`}
+                    className="border-b border-eco-border-light/60 align-top text-body-md text-eco-foreground"
+                  >
+                    <td className="py-2 pr-4 font-medium text-eco-on-surface">
+                      {skill.name}
+                    </td>
+                    <td className="py-2 pr-4 text-eco-foreground/85">
+                      {skill.what_it_does ?? ""}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {link && <ExternalLinkIcon href={link} label="Open skill" />}
+                    </td>
+                    <td className="whitespace-nowrap py-2 pr-4 text-eco-foreground/65">
+                      {formatDateShort(item.date_saved)}
+                    </td>
+                    <td className="py-2">
+                      {item.source_url && (
+                        <ExternalLinkIcon href={item.source_url} label="Open source" />
+                      )}
+                    </td>
+                  </tr>
+                );
+              });
+            }
+            return (
+              <tr
+                key={item.id}
+                className="border-b border-eco-border-light/60 align-top text-body-md text-eco-foreground"
+              >
+                <td className="py-2 pr-4 font-medium text-eco-on-surface">
+                  {item.artifact_name ?? item.title}
+                </td>
+                <td className="py-2 pr-4 text-eco-foreground/85">
+                  {whatItIs(item)}
+                </td>
+                <td className="py-2 pr-4">
+                  {item.artifact_url && (
+                    <ExternalLinkIcon href={item.artifact_url} label="Open artifact" />
+                  )}
+                </td>
+                <td className="whitespace-nowrap py-2 pr-4 text-eco-foreground/65">
+                  {formatDateShort(item.date_saved)}
+                </td>
+                <td className="py-2">
+                  {item.source_url && (
+                    <ExternalLinkIcon href={item.source_url} label="Open source" />
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </section>

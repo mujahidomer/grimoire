@@ -52,12 +52,22 @@ export interface Item {
 
 // One artifact row in the Library Digest. A trimmed projection of Item — only
 // the columns the digest table renders, plus tags for the "What it is" column.
+// One extracted skill/tool from a skill-type save. Populated by the classifier
+// and stored on items.skills; present only for artifact_type === "skill".
+export interface Skill {
+  name: string;
+  what_it_does: string | null;
+  install_command: string | null;
+  source_url: string | null;
+}
+
 export interface DigestItem {
   id: string;
   title: string;
   artifact_type: string;
   artifact_name: string | null;
   artifact_url: string | null;
+  skills?: Skill[] | null;
   source_url: string;
   date_saved: string;
   category: string;

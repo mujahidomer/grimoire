@@ -74,6 +74,7 @@ create table if not exists items (
   artifact_name       text,
   artifact_url        text,
   artifact_url_source text,                                -- content|caption|linked resource
+  skills              jsonb,                               -- skill-type saves only: [{name, what_it_does, install_command, source_url}]
   -- DEPRECATED — legacy/migration only; null on all new items.
   drive_file_id       text,
   drive_file_link     text,
@@ -94,6 +95,9 @@ create table if not exists items (
 create index if not exists items_user_idx        on items (user_id);
 create index if not exists items_category_idx     on items (user_id, category);
 create index if not exists items_search_idx       on items using gin (search_vector);
+-- Backfill for deployments created before the skills column existed (create
+-- table if not exists is a no-op on an existing table).
+alter table items add column if not exists skills jsonb;
 
 -- ─── tags (canonical vocabulary) ──────────────────────────────────────────────
 create table if not exists tags (
