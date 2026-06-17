@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "dev:local": "bash scripts/dev-local.sh",
+    "dev:stop": "bash scripts/dev-stop.sh",
     "migrate": "node scripts/migrate-drive-to-postgres.js"
   },
   "dependencies": {

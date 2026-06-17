@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDateShort } from "@/lib/utils";
 import type { DigestGroup, DigestItem } from "@/lib/types";
 import { DashboardSourceLink } from "@/components/dashboard-source-link";
+import {
+  DigestSummaryCards,
+  type DigestSummaryCard,
+} from "@/components/digest-summary-cards";
 
 // Server-render the digest each request; it's read-only and small (~50 items),
 // so there's nothing to hydrate on the client.
@@ -17,6 +21,12 @@ function whatItIs(item: DigestItem): string {
     item.tags[0]?.name ??
     ""
   );
+}
+
+function formatSkillSlashName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 }
 
 function ExternalLinkIcon({ href, label }: { href: string; label: string }) {
@@ -38,6 +48,36 @@ function subcategoryLabel(value: string | null | undefined): string {
   return cleaned ? cleaned : "uncategorized";
 }
 
+function digestItemRowCount(item: DigestItem): number {
+  const skills = item.skills ?? [];
+  return skills.length > 0 ? skills.length : 1;
+}
+
+function digestGroupRowCount(group: DigestGroup): number {
+  return group.items.reduce((sum, item) => sum + digestItemRowCount(item), 0);
+}
+
+function digestGroupLastSaved(group: DigestGroup): string | null {
+  if (group.items.length === 0) return null;
+  let latest = group.items[0].date_saved;
+  for (const item of group.items) {
+    if (item.date_saved > latest) latest = item.date_saved;
+  }
+  return latest;
+}
+
+function buildSummaryCards(groups: DigestGroup[]): DigestSummaryCard[] {
+  return groups.map((group) => {
+    const lastSaved = digestGroupLastSaved(group);
+    return {
+      type: group.type,
+      label: group.label,
+      rowCount: digestGroupRowCount(group),
+      lastSavedLabel: lastSaved ? formatDateShort(lastSaved) : "",
+    };
+  });
+}
+
 function groupBySubcategory(items: DigestItem[]): Array<{ key: string; items: DigestItem[] }> {
   const bySubcategory = new Map<string, DigestItem[]>();
   for (const item of items) {
@@ -57,7 +97,7 @@ function groupBySubcategory(items: DigestItem[]): Array<{ key: string; items: Di
 function DigestTable({ group }: { group: DigestGroup }) {
   const grouped = groupBySubcategory(group.items);
   return (
-    <section className="mb-10">
+    <section id={group.type} className="mb-10 scroll-mt-6">
       <h2 className="mb-3 flex items-baseline gap-2 font-display text-xl text-eco-heading">
         {group.label}
         <span className="font-sans text-body-md font-normal text-eco-foreground/55">
@@ -65,9 +105,9 @@ function DigestTable({ group }: { group: DigestGroup }) {
         </span>
       </h2>
 
-      <table className="w-full border-collapse text-left">
+      <table className="digest-table w-full border-collapse text-left">
         <thead>
-          <tr className="border-b border-eco-border-light text-label-md font-medium uppercase tracking-wide text-eco-foreground/55">
+          <tr className="text-label-md font-medium uppercase tracking-wide text-eco-foreground/55">
             <th className="py-2 pr-4 font-normal">Name</th>
             <th className="py-2 pr-4 font-normal">What it is</th>
             <th className="py-2 pr-4 font-normal">Link</th>
@@ -88,7 +128,7 @@ function DigestTable({ group }: { group: DigestGroup }) {
                 return (
                   <tr
                     key={`${item.id}-${i}`}
-                    className="border-b border-eco-border-light/60 align-top text-body-md text-eco-foreground"
+                    className="align-top text-body-md text-eco-foreground"
                   >
                     <td className="py-2 pr-4 font-medium text-eco-on-surface">
                       <span className="inline-flex items-center gap-1.5">
@@ -99,7 +139,11 @@ function DigestTable({ group }: { group: DigestGroup }) {
                             title="v2 item"
                           />
                         ) : null}
-                        <span>{skill.name}</span>
+                        <span>
+                          {group.type === "skill"
+                            ? formatSkillSlashName(skill.name)
+                            : skill.name}
+                        </span>
                       </span>
                     </td>
                     <td className="py-2 pr-4 text-eco-foreground/85">
@@ -121,7 +165,7 @@ function DigestTable({ group }: { group: DigestGroup }) {
             return (
               <tr
                 key={item.id}
-                className="border-b border-eco-border-light/60 align-top text-body-md text-eco-foreground"
+                className="align-top text-body-md text-eco-foreground"
               >
                 <td className="py-2 pr-4 font-medium text-eco-on-surface">
                   <span className="inline-flex items-center gap-1.5">
@@ -156,7 +200,7 @@ function DigestTable({ group }: { group: DigestGroup }) {
               <tr key={`subcategory-${group.type}-${key}`}>
                 <td
                   colSpan={5}
-                  className="border-b border-eco-border-light/60 py-2 pr-4 text-label-md tracking-wide text-eco-foreground/55"
+                  className="py-2 pr-4 text-label-md tracking-wide text-eco-foreground/55"
                 >
                   {key}
                 </td>
@@ -203,7 +247,12 @@ export default async function DashboardPage() {
           grouped here.
         </p>
       ) : (
-        groups.map((group) => <DigestTable key={group.type} group={group} />)
+        <>
+          <DigestSummaryCards cards={buildSummaryCards(groups)} />
+          {groups.map((group) => (
+            <DigestTable key={group.type} group={group} />
+          ))}
+        </>
       )}
     </div>
   );

@@ -15,6 +15,7 @@ import {
   waitForStarterLibrary,
 } from "@/lib/apply-onboarding";
 import { createClient } from "@/lib/supabase/client";
+import { isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { DEFAULT_SEGMENT, SEGMENT_BY_ID, type SegmentId } from "@/lib/seed-catalog";
 
 export type StarterLibraryPhase = "seeding" | "syncing";
@@ -61,6 +62,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   // Read funnel selections before first paint so we never flash "library empty".
   useLayoutEffect(() => {
+    if (isDevAuthBypassEnabled()) return;
+
     const expected = readPendingOnboarding().seedSelections.length;
     if (expected > 0) {
       setStarterLibraryLoading(true);
@@ -78,9 +81,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         } = await supabase.auth.getUser();
         if (cancelled) return;
 
-        // OAuth signups skip the email form, so funnel selections may still be
-        // in localStorage when the authenticated library first mounts.
-        if (user) {
+        // Dev bypass skips login; pending funnel seeds only apply after signup.
+        if (!user) {
+          setStarterLibraryLoading(false);
+        } else {
           const pending = readPendingOnboarding();
           if (pending.seedSelections.length > 0) {
             setStarterLibraryLoading(true);

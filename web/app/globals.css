@@ -36,6 +36,7 @@
   --eco-badge-text: #5E6B52;
   --eco-badge-border: rgba(161, 184, 135, 0.14);
   --eco-on-accent: #0D120D;
+  --eco-table-divider: rgba(0, 0, 0, 0.06);
   --sidebar-width: 240px;
 }
 
@@ -73,6 +74,7 @@
   --eco-badge-text: #9AAD8E;
   --eco-badge-border: rgba(255, 255, 255, 0.05);
   --eco-on-accent: #121612;
+  --eco-table-divider: rgba(255, 255, 255, 0.04);
 }
 
 @layer base {
@@ -338,22 +340,16 @@
     }
   }
 
-  .digest-table thead tr,
-  .digest-table tbody tr {
-    position: relative;
-    border: none;
+  .digest-table thead th {
+    border-bottom: 1px solid var(--eco-table-divider);
   }
 
-  .digest-table thead tr::after,
-  .digest-table tbody tr:not(:last-child)::after {
-    content: "";
-    position: absolute;
-    right: 1rem;
-    bottom: 0;
-    left: 1rem;
-    height: 1px;
-    background-color: var(--eco-border-subtle);
-    opacity: 0.55;
+  .digest-table tbody td {
+    border-bottom: 1px solid var(--eco-table-divider);
+  }
+
+  .digest-table tbody tr:last-child td {
+    border-bottom: none;
   }
 
   @media (prefers-reduced-motion: reduce) {

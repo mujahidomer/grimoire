@@ -7,13 +7,45 @@ import type {
   SaveResponse,
 } from "./types";
 import { createClient as createBrowserClient } from "./supabase/client";
+import { devAuthUserId } from "./dev-auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const REQUEST_TIMEOUT_MS = 15000;
+
+function withTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const mergedInit: RequestInit = { ...init, signal: controller.signal };
+
+  return fetch(input, mergedInit)
+    .catch((error: unknown) => {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(
+          `Request timed out after ${Math.round(timeoutMs / 1000)}s. Check that localhost services are running.`,
+        );
+      }
+      throw error;
+    })
+    .finally(() => clearTimeout(timeoutId));
+}
 
 // Legacy dev fallback when Supabase auth is not configured.
 const LEGACY_USER_ID = process.env.NEXT_PUBLIC_GRIMOIRE_USER_ID ?? "";
 
+function devBypassHeaders(): HeadersInit {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  const userId = devAuthUserId();
+  if (userId) h["x-user-id"] = userId;
+  return h;
+}
+
 async function clientAuthHeaders(): Promise<HeadersInit> {
+  if (devAuthUserId()) return devBypassHeaders();
+
   const h: Record<string, string> = { "Content-Type": "application/json" };
 
   try {
@@ -41,6 +73,8 @@ async function clientAuthHeaders(): Promise<HeadersInit> {
 }
 
 function serverAuthHeaders(accessToken: string | null | undefined): HeadersInit {
+  if (devAuthUserId()) return devBypassHeaders();
+
   const h: Record<string, string> = { "Content-Type": "application/json" };
   if (accessToken) {
     h.Authorization = `Bearer ${accessToken}`;
@@ -83,7 +117,7 @@ export async function fetchItems(
     accessToken !== undefined
       ? serverAuthHeaders(accessToken)
       : await clientAuthHeaders();
-  const res = await fetch(`${BASE}/api/items${qs ? `?${qs}` : ""}`, {
+  const res = await withTimeout(`${BASE}/api/items${qs ? `?${qs}` : ""}`, {
     headers,
     cache: "no-store",
   });
@@ -100,7 +134,7 @@ export async function fetchDigest(
     accessToken !== undefined
       ? serverAuthHeaders(accessToken)
       : await clientAuthHeaders();
-  const res = await fetch(`${BASE}/api/digest`, {
+  const res = await withTimeout(`${BASE}/api/digest`, {
     headers,
     cache: "no-store",
   });
@@ -117,7 +151,7 @@ export function previewImageUrl(imageUrl: string): string {
 
 export async function fetchLinkPreview(url: string): Promise<LinkPreview> {
   const params = new URLSearchParams({ url });
-  const res = await fetch(`${BASE}/api/link-preview?${params}`, {
+  const res = await withTimeout(`${BASE}/api/link-preview?${params}`, {
     cache: "no-store",
   });
   const data = await json<{ preview: LinkPreview }>(res);
@@ -132,7 +166,7 @@ export async function fetchItem(
     accessToken !== undefined
       ? serverAuthHeaders(accessToken)
       : await clientAuthHeaders();
-  const res = await fetch(`${BASE}/api/items/${id}`, {
+  const res = await withTimeout(`${BASE}/api/items/${id}`, {
     headers,
     cache: "no-store",
   });
@@ -141,7 +175,7 @@ export async function fetchItem(
 }
 
 export async function fetchItemMarkdown(id: string): Promise<string> {
-  const res = await fetch(`${BASE}/api/items/${id}?format=markdown`, {
+  const res = await withTimeout(`${BASE}/api/items/${id}?format=markdown`, {
     headers: await clientAuthHeaders(),
     cache: "no-store",
   });
@@ -150,7 +184,7 @@ export async function fetchItemMarkdown(id: string): Promise<string> {
 }
 
 export async function askChat(question: string): Promise<ChatResponse> {
-  const res = await fetch(`${BASE}/api/chat`, {
+  const res = await withTimeout(`${BASE}/api/chat`, {
     method: "POST",
     headers: await clientAuthHeaders(),
     body: JSON.stringify({ question }),
@@ -162,7 +196,7 @@ export async function saveUrl(
   url: string,
   opts: { keepalive?: boolean } = {},
 ): Promise<SaveResponse> {
-  const res = await fetch(`${BASE}/api/save`, {
+  const res = await withTimeout(`${BASE}/api/save`, {
     method: "POST",
     headers: await clientAuthHeaders(),
     body: JSON.stringify({ url }),
@@ -232,7 +266,7 @@ export async function seedLibrary(
   if (!selectedItemIds.length) {
     return { accepted: 0, seeded: 0, skipped: 0 };
   }
-  const res = await fetch(`${BASE}/api/seed`, {
+  const res = await withTimeout(`${BASE}/api/seed`, {
     method: "POST",
     headers: await clientAuthHeaders(),
     body: JSON.stringify({ selectedItemIds }),
@@ -242,7 +276,7 @@ export async function seedLibrary(
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/items/${id}`, {
+  const res = await withTimeout(`${BASE}/api/items/${id}`, {
     method: "DELETE",
     headers: await clientAuthHeaders(),
   });
@@ -253,7 +287,7 @@ export async function addLinkedResource(
   itemId: string,
   url: string,
 ): Promise<LinkedResource[]> {
-  const res = await fetch(`${BASE}/api/items/${itemId}/linked-resources`, {
+  const res = await withTimeout(`${BASE}/api/items/${itemId}/linked-resources`, {
     method: "POST",
     headers: await clientAuthHeaders(),
     body: JSON.stringify({ url }),
