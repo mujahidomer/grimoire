@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
@@ -35,6 +35,8 @@ export type EntityGroup = {
   entities: FlatEntity[];
 };
 
+type Level1Group = { level1: string; rows: FlatEntity[] };
+
 const ICON_BY_TYPE: Record<string, LucideIcon> = {
   skill: Zap,
   tool: Wrench,
@@ -64,17 +66,46 @@ function categoryPath(entity: FlatEntity): string[] {
   return path.length > 0 ? path : ["uncategorized"];
 }
 
-// Sort rows by the first level of category_path so related items cluster, with
-// uncategorized sinking to the bottom; ties break on name.
-function compareRows(a: FlatEntity, b: FlatEntity): number {
-  const aFirst = categoryPath(a)[0];
-  const bFirst = categoryPath(b)[0];
-  const aUnc = aFirst === "uncategorized";
-  const bUnc = bFirst === "uncategorized";
-  if (aUnc !== bUnc) return aUnc ? 1 : -1;
-  const c = aFirst.localeCompare(bFirst);
-  if (c !== 0) return c;
+// Within one level-1 group, order by the deeper path then name so siblings
+// cluster.
+function compareWithinLevel1(a: FlatEntity, b: FlatEntity): number {
+  const pa = categoryPath(a).slice(1);
+  const pb = categoryPath(b).slice(1);
+  const len = Math.min(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const c = pa[i].localeCompare(pb[i]);
+    if (c !== 0) return c;
+  }
+  if (pa.length !== pb.length) return pa.length - pb.length;
   return a.name.localeCompare(b.name);
+}
+
+// Flat sort for the (rarely shown) hidden list.
+function compareRows(a: FlatEntity, b: FlatEntity): number {
+  const c = categoryPath(a)[0].localeCompare(categoryPath(b)[0]);
+  return c !== 0 ? c : a.name.localeCompare(b.name);
+}
+
+// Bucket rows by their top-level category, label shown once per bucket.
+// Uncategorized sinks to the bottom; other buckets sort alphabetically.
+function groupByLevel1(entities: FlatEntity[]): Level1Group[] {
+  const byL1 = new Map<string, FlatEntity[]>();
+  for (const entity of entities) {
+    const l1 = categoryPath(entity)[0];
+    if (!byL1.has(l1)) byL1.set(l1, []);
+    byL1.get(l1)?.push(entity);
+  }
+  return Array.from(byL1.entries())
+    .map(([level1, rows]) => ({
+      level1,
+      rows: [...rows].sort(compareWithinLevel1),
+    }))
+    .sort((a, b) => {
+      const aUnc = a.level1 === "uncategorized";
+      const bUnc = b.level1 === "uncategorized";
+      if (aUnc !== bUnc) return aUnc ? 1 : -1;
+      return a.level1.localeCompare(b.level1);
+    });
 }
 
 function formatSkillSlashName(name: string): string {
@@ -98,25 +129,36 @@ function lastSavedDate(entities: FlatEntity[]): string | null {
   return latest;
 }
 
-function CategoryBreadcrumb({ entity }: { entity: FlatEntity }) {
+// Name + optional command chip. When the entity has a deeper category path, an
+// instant (no-delay) tooltip reveals the full chain on hover/focus.
+function EntityName({ entity }: { entity: FlatEntity }) {
   const path = categoryPath(entity);
+  const command = entityCommand(entity);
   const hasMore = path.length > 1;
-  // Show only the top-level category to keep rows compact; the full chain is
-  // revealed on hover via the native title tooltip.
   return (
-    <div
-      title={hasMore ? path.join(" › ") : undefined}
-      className={`mb-0.5 inline-flex max-w-full items-center gap-1 truncate text-[12px] leading-none text-eco-foreground/45 ${
+    <span
+      className={`group/name relative inline-flex flex-wrap items-center gap-2 ${
         hasMore ? "cursor-help" : ""
       }`}
+      tabIndex={hasMore ? 0 : undefined}
     >
-      <span className="truncate">{path[0]}</span>
+      <span className="break-words font-medium text-eco-on-surface">
+        {entity.name}
+      </span>
+      {command ? (
+        <code className="break-all rounded bg-eco-hover px-1.5 py-0.5 font-mono text-label-md font-normal text-eco-foreground/70">
+          {command}
+        </code>
+      ) : null}
       {hasMore ? (
-        <span aria-hidden className="text-eco-foreground/30">
-          ›
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden whitespace-nowrap rounded-md border border-eco-border-light bg-eco-surface px-2 py-1 text-[12px] font-normal leading-none text-eco-foreground/80 shadow-lg group-hover/name:block group-focus-within/name:block"
+        >
+          {path.join(" › ")}
         </span>
       ) : null}
-    </div>
+    </span>
   );
 }
 
@@ -168,7 +210,37 @@ function ExternalLinkIcon({ href, label }: { href: string; label: string }) {
   );
 }
 
-function EntityRow({
+function VisibilityToggle({
+  hidden,
+  pending,
+  alwaysVisible,
+  onClick,
+}: {
+  hidden: boolean;
+  pending: boolean;
+  alwaysVisible?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={onClick}
+      aria-label={hidden ? "Show entity" : "Hide entity"}
+      title={hidden ? "Show in digest" : "Hide from digest"}
+      className={`inline-flex text-eco-foreground/55 transition-opacity duration-eco hover:text-eco-primary disabled:opacity-40 ${
+        hidden || alwaysVisible
+          ? "opacity-100"
+          : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+      }`}
+    >
+      {hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+    </button>
+  );
+}
+
+// ─── Desktop (sm+) table row ──────────────────────────────────────────────────
+function DesktopRow({
   entity,
   hidden,
   pending,
@@ -179,23 +251,14 @@ function EntityRow({
   pending: boolean;
   onToggle: (entity: FlatEntity, nextHidden: boolean) => void;
 }) {
-  const command = entityCommand(entity);
   return (
     <tr
       className={`group align-top text-body-md text-eco-foreground ${
         hidden ? "opacity-45" : ""
       }`}
     >
-      <td className="py-2 pr-4 font-medium text-eco-on-surface">
-        <CategoryBreadcrumb entity={entity} />
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="break-words">{entity.name}</span>
-          {command ? (
-            <code className="break-all rounded bg-eco-hover px-1.5 py-0.5 font-mono text-label-md text-eco-foreground/70">
-              {command}
-            </code>
-          ) : null}
-        </span>
+      <td className="py-2 pr-4">
+        <EntityName entity={entity} />
       </td>
       <td className="py-2 pr-4 text-eco-foreground/85">
         <WhatItIsCell entity={entity} />
@@ -210,33 +273,73 @@ function EntityRow({
       </td>
       <td className="py-2 pr-2">
         {entity.sourceUrl ? (
-          <DashboardSourceLink
-            itemId={entity.itemId}
-            label="Open item details"
-          />
+          <DashboardSourceLink itemId={entity.itemId} label="Open item details" />
         ) : null}
       </td>
       <td className="py-2 pl-1">
-        <button
-          type="button"
-          disabled={pending}
+        <VisibilityToggle
+          hidden={hidden}
+          pending={pending}
           onClick={() => onToggle(entity, !hidden)}
-          aria-label={hidden ? "Show entity" : "Hide entity"}
-          title={hidden ? "Show in digest" : "Hide from digest"}
-          className={`inline-flex text-eco-foreground/55 transition-opacity duration-eco hover:text-eco-primary disabled:opacity-40 ${
-            hidden
-              ? "opacity-100"
-              : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-          }`}
-        >
-          {hidden ? (
-            <Eye className="h-3.5 w-3.5" />
-          ) : (
-            <EyeOff className="h-3.5 w-3.5" />
-          )}
-        </button>
+        />
       </td>
     </tr>
+  );
+}
+
+// ─── Mobile (<sm) card ────────────────────────────────────────────────────────
+function MobileCard({
+  entity,
+  hidden,
+  pending,
+  onToggle,
+}: {
+  entity: FlatEntity;
+  hidden: boolean;
+  pending: boolean;
+  onToggle: (entity: FlatEntity, nextHidden: boolean) => void;
+}) {
+  // No hover on touch, so surface the deeper path inline (level-1 is the header).
+  const deeper = categoryPath(entity).slice(1);
+  return (
+    <li
+      className={`rounded-lg border border-eco-border-light bg-eco-surface p-3 ${
+        hidden ? "opacity-50" : ""
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {deeper.length > 0 ? (
+            <div className="mb-0.5 text-[12px] leading-none text-eco-foreground/45">
+              {deeper.join(" › ")}
+            </div>
+          ) : null}
+          <EntityName entity={entity} />
+        </div>
+        <VisibilityToggle
+          hidden={hidden}
+          pending={pending}
+          alwaysVisible
+          onClick={() => onToggle(entity, !hidden)}
+        />
+      </div>
+
+      <div className="mt-1.5 text-body-md text-eco-foreground/85">
+        <WhatItIsCell entity={entity} />
+      </div>
+
+      <div className="mt-2 flex items-center gap-4 text-label-md text-eco-foreground/55">
+        <span className="whitespace-nowrap">
+          {formatDateShort(entity.dateSaved)}
+        </span>
+        {entity.url ? (
+          <ExternalLinkIcon href={entity.url} label="Open entity" />
+        ) : null}
+        {entity.sourceUrl ? (
+          <DashboardSourceLink itemId={entity.itemId} label="Open item details" />
+        ) : null}
+      </div>
+    </li>
   );
 }
 
@@ -302,8 +405,7 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
   const [activeType, setActiveType] = useState(defaultType);
   const [showHidden, setShowHidden] = useState(false);
 
-  const activeGroup =
-    groups.find((g) => g.type === activeType) ?? groups[0];
+  const activeGroup = groups.find((g) => g.type === activeType) ?? groups[0];
 
   function selectTab(type: string) {
     setActiveType(type);
@@ -331,12 +433,11 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
 
   if (!activeGroup) return null;
 
-  const visibleRows = activeGroup.entities
-    .filter((e) => !isHidden(e))
-    .sort(compareRows);
+  const visibleRows = activeGroup.entities.filter((e) => !isHidden(e));
   const hiddenRows = activeGroup.entities
     .filter((e) => isHidden(e))
     .sort(compareRows);
+  const level1Groups = groupByLevel1(visibleRows);
 
   return (
     <>
@@ -383,7 +484,7 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
         })}
       </div>
 
-      {/* Active table only. */}
+      {/* Active type only. */}
       <section className="mb-10">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 className="flex items-baseline gap-2 font-display text-xl text-eco-heading">
@@ -398,9 +499,7 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
               onClick={() => setShowHidden((s) => !s)}
               className="font-sans text-label-md text-eco-foreground/55 underline-offset-2 transition-colors duration-eco hover:text-eco-primary hover:underline"
             >
-              {showHidden
-                ? "Hide hidden"
-                : `Show hidden (${hiddenRows.length})`}
+              {showHidden ? "Hide hidden" : `Show hidden (${hiddenRows.length})`}
             </button>
           ) : null}
         </div>
@@ -413,54 +512,125 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
               : ""}
           </p>
         ) : (
-          <table className="digest-table w-full table-fixed border-collapse text-left">
-            <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[48%]" />
-              <col className="w-[6%]" />
-              <col className="w-[11%]" />
-              <col className="w-[6%]" />
-              <col className="w-[5%]" />
-            </colgroup>
-            <thead>
-              <tr className="text-label-md font-medium uppercase tracking-wide text-eco-foreground/55">
-                <th className="py-2 pr-4 font-normal">Name</th>
-                <th className="py-2 pr-4 font-normal">What it is</th>
-                <th className="py-2 pr-4 font-normal">Link</th>
-                <th className="py-2 pr-4 font-normal">Saved</th>
-                <th className="py-2 pr-2 font-normal">Source</th>
-                <th className="py-2 font-normal sr-only">Visibility</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((entity) => {
-                const key = entityKey(entity);
-                return (
-                  <EntityRow
-                    key={key}
-                    entity={entity}
-                    hidden={false}
-                    pending={!!pending[key]}
-                    onToggle={handleToggle}
-                  />
-                );
-              })}
-              {showHidden
-                ? hiddenRows.map((entity) => {
-                    const key = entityKey(entity);
-                    return (
-                      <EntityRow
-                        key={key}
-                        entity={entity}
-                        hidden
-                        pending={!!pending[key]}
-                        onToggle={handleToggle}
-                      />
-                    );
-                  })
-                : null}
-            </tbody>
-          </table>
+          <>
+            {/* Desktop table */}
+            <table className="digest-table hidden w-full table-fixed border-collapse text-left sm:table">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[48%]" />
+                <col className="w-[6%]" />
+                <col className="w-[11%]" />
+                <col className="w-[6%]" />
+                <col className="w-[5%]" />
+              </colgroup>
+              <thead>
+                <tr className="text-label-md font-medium uppercase tracking-wide text-eco-foreground/55">
+                  <th className="py-2 pr-4 font-normal">Name</th>
+                  <th className="py-2 pr-4 font-normal">What it is</th>
+                  <th className="py-2 pr-4 font-normal">Link</th>
+                  <th className="py-2 pr-4 font-normal">Saved</th>
+                  <th className="py-2 pr-2 font-normal">Source</th>
+                  <th className="py-2 font-normal sr-only">Visibility</th>
+                </tr>
+              </thead>
+              <tbody>
+                {level1Groups.map((g) => (
+                  <Fragment key={g.level1}>
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="pb-1 pt-4 text-label-md font-medium uppercase tracking-wide text-eco-foreground/60"
+                      >
+                        {g.level1}
+                      </td>
+                    </tr>
+                    {g.rows.map((entity) => {
+                      const key = entityKey(entity);
+                      return (
+                        <DesktopRow
+                          key={key}
+                          entity={entity}
+                          hidden={false}
+                          pending={!!pending[key]}
+                          onToggle={handleToggle}
+                        />
+                      );
+                    })}
+                  </Fragment>
+                ))}
+                {showHidden && hiddenRows.length > 0 ? (
+                  <>
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="pb-1 pt-5 text-label-md font-medium uppercase tracking-wide text-eco-foreground/40"
+                      >
+                        Hidden
+                      </td>
+                    </tr>
+                    {hiddenRows.map((entity) => {
+                      const key = entityKey(entity);
+                      return (
+                        <DesktopRow
+                          key={key}
+                          entity={entity}
+                          hidden
+                          pending={!!pending[key]}
+                          onToggle={handleToggle}
+                        />
+                      );
+                    })}
+                  </>
+                ) : null}
+              </tbody>
+            </table>
+
+            {/* Mobile cards */}
+            <div className="space-y-6 sm:hidden">
+              {level1Groups.map((g) => (
+                <div key={g.level1}>
+                  <h3 className="mb-2 text-label-md font-medium uppercase tracking-wide text-eco-foreground/60">
+                    {g.level1}
+                  </h3>
+                  <ul className="space-y-2">
+                    {g.rows.map((entity) => {
+                      const key = entityKey(entity);
+                      return (
+                        <MobileCard
+                          key={key}
+                          entity={entity}
+                          hidden={false}
+                          pending={!!pending[key]}
+                          onToggle={handleToggle}
+                        />
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+              {showHidden && hiddenRows.length > 0 ? (
+                <div>
+                  <h3 className="mb-2 text-label-md font-medium uppercase tracking-wide text-eco-foreground/40">
+                    Hidden
+                  </h3>
+                  <ul className="space-y-2">
+                    {hiddenRows.map((entity) => {
+                      const key = entityKey(entity);
+                      return (
+                        <MobileCard
+                          key={key}
+                          entity={entity}
+                          hidden
+                          pending={!!pending[key]}
+                          onToggle={handleToggle}
+                        />
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </>
         )}
       </section>
     </>
