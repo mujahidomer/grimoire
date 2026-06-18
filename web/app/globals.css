@@ -352,6 +352,14 @@
     border-bottom: none;
   }
 
+  /* Category divider rows: a tinted band with an accent edge so they read as
+     section headers, not as another column-header row. */
+  .digest-table tbody tr.digest-cat-row td {
+    border-bottom: none;
+    background-color: var(--eco-badge-bg);
+    box-shadow: inset 3px 0 0 var(--eco-primary);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .save-success-circle,
     .save-success-check,

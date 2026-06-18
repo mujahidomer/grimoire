@@ -257,7 +257,7 @@ function DesktopRow({
         hidden ? "opacity-45" : ""
       }`}
     >
-      <td className="py-2 pr-4">
+      <td className="py-2 pl-3 pr-4">
         <EntityName entity={entity} />
       </td>
       <td className="py-2 pr-4 text-eco-foreground/85">
@@ -302,19 +302,32 @@ function MobileCard({
   // No hover on touch, so surface the deeper path inline (level-1 is the header).
   const deeper = categoryPath(entity).slice(1);
   return (
-    <li
-      className={`rounded-lg border border-eco-border-light bg-eco-surface p-3 ${
-        hidden ? "opacity-50" : ""
-      }`}
-    >
+    <li className={`py-3 ${hidden ? "opacity-50" : ""}`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           {deeper.length > 0 ? (
-            <div className="mb-0.5 text-[12px] leading-none text-eco-foreground/45">
+            <div className="mb-0.5 text-[11px] leading-none text-eco-foreground/40">
               {deeper.join(" › ")}
             </div>
           ) : null}
           <EntityName entity={entity} />
+          <div className="mt-1 text-body-md leading-snug text-eco-foreground/75">
+            <WhatItIsCell entity={entity} />
+          </div>
+          <div className="mt-1.5 flex items-center gap-3 text-label-md text-eco-foreground/45">
+            <span className="whitespace-nowrap">
+              {formatDateShort(entity.dateSaved)}
+            </span>
+            {entity.url ? (
+              <ExternalLinkIcon href={entity.url} label="Open entity" />
+            ) : null}
+            {entity.sourceUrl ? (
+              <DashboardSourceLink
+                itemId={entity.itemId}
+                label="Open item details"
+              />
+            ) : null}
+          </div>
         </div>
         <VisibilityToggle
           hidden={hidden}
@@ -322,22 +335,6 @@ function MobileCard({
           alwaysVisible
           onClick={() => onToggle(entity, !hidden)}
         />
-      </div>
-
-      <div className="mt-1.5 text-body-md text-eco-foreground/85">
-        <WhatItIsCell entity={entity} />
-      </div>
-
-      <div className="mt-2 flex items-center gap-4 text-label-md text-eco-foreground/55">
-        <span className="whitespace-nowrap">
-          {formatDateShort(entity.dateSaved)}
-        </span>
-        {entity.url ? (
-          <ExternalLinkIcon href={entity.url} label="Open entity" />
-        ) : null}
-        {entity.sourceUrl ? (
-          <DashboardSourceLink itemId={entity.itemId} label="Open item details" />
-        ) : null}
       </div>
     </li>
   );
@@ -525,7 +522,7 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
               </colgroup>
               <thead>
                 <tr className="text-label-md font-medium uppercase tracking-wide text-eco-foreground/55">
-                  <th className="py-2 pr-4 font-normal">Name</th>
+                  <th className="py-2 pl-3 pr-4 font-normal">Name</th>
                   <th className="py-2 pr-4 font-normal">What it is</th>
                   <th className="py-2 pr-4 font-normal">Link</th>
                   <th className="py-2 pr-4 font-normal">Saved</th>
@@ -536,12 +533,16 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
               <tbody>
                 {level1Groups.map((g) => (
                   <Fragment key={g.level1}>
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="pb-1 pt-4 text-label-md font-medium uppercase tracking-wide text-eco-foreground/60"
-                      >
-                        {g.level1}
+                    <tr className="digest-cat-row">
+                      <td colSpan={6} className="px-3 py-2">
+                        <span className="inline-flex items-baseline gap-2">
+                          <span className="font-display text-body-md font-semibold capitalize tracking-tight text-eco-heading">
+                            {g.level1}
+                          </span>
+                          <span className="font-sans text-label-md font-normal text-eco-foreground/45">
+                            {g.rows.length}
+                          </span>
+                        </span>
                       </td>
                     </tr>
                     {g.rows.map((entity) => {
@@ -560,12 +561,16 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
                 ))}
                 {showHidden && hiddenRows.length > 0 ? (
                   <>
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="pb-1 pt-5 text-label-md font-medium uppercase tracking-wide text-eco-foreground/40"
-                      >
-                        Hidden
+                    <tr className="digest-cat-row">
+                      <td colSpan={6} className="px-3 py-2">
+                        <span className="inline-flex items-baseline gap-2">
+                          <span className="font-display text-body-md font-semibold capitalize tracking-tight text-eco-foreground/50">
+                            Hidden
+                          </span>
+                          <span className="font-sans text-label-md font-normal text-eco-foreground/40">
+                            {hiddenRows.length}
+                          </span>
+                        </span>
                       </td>
                     </tr>
                     {hiddenRows.map((entity) => {
@@ -586,13 +591,18 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
             </table>
 
             {/* Mobile cards */}
-            <div className="space-y-6 sm:hidden">
+            <div className="space-y-5 sm:hidden">
               {level1Groups.map((g) => (
                 <div key={g.level1}>
-                  <h3 className="mb-2 text-label-md font-medium uppercase tracking-wide text-eco-foreground/60">
-                    {g.level1}
+                  <h3 className="mb-1 flex items-baseline gap-2 rounded-md bg-eco-badge-bg px-3 py-1.5 shadow-[inset_3px_0_0_var(--eco-primary)]">
+                    <span className="font-display text-body-md font-semibold capitalize tracking-tight text-eco-heading">
+                      {g.level1}
+                    </span>
+                    <span className="font-sans text-label-md font-normal text-eco-foreground/45">
+                      {g.rows.length}
+                    </span>
                   </h3>
-                  <ul className="space-y-2">
+                  <ul className="divide-y divide-eco-border-subtle px-3">
                     {g.rows.map((entity) => {
                       const key = entityKey(entity);
                       return (
@@ -610,10 +620,15 @@ export function DigestExplorer({ groups }: { groups: EntityGroup[] }) {
               ))}
               {showHidden && hiddenRows.length > 0 ? (
                 <div>
-                  <h3 className="mb-2 text-label-md font-medium uppercase tracking-wide text-eco-foreground/40">
-                    Hidden
+                  <h3 className="mb-1 flex items-baseline gap-2 rounded-md bg-eco-badge-bg px-3 py-1.5 shadow-[inset_3px_0_0_var(--eco-primary)]">
+                    <span className="font-display text-body-md font-semibold capitalize tracking-tight text-eco-foreground/50">
+                      Hidden
+                    </span>
+                    <span className="font-sans text-label-md font-normal text-eco-foreground/40">
+                      {hiddenRows.length}
+                    </span>
                   </h3>
-                  <ul className="space-y-2">
+                  <ul className="divide-y divide-eco-border-subtle px-3">
                     {hiddenRows.map((entity) => {
                       const key = entityKey(entity);
                       return (

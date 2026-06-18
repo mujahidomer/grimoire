@@ -39,6 +39,7 @@ const config: Config = {
           "surface-raised": "var(--eco-surface-raised)",
           "surface-hover": "var(--eco-surface-hover)",
           "kbd-bg": "var(--eco-kbd-bg)",
+          "badge-bg": "var(--eco-badge-bg)",
         },
       },
       fontFamily: {
