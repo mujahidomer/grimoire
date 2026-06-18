@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { fetchDigest } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
 import type { DigestItem } from "@/lib/types";
@@ -6,35 +7,12 @@ import {
   type EntityGroup,
   type FlatEntity,
 } from "@/components/digest-explorer";
+import { entityTypeLabel } from "@/lib/utils";
 
 // Server-render the digest each request; it's read-only and small (~50 items),
 // so there's nothing to hydrate on the client.
 export const dynamic = "force-dynamic";
 
-// Human-readable table labels per entity.type. Anything not listed falls back
-// to a title-cased, pluralized version of the raw type.
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  tool: "Tools",
-  skill: "Skills",
-  dua: "Duas",
-  hadith: "Hadiths",
-  quranic_verse: "Quranic Verses",
-  book: "Books",
-  workflow: "Workflows",
-  resource: "Resources",
-};
-
-function entityTypeLabel(type: string): string {
-  if (ENTITY_TYPE_LABELS[type]) return ENTITY_TYPE_LABELS[type];
-  const titled = type
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-  return titled.endsWith("s") ? titled : `${titled}s`;
-}
-
-// Collect every entity from every item into one flat list, tagging each with
-// its parent item's id/date/source so rows can still link back. Hidden entities
-// are kept here — the client decides whether to render them.
 function flattenEntities(items: DigestItem[]): FlatEntity[] {
   const flat: FlatEntity[] = [];
   for (const item of items) {
@@ -103,17 +81,20 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8 lg:py-10">
-      <h1 className="mb-8 font-display text-2xl text-eco-heading">
-        Library Digest
-      </h1>
-
       {groups.length === 0 ? (
-        <p className="font-sans text-body-md text-eco-foreground/65">
-          Nothing here yet. Saved tools, skills, duas, and other actionable
-          entities will show up grouped here.
-        </p>
+        <>
+          <h1 className="mb-8 font-display text-2xl text-eco-heading">
+            Library Digest
+          </h1>
+          <p className="font-sans text-body-md text-eco-foreground/65">
+            Nothing here yet. Saved tools, skills, duas, and other actionable
+            entities will show up grouped here.
+          </p>
+        </>
       ) : (
-        <DigestExplorer groups={groups} />
+        <Suspense>
+          <DigestExplorer groups={groups} showTitle />
+        </Suspense>
       )}
     </div>
   );

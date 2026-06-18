@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Item } from "@/lib/types";
+import { prefetchItem } from "@/lib/api";
 import { formatDate, formatTime, formatType, truncate } from "@/lib/utils";
 import { SourceThumbnail } from "@/components/source-thumbnail";
 
@@ -26,6 +27,8 @@ function LibraryListRow({ item }: { item: Item }) {
   return (
     <Link
       href={`/item/${item.id}`}
+      onMouseEnter={() => prefetchItem(item.id)}
+      onFocus={() => prefetchItem(item.id)}
       className="group flex items-start gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-eco-hover"
     >
       <SourceThumbnail
@@ -52,6 +55,8 @@ function LibraryGridCard({ item }: { item: Item }) {
   return (
     <Link
       href={`/item/${item.id}`}
+      onMouseEnter={() => prefetchItem(item.id)}
+      onFocus={() => prefetchItem(item.id)}
       className="group block overflow-hidden rounded-xl border border-eco-border-subtle bg-eco-surface shadow-eco-sm transition-shadow duration-eco hover:shadow-eco"
     >
       <SourceThumbnail url={item.source_url} className="aspect-video w-full" />
@@ -138,6 +143,8 @@ export function RecentSaves({ items }: { items: Item[] }) {
             <li key={item.id}>
               <Link
                 href={`/item/${item.id}`}
+                onMouseEnter={() => prefetchItem(item.id)}
+                onFocus={() => prefetchItem(item.id)}
                 className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors hover:bg-eco-hover"
               >
                 <SourceThumbnail

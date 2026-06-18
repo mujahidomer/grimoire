@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Item } from "@/lib/types";
+import { prefetchItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
@@ -15,7 +16,12 @@ export function ItemCard({ item }: { item: Item }) {
   const hasArtifact = item.artifact_type && item.artifact_type !== "none";
 
   return (
-    <Link href={`/item/${item.id}`} className="group block">
+    <Link
+      href={`/item/${item.id}`}
+      onMouseEnter={() => prefetchItem(item.id)}
+      onFocus={() => prefetchItem(item.id)}
+      className="group block"
+    >
       <Card className="h-full p-8 shadow-eco-lg transition-shadow duration-eco group-hover:shadow-eco">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3 text-label-md text-eco-primary/75">

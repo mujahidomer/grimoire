@@ -24,4 +24,13 @@ while IFS= read -r pid; do
   kill -9 "$pid" 2>/dev/null || true
 done < <(pgrep -f "$ROOT/node_modules/.bin/nodemon index.js" 2>/dev/null || true)
 
+# Stray API processes survive port kills if they restarted on a different port.
+while IFS= read -r pid; do
+  [ -n "$pid" ] || continue
+  cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1)"
+  [ "$cwd" = "$ROOT" ] || continue
+  echo "Stopping node index.js $pid"
+  kill -9 "$pid" 2>/dev/null || true
+done < <(pgrep -f "node index.js" 2>/dev/null || true)
+
 echo "Grimoire dev processes stopped."

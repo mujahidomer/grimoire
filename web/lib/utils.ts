@@ -83,3 +83,23 @@ const ARTIFACT_EMOJI: Record<string, string> = {
 export function artifactEmoji(type: string): string {
   return ARTIFACT_EMOJI[type] ?? "📌";
 }
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  tool: "Tools",
+  skill: "Skills",
+  dua: "Duas",
+  hadith: "Hadiths",
+  quranic_verse: "Quranic Verses",
+  book: "Books",
+  workflow: "Workflows",
+  resource: "Resources",
+};
+
+// Human-readable table labels per entity.type for the Library Digest.
+export function entityTypeLabel(type: string): string {
+  if (ENTITY_TYPE_LABELS[type]) return ENTITY_TYPE_LABELS[type];
+  const titled = type
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return titled.endsWith("s") ? titled : `${titled}s`;
+}

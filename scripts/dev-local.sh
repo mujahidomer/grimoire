@@ -23,7 +23,7 @@ trap cleanup INT TERM EXIT
 echo "Starting API on http://localhost:3001 ..."
 (
   cd "$ROOT"
-  PORT=3001 exec node index.js
+  PORT=3001 TELEGRAM_POLLING=false exec node index.js
 ) &
 API_PID=$!
 

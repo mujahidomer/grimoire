@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { fetchItem, fetchItems } from "@/lib/api";
@@ -73,6 +73,9 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
 
   const reqId = useRef(0);
   const pendingEnsureIds = useRef<string[] | undefined>();
+  const skipInitialFetch = useRef(
+    initialItems.length > 0 && !query && !category,
+  );
 
   useEffect(() => {
     setView(readStoredView());
@@ -122,6 +125,14 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
     const t = setTimeout(() => {
       const ensureIds = pendingEnsureIds.current;
       pendingEnsureIds.current = undefined;
+
+      // SSR already fetched the unfiltered library — skip the duplicate round trip.
+      if (skipInitialFetch.current && !query && !category && !ensureIds?.length) {
+        skipInitialFetch.current = false;
+        return;
+      }
+      skipInitialFetch.current = false;
+
       load(query, category, ensureIds);
     }, delay);
     return () => clearTimeout(t);
@@ -154,9 +165,14 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
 
   const isFiltered = !!query || !!category;
   const title = category ?? (isFiltered ? "Search results" : "Library");
-  const sorted = sortItems(items);
-  const recentItems = isFiltered ? [] : sorted.slice(0, 3);
-  const feedItems = isFiltered ? sorted : sorted.slice(recentItems.length);
+  const { recentItems, feedItems } = useMemo(() => {
+    const sorted = sortItems(items);
+    const recent = isFiltered ? [] : sorted.slice(0, 3);
+    return {
+      recentItems: recent,
+      feedItems: isFiltered ? sorted : sorted.slice(recent.length),
+    };
+  }, [items, isFiltered]);
 
   return (
     <div

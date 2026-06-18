@@ -58,19 +58,12 @@ async function clientAuthHeaders(): Promise<HeadersInit> {
 
   try {
     const supabase = createBrowserClient();
-    // Validate the session with Supabase before attaching the token — getSession()
-    // alone can return a stale local copy while cookies are still syncing.
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        h.Authorization = `Bearer ${session.access_token}`;
-        return h;
-      }
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      h.Authorization = `Bearer ${session.access_token}`;
+      return h;
     }
   } catch {
     /* browser client unavailable (SSR) */
@@ -78,6 +71,42 @@ async function clientAuthHeaders(): Promise<HeadersInit> {
 
   if (LEGACY_USER_ID) h["x-user-id"] = LEGACY_USER_ID;
   return h;
+}
+
+const itemCache = new Map<string, Promise<Item>>();
+
+async function requestItem(
+  id: string,
+  accessToken?: string | null,
+): Promise<Item> {
+  const headers =
+    accessToken !== undefined
+      ? serverAuthHeaders(accessToken)
+      : await clientAuthHeaders();
+  const res = await withTimeout(`${BASE}/api/items/${id}`, {
+    headers,
+    cache: "no-store",
+  });
+  const data = await json<{ item: Item }>(res);
+  return data.item;
+}
+
+function trackItemRequest(id: string, promise: Promise<Item>): Promise<Item> {
+  const tracked = promise.catch((error) => {
+    itemCache.delete(id);
+    throw error;
+  });
+  itemCache.set(id, tracked);
+  return tracked;
+}
+
+export function prefetchItem(id: string): void {
+  if (!id || itemCache.has(id)) return;
+  trackItemRequest(id, requestItem(id));
+}
+
+export function invalidateItemCache(id: string): void {
+  itemCache.delete(id);
 }
 
 function serverAuthHeaders(accessToken: string | null | undefined): HeadersInit {
@@ -170,16 +199,13 @@ export async function fetchItem(
   id: string,
   accessToken?: string | null,
 ): Promise<Item> {
-  const headers =
-    accessToken !== undefined
-      ? serverAuthHeaders(accessToken)
-      : await clientAuthHeaders();
-  const res = await withTimeout(`${BASE}/api/items/${id}`, {
-    headers,
-    cache: "no-store",
-  });
-  const data = await json<{ item: Item }>(res);
-  return data.item;
+  if (accessToken !== undefined) {
+    return requestItem(id, accessToken);
+  }
+
+  const cached = itemCache.get(id);
+  if (cached) return cached;
+  return trackItemRequest(id, requestItem(id));
 }
 
 export async function fetchItemMarkdown(id: string): Promise<string> {
@@ -293,6 +319,7 @@ export async function deleteItem(id: string): Promise<void> {
     headers: await clientAuthHeaders(),
   });
   await json<{ success: boolean }>(res);
+  invalidateItemCache(id);
 }
 
 export async function addLinkedResource(

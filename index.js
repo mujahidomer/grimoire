@@ -1,8 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const TelegramBot = require('node-telegram-bot-api');
 const { extractContent } = require('./lib/extractor');
+const { initTelegramBot } = require('./lib/telegram');
 const { processContent, researchUrl, processLinkedResource } = require('./lib/classifier');
 const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
@@ -25,9 +25,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
 }));
 app.use(express.json());
-
-// ─── Telegram Bot ────────────────────────────────────────────────────────────
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
 // The single hardcoded capture user for the testing phase (Doc A §Auth). The
 // schema is multi-user from day one; this is just whose library Telegram fills.
@@ -109,7 +106,7 @@ async function saveFromUrl(url, userId) {
     { caption: extracted.caption, transcript: extracted.transcript }, userId);
 }
 
-async function sendSavedConfirmation(chatId, saved) {
+async function sendSavedConfirmation(bot, chatId, saved) {
   const summary = saved.map(item =>
     `${typeEmoji(item.type)} *${item.title}*\n   ${item.category} · ${item.type}\n   ${item.summary || ''}`
   ).join('\n\n');
@@ -128,7 +125,7 @@ async function sendSavedConfirmation(chatId, saved) {
 }
 
 // Append one or more follow-up links to an already-saved item as linked_resources.
-async function appendToEntry(chatId, entry, urls) {
+async function appendToEntry(bot, chatId, entry, urls) {
   const urlList = Array.isArray(urls) ? urls : [urls];
 
   for (const url of urlList) {
@@ -155,6 +152,7 @@ async function appendToEntry(chatId, entry, urls) {
 }
 
 // ─── Telegram Handlers ───────────────────────────────────────────────────────
+function registerTelegramHandlers(bot) {
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id,
     `👋 Welcome to Grimoire!\n\n` +
@@ -193,7 +191,7 @@ bot.on('message', async (msg) => {
     // Reply to a "Saved" confirmation → append the link to the original item.
     if (msg.reply_to_message && urls.length >= 1) {
       const entry = confirmationIndex.get(msg.reply_to_message.message_id);
-      if (entry) return await appendToEntry(chatId, entry, urls);
+      if (entry) return await appendToEntry(bot, chatId, entry, urls);
       await bot.sendMessage(chatId, `⚠️ Couldn't find the original entry for that message — saving as a new entry instead.`);
     }
 
@@ -203,8 +201,8 @@ bot.on('message', async (msg) => {
         findItemBySourceUrl(USER_ID, urls[0]),
         findItemBySourceUrl(USER_ID, urls[1])
       ]);
-      if (a && !b) return await appendToEntry(chatId, { itemId: a.id, title: a.title }, urls[1]);
-      if (b && !a) return await appendToEntry(chatId, { itemId: b.id, title: b.title }, urls[0]);
+      if (a && !b) return await appendToEntry(bot, chatId, { itemId: a.id, title: a.title }, urls[1]);
+      if (b && !a) return await appendToEntry(bot, chatId, { itemId: b.id, title: b.title }, urls[0]);
     }
 
     const isUrl = /^https?:\/\//i.test(text.trim());
@@ -214,19 +212,20 @@ bot.on('message', async (msg) => {
       await bot.sendMessage(chatId, '🔗 Extracting content...');
       const saved = await saveFromUrl(url, USER_ID);
       if (saved.length === 0) return bot.sendMessage(chatId, '🤔 Nothing found for this URL. Try pasting content directly.');
-      await sendSavedConfirmation(chatId, saved);
+      await sendSavedConfirmation(bot, chatId, saved);
 
     } else {
       await bot.sendMessage(chatId, '🧠 Processing...');
       const saved = await runPipeline(text, 'manual', undefined, {}, USER_ID);
       if (saved.length === 0) return bot.sendMessage(chatId, '🤔 Nothing extractable found. Try pasting the content directly.');
-      await sendSavedConfirmation(chatId, saved);
+      await sendSavedConfirmation(bot, chatId, saved);
     }
   } catch (err) {
     console.error('Pipeline error:', err);
     bot.sendMessage(chatId, `❌ Error: ${err.message}`);
   }
 });
+}
 
 function typeEmoji(type) {
   const map = { video: '🎬', article: '📄' };
@@ -369,7 +368,18 @@ app.post('/process-text', async (req, res) => {
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  const supadata = process.env.SUPADATA_API_KEY?.trim() ? 'configured' : 'missing';
-  console.log(`🔮 Grimoire running on port ${PORT} (Supadata: ${supadata})`);
+
+async function start() {
+  const bot = await initTelegramBot();
+  if (bot) registerTelegramHandlers(bot);
+
+  app.listen(PORT, () => {
+    const supadata = process.env.SUPADATA_API_KEY?.trim() ? 'configured' : 'missing';
+    console.log(`🔮 Grimoire running on port ${PORT} (Supadata: ${supadata})`);
+  });
+}
+
+start().catch((err) => {
+  console.error('Failed to start Grimoire:', err);
+  process.exit(1);
 });

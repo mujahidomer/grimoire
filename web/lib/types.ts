@@ -48,6 +48,7 @@ export interface Item {
   artifact_url: string | null;
   tags: Tag[];
   linked_resources?: LinkedResource[];
+  entities?: Entity[] | null;
 }
 
 // One artifact row in the Library Digest. A trimmed projection of Item — only

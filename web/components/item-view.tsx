@@ -25,6 +25,7 @@ import { RawMarkdownButton } from "@/components/raw-markdown";
 import { AddLinkedResource } from "@/components/add-linked-resource";
 import { DeleteItemButton } from "@/components/delete-item-button";
 import { LinkPreviewCard } from "@/components/link-preview-card";
+import { ItemDigestRefs } from "@/components/item-digest-refs";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -313,7 +314,13 @@ function renderTakeaways(
   return renderObject(value, 0, recipeMode, sacredMode);
 }
 
-export function ItemView({ item }: { item: Item }) {
+export function ItemView({
+  item,
+  embedded = false,
+}: {
+  item: Item;
+  embedded?: boolean;
+}) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [resources, setResources] = useState<LinkedResource[]>(
     item.linked_resources ?? [],
@@ -323,14 +330,22 @@ export function ItemView({ item }: { item: Item }) {
   const hasTranscript = !!(item.transcript && item.transcript.trim());
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
-      <Link
-        href="/"
-        className="mb-6 inline-flex items-center gap-1.5 font-sans text-body-md text-eco-foreground/85 transition-colors duration-eco hover:text-eco-primary"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </Link>
+    <div
+      className={
+        embedded
+          ? "px-4 py-5 lg:px-6"
+          : "mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10"
+      }
+    >
+      {!embedded ? (
+        <Link
+          href="/"
+          className="mb-6 inline-flex items-center gap-1.5 font-sans text-body-md text-eco-foreground/85 transition-colors duration-eco hover:text-eco-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Link>
+      ) : null}
 
       <article>
         {item.source_url && (
@@ -484,6 +499,10 @@ export function ItemView({ item }: { item: Item }) {
             </ul>
           </section>
         )}
+
+        {item.entities && item.entities.length > 0 ? (
+          <ItemDigestRefs entities={item.entities} />
+        ) : null}
       </article>
     </div>
   );
