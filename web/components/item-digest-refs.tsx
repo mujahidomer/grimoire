@@ -43,7 +43,7 @@ export function ItemDigestRefs({ entities }: { entities: Entity[] }) {
     .sort(compareEntities);
   if (rows.length === 0) return null;
 
-  const types = [...new Set(rows.map((entity) => entity.type))];
+  const types = Array.from(new Set(rows.map((entity) => entity.type)));
   const showTypeHeaders = types.length > 1;
 
   return (
