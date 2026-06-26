@@ -250,7 +250,7 @@ as $$
 declare
   result jsonb;
 begin
-  if query_text !~* '^\s*select\b' then
+  if query_text !~* '^\s*select\y' then
     raise exception 'Only SELECT queries are allowed';
   end if;
   execute format(
