@@ -229,6 +229,38 @@ language sql stable as $$
   limit match_count;
 $$;
 
+-- ─── Read-only ad-hoc query RPC (library analytics / Job B) ───────────────────
+-- Executes an LLM-generated SELECT against the user's library and returns the
+-- rows as jsonb. Used by lib/libraryAnalytics.js for whole-library analytics
+-- questions ("how many Instagram saves do I have?", "what are my main themes?").
+--
+-- Safety:
+--   * Rejects anything that is not a single SELECT (regex guard).
+--   * Wrapping the query inside `(<query>) q` makes statement-chaining (a
+--     trailing `; drop ...`) a syntax error, so only one statement can run.
+--   * Caps output at 100 rows.
+--   * statement_timeout caps runtime at 10s.
+-- The service role bypasses RLS, so the GENERATED SQL must scope by user_id
+-- itself — the SQL-generator prompt enforces a `where user_id = '<uuid>'` filter.
+create or replace function exec_read_query(query_text text)
+returns jsonb
+language plpgsql
+set statement_timeout = '10s'
+as $$
+declare
+  result jsonb;
+begin
+  if query_text !~* '^\s*select\b' then
+    raise exception 'Only SELECT queries are allowed';
+  end if;
+  execute format(
+    'select coalesce(jsonb_agg(q), ''[]''::jsonb) from (select * from (%s) sub limit 100) q',
+    query_text
+  ) into result;
+  return result;
+end;
+$$;
+
 -- ─── Row-Level Security ───────────────────────────────────────────────────────
 -- Every user-scoped table: a user may only touch their own rows. The server's
 -- service-role key bypasses RLS for pipeline writes; these policies protect the

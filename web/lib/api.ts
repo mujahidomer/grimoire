@@ -16,6 +16,7 @@ const SAVE_REQUEST_TIMEOUT_MS = 120000;
 
 export type ChatStreamEvent =
   | { type: "progress"; step: "searching" }
+  | { type: "progress"; step: "analysing" }
   | { type: "progress"; step: "reranking"; count: number }
   | { type: "progress"; step: "synthesizing"; count: number }
   | { type: "text"; text: string }
@@ -24,10 +25,11 @@ export type ChatStreamEvent =
   | { type: "error"; message: string };
 
 export function chatProgressLabel(
-  step: "searching" | "reranking" | "synthesizing",
+  step: "searching" | "analysing" | "reranking" | "synthesizing",
   count?: number,
 ): string {
   if (step === "searching") return "Searching your library...";
+  if (step === "analysing") return "Analysing your library...";
   if (step === "reranking" && count != null) {
     return `Found ${count} results, finding the best ones...`;
   }

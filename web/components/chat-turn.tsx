@@ -65,7 +65,13 @@ export function ChatTurn({
         </p>
       ) : (
         <div className="space-y-3">
-          {turn.answer ? <ChatMarkdown content={turn.answer} /> : null}
+          {turn.answer ? (
+            <ChatMarkdown
+              content={turn.answer}
+              sources={turn.sources}
+              onSourceNavigate={onSourceNavigate}
+            />
+          ) : null}
           {turn.sources.length > 0 && (
             <div className="space-y-1.5 border-t border-eco-border-subtle pt-3">
               <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
