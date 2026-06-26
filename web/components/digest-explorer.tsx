@@ -523,7 +523,7 @@ function DigestGroupSection({
                   <tr className="digest-cat-row">
                     <td colSpan={6} className="px-3 py-2">
                       <span className="inline-flex items-baseline gap-2">
-                        <span className="font-display text-body-md font-semibold capitalize tracking-tight text-eco-heading">
+                        <span className="font-sans text-body-md font-semibold capitalize tracking-tight text-eco-heading">
                           {g.level1}
                         </span>
                         <span className="font-sans text-label-md font-normal text-eco-foreground/45">
@@ -552,7 +552,7 @@ function DigestGroupSection({
                   <tr className="digest-cat-row">
                     <td colSpan={6} className="px-3 py-2">
                       <span className="inline-flex items-baseline gap-2">
-                        <span className="font-display text-body-md font-semibold capitalize tracking-tight text-eco-foreground/50">
+                        <span className="font-sans text-body-md font-semibold capitalize tracking-tight text-eco-foreground/50">
                           Hidden
                         </span>
                         <span className="font-sans text-label-md font-normal text-eco-foreground/40">
@@ -583,7 +583,7 @@ function DigestGroupSection({
             {level1Groups.map((g) => (
               <div key={g.level1}>
                 <h3 className="mb-1 flex items-baseline gap-2 rounded-md bg-eco-badge-bg px-3 py-1.5 shadow-[inset_3px_0_0_var(--eco-primary)]">
-                  <span className="font-display text-body-md font-semibold capitalize tracking-tight text-eco-heading">
+                  <span className="font-sans text-body-md font-semibold capitalize tracking-tight text-eco-heading">
                     {g.level1}
                   </span>
                   <span className="font-sans text-label-md font-normal text-eco-foreground/45">
@@ -610,7 +610,7 @@ function DigestGroupSection({
             {showHidden && hiddenRows.length > 0 ? (
               <div>
                 <h3 className="mb-1 flex items-baseline gap-2 rounded-md bg-eco-badge-bg px-3 py-1.5 shadow-[inset_3px_0_0_var(--eco-primary)]">
-                  <span className="font-display text-body-md font-semibold capitalize tracking-tight text-eco-foreground/50">
+                  <span className="font-sans text-body-md font-semibold capitalize tracking-tight text-eco-foreground/50">
                     Hidden
                   </span>
                   <span className="font-sans text-label-md font-normal text-eco-foreground/40">
