@@ -321,7 +321,12 @@ export function ItemView({
   item: Item;
   embedded?: boolean;
 }) {
-  const [showTranscript, setShowTranscript] = useState(false);
+  // For articles the transcript field holds the full article body (e.g. a
+  // Twitter Article pulled in via Jina), so show it expanded and label it
+  // accordingly. For video/tweet items it's a supplementary transcript that
+  // stays collapsed behind a "Show transcript" toggle.
+  const isArticle = item.type?.toLowerCase() === "article";
+  const [showTranscript, setShowTranscript] = useState(isArticle);
   const [resources, setResources] = useState<LinkedResource[]>(
     item.linked_resources ?? [],
   );
@@ -445,7 +450,13 @@ export function ItemView({
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-              {showTranscript ? "Hide transcript" : "Show transcript"}
+              {isArticle
+                ? showTranscript
+                  ? "Hide full article"
+                  : "Full article"
+                : showTranscript
+                  ? "Hide transcript"
+                  : "Show transcript"}
             </button>
             {showTranscript && (
               <p className="prose-reading mt-4 whitespace-pre-wrap text-base">
