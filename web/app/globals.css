@@ -478,6 +478,50 @@
   }
 }
 
+/* Process-step trace animation (the /chat signature moment). Each step fades up
+   as it arrives; the active step shows a left-to-right indigo sweep until the
+   next step completes it. Everything else stays static. */
+@keyframes chat-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes chat-step-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.chat-step {
+  animation: chat-step-in 0.28s ease-out both;
+}
+.chat-step-track {
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--eco-border-subtle);
+}
+.chat-step-track > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #6366f1;
+  animation: chat-step-sweep 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-step,
+  .chat-step-track > span {
+    animation: none;
+  }
+}
+
 /* iOS Safari auto-zooms focused inputs below 16px — keep touch fields at 16px+ */
 @media (hover: none) and (pointer: coarse) {
   input,

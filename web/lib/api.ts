@@ -36,7 +36,22 @@ export type ChatStreamEvent =
   | { type: "sources"; sources: ChatSource[] }
   | { type: "empty" }
   | { type: "limit"; remaining: number; resetAt: string }
+  | { type: "done"; chatId: string | null }
   | { type: "error"; message: string };
+
+// One row in the chat-history sidebar.
+export interface ChatSummary {
+  id: string;
+  title: string | null;
+  created_at: string;
+}
+
+// A persisted message when restoring a past conversation.
+export interface StoredMessage {
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
 
 export function chatProgressLabel(
   step: "searching" | "analysing" | "reranking" | "synthesizing",
@@ -65,6 +80,28 @@ export async function fetchChatUsage(): Promise<ChatUsageInfo> {
     cache: "no-store",
   });
   return json<ChatUsageInfo>(res);
+}
+
+// Recent chats for the history sidebar (newest first).
+export async function fetchChats(): Promise<ChatSummary[]> {
+  const res = await withTimeout(`${BASE}/api/chats`, {
+    headers: await clientAuthHeaders(),
+    cache: "no-store",
+  });
+  const data = await json<{ chats: ChatSummary[] }>(res);
+  return data.chats;
+}
+
+// Full transcript of one chat, oldest first.
+export async function fetchChatMessages(
+  chatId: string,
+): Promise<StoredMessage[]> {
+  const res = await withTimeout(`${BASE}/api/chats/${chatId}/messages`, {
+    headers: await clientAuthHeaders(),
+    cache: "no-store",
+  });
+  const data = await json<{ messages: StoredMessage[] }>(res);
+  return data.messages;
 }
 
 function timeoutMessage(timeoutMs: number): string {
@@ -273,11 +310,12 @@ export async function fetchItemMarkdown(id: string): Promise<string> {
 export async function* streamChatEvents(
   question: string,
   isDeep = false,
+  chatId?: string | null,
 ): AsyncGenerator<ChatStreamEvent> {
   const res = await fetch(`${BASE}/api/chat`, {
     method: "POST",
     headers: await clientAuthHeaders(),
-    body: JSON.stringify({ question, isDeep }),
+    body: JSON.stringify({ question, isDeep, chatId: chatId ?? undefined }),
   });
 
   if (!res.ok) {
@@ -333,12 +371,14 @@ export interface StreamingChatTurn {
   usage: ChatUsage | null;
   progress: string | null;
   limit: { remaining: number; resetAt: string } | null;
+  chatId: string | null;
 }
 
 export async function consumeChatStream(
   question: string,
   onUpdate: (turn: StreamingChatTurn) => void,
   isDeep = false,
+  chatId?: string | null,
 ): Promise<StreamingChatTurn> {
   const turn: StreamingChatTurn = {
     question,
@@ -349,10 +389,11 @@ export async function consumeChatStream(
     usage: null,
     progress: chatProgressLabel("searching", undefined, isDeep),
     limit: null,
+    chatId: chatId ?? null,
   };
   onUpdate({ ...turn });
 
-  for await (const event of streamChatEvents(question, isDeep)) {
+  for await (const event of streamChatEvents(question, isDeep, chatId)) {
     if (event.type === "progress") {
       turn.progress = chatProgressLabel(event.step, "count" in event ? event.count : undefined, isDeep);
     } else if (event.type === "text") {
@@ -370,6 +411,8 @@ export async function consumeChatStream(
     } else if (event.type === "meta") {
       turn.model = event.model;
       turn.usage = event.usage;
+    } else if (event.type === "done") {
+      turn.chatId = event.chatId;
     }
     onUpdate({ ...turn });
   }
