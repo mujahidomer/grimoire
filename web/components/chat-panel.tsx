@@ -5,8 +5,10 @@ import { X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
 import { consumeChatStream } from "@/lib/api";
 import { useOnboarding } from "@/lib/onboarding";
+import { useChatUsage } from "@/lib/use-chat-usage";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
+import { ChatUsageBar, DeepDiveToggle } from "@/components/chat-input-controls";
 
 import type { ChatUsage } from "@/lib/api";
 
@@ -33,10 +35,13 @@ export function ChatPanel({
   } | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isDeep, setIsDeep] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef(false);
+  const deepRef = useRef(false);
   const { markQueryDone } = useOnboarding();
+  const usage = useChatUsage();
 
   const sendQuestion = useCallback(async (q: string) => {
     const trimmed = q.trim();
@@ -57,7 +62,7 @@ export function ChatPanel({
           },
           progress: live.progress,
         });
-      });
+      }, deepRef.current);
       setTurns((prev) => [
         ...prev,
         {
@@ -83,8 +88,13 @@ export function ChatPanel({
       setStreamingTurn(null);
       loadingRef.current = false;
       setLoading(false);
+      usage.refresh();
     }
-  }, [markQueryDone]);
+  }, [markQueryDone, usage]);
+
+  useEffect(() => {
+    deepRef.current = isDeep;
+  }, [isDeep]);
 
   useEffect(() => {
     if (open) {
@@ -165,18 +175,28 @@ export function ChatPanel({
 
       <form
         onSubmit={send}
-        className="flex items-center gap-2 border-t border-eco-border-light px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:py-4 lg:pb-4"
+        className="flex flex-col border-t border-eco-border-light px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:py-4 lg:pb-4"
       >
-        <input
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question…"
-          className="h-9 min-w-0 flex-1 rounded-lg border border-eco-border-muted bg-eco-surface px-3 font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/55 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
-        />
-        <Button type="submit" size="sm" disabled={loading || !input.trim()}>
-          Send
-        </Button>
+        <ChatUsageBar state={usage} isDeep={isDeep} />
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask a question…"
+            className="h-9 min-w-0 flex-1 rounded-lg border border-eco-border-muted bg-eco-surface px-3 font-sans text-body-md text-eco-foreground placeholder:text-eco-foreground/55 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={loading || !input.trim() || usage.atLimit}
+          >
+            Send
+          </Button>
+        </div>
+        <div className="pt-2">
+          <DeepDiveToggle isDeep={isDeep} onChange={setIsDeep} disabled={loading} />
+        </div>
       </form>
     </aside>
   );

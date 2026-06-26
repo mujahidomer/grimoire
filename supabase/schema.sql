@@ -166,6 +166,24 @@ create index if not exists embeddings_item_idx on embeddings (item_id);
 create index if not exists embeddings_vector_idx
   on embeddings using ivfflat (embedding vector_cosine_ops) with (lists = 100);
 
+-- ─── query_usage (per-user daily chat rate limits) — BUILT THIS PHASE ─────────
+-- ⚠️  MANUAL STEP FOR MUJI: this table is NEW. Run the block below in the
+--     Supabase SQL editor (Dashboard → SQL Editor) once — `create table if not
+--     exists` is a no-op if you have already run it. The app's lib/queryLimits.js
+--     reads/writes this table on every /api/chat call.
+create table if not exists query_usage (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users on delete cascade,
+  date date not null default current_date,
+  query_count int not null default 0,
+  deep_count int not null default 0,
+  created_at timestamptz default now(),
+  unique (user_id, date)
+);
+
+create index if not exists query_usage_user_date
+on query_usage (user_id, date);
+
 -- ─── api_tokens (future MCP server) — schema only, no logic ───────────────────
 create table if not exists api_tokens (
   id           uuid primary key default gen_random_uuid(),
@@ -274,6 +292,7 @@ alter table embeddings       enable row level security;
 alter table api_tokens       enable row level security;
 alter table chats            enable row level security;
 alter table messages         enable row level security;
+alter table query_usage      enable row level security;
 alter table categories       enable row level security;
 
 do $$
@@ -281,7 +300,7 @@ declare t text;
 begin
   foreach t in array array[
     'items','tags','item_tags','linked_resources','embeddings',
-    'api_tokens','chats','messages'
+    'api_tokens','chats','messages','query_usage'
   ]
   loop
     execute format('drop policy if exists owner_all on %I;', t);

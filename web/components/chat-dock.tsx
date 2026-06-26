@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { MessageCircle, Send, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
 import { consumeChatStream } from "@/lib/api";
+import { useChatUsage } from "@/lib/use-chat-usage";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
+import { ChatUsageBar, DeepDiveToggle } from "@/components/chat-input-controls";
 
 import type { ChatUsage } from "@/lib/api";
 
@@ -27,7 +29,9 @@ export function ChatDock() {
   } | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isDeep, setIsDeep] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const usage = useChatUsage();
 
   function close() {
     setOpen(false);
@@ -62,7 +66,7 @@ export function ChatDock() {
           },
           progress: live.progress,
         });
-      });
+      }, isDeep);
       setTurns((prev) => [
         ...prev,
         {
@@ -87,6 +91,7 @@ export function ChatDock() {
     } finally {
       setStreamingTurn(null);
       setLoading(false);
+      usage.refresh();
     }
   }
 
@@ -149,17 +154,27 @@ export function ChatDock() {
 
             <form
               onSubmit={send}
-              className="flex items-center gap-2 border-t border-eco-border/40 px-4 py-3"
+              className="flex flex-col border-t border-eco-border/40 px-4 py-3"
             >
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask a question…"
-                className="h-10 flex-1 rounded-surface border border-eco-border bg-eco-input px-3 font-sans text-body-md text-eco-text backdrop-blur-eco placeholder:text-eco-text/60 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
-              />
-              <Button type="submit" size="icon" disabled={loading || !input.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
+              <ChatUsageBar state={usage} isDeep={isDeep} />
+              <div className="flex items-center gap-2">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask a question…"
+                  className="h-10 flex-1 rounded-surface border border-eco-border bg-eco-input px-3 font-sans text-body-md text-eco-text backdrop-blur-eco placeholder:text-eco-text/60 focus-visible:border-eco-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-primary"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={loading || !input.trim() || usage.atLimit}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="pt-2">
+                <DeepDiveToggle isDeep={isDeep} onChange={setIsDeep} disabled={loading} />
+              </div>
             </form>
           </div>
         </>

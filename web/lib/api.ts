@@ -19,6 +19,13 @@ export interface ChatUsage {
   output_tokens: number;
 }
 
+export interface ChatUsageInfo {
+  queryCount: number;
+  deepCount: number;
+  remaining: number;
+  resetAt: string;
+}
+
 export type ChatStreamEvent =
   | { type: "progress"; step: "searching" }
   | { type: "progress"; step: "analysing" }
@@ -28,13 +35,19 @@ export type ChatStreamEvent =
   | { type: "meta"; model: string; usage: ChatUsage }
   | { type: "sources"; sources: ChatSource[] }
   | { type: "empty" }
+  | { type: "limit"; remaining: number; resetAt: string }
   | { type: "error"; message: string };
 
 export function chatProgressLabel(
   step: "searching" | "analysing" | "reranking" | "synthesizing",
   count?: number,
+  isDeep = false,
 ): string {
-  if (step === "searching") return "Searching your library...";
+  if (step === "searching") {
+    return isDeep
+      ? "Deep searching your library..."
+      : "Searching your library...";
+  }
   if (step === "analysing") return "Analysing your library...";
   if (step === "reranking" && count != null) {
     return `Found ${count} results, finding the best ones...`;
@@ -43,6 +56,15 @@ export function chatProgressLabel(
     return `Synthesising from ${count} sources...`;
   }
   return "Thinking…";
+}
+
+// Today's chat credit usage — fed to the usage bar above the chat input.
+export async function fetchChatUsage(): Promise<ChatUsageInfo> {
+  const res = await withTimeout(`${BASE}/api/chat/usage`, {
+    headers: await clientAuthHeaders(),
+    cache: "no-store",
+  });
+  return json<ChatUsageInfo>(res);
 }
 
 function timeoutMessage(timeoutMs: number): string {
@@ -250,11 +272,12 @@ export async function fetchItemMarkdown(id: string): Promise<string> {
 
 export async function* streamChatEvents(
   question: string,
+  isDeep = false,
 ): AsyncGenerator<ChatStreamEvent> {
   const res = await fetch(`${BASE}/api/chat`, {
     method: "POST",
     headers: await clientAuthHeaders(),
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, isDeep }),
   });
 
   if (!res.ok) {
@@ -309,11 +332,13 @@ export interface StreamingChatTurn {
   model: string | null;
   usage: ChatUsage | null;
   progress: string | null;
+  limit: { remaining: number; resetAt: string } | null;
 }
 
 export async function consumeChatStream(
   question: string,
   onUpdate: (turn: StreamingChatTurn) => void,
+  isDeep = false,
 ): Promise<StreamingChatTurn> {
   const turn: StreamingChatTurn = {
     question,
@@ -322,18 +347,22 @@ export async function consumeChatStream(
     sources: [],
     model: null,
     usage: null,
-    progress: chatProgressLabel("searching"),
+    progress: chatProgressLabel("searching", undefined, isDeep),
+    limit: null,
   };
   onUpdate({ ...turn });
 
-  for await (const event of streamChatEvents(question)) {
+  for await (const event of streamChatEvents(question, isDeep)) {
     if (event.type === "progress") {
-      turn.progress = chatProgressLabel(event.step, "count" in event ? event.count : undefined);
+      turn.progress = chatProgressLabel(event.step, "count" in event ? event.count : undefined, isDeep);
     } else if (event.type === "text") {
       turn.answer += event.text;
       turn.progress = null;
     } else if (event.type === "empty") {
       turn.empty = true;
+      turn.progress = null;
+    } else if (event.type === "limit") {
+      turn.limit = { remaining: event.remaining, resetAt: event.resetAt };
       turn.progress = null;
     } else if (event.type === "sources") {
       turn.sources = event.sources;
