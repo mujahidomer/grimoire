@@ -2,6 +2,7 @@ import type { ChatUsage } from "@/lib/api";
 import type { ChatSource } from "@/lib/types";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { ChatSourceLink } from "@/components/chat-source-link";
+import { hasInlineCitations } from "@/lib/linkify-citations";
 import { Loader2 } from "lucide-react";
 
 function formatTokenCount(n: number): string {
@@ -70,6 +71,11 @@ export function ChatTurn({
   onSourceNavigate?: () => void;
   progress?: string | null;
 }) {
+  // Sources render inline as citation chips inside the answer. The bottom
+  // Sources list is a fallback, shown only when no inline chip was rendered.
+  const showSourcesFallback =
+    turn.sources.length > 0 && !hasInlineCitations(turn.answer, turn.sources);
+
   return (
     <div className="space-y-3">
       <ChatQuestionBubble>{turn.question}</ChatQuestionBubble>
@@ -95,7 +101,7 @@ export function ChatTurn({
               onSourceNavigate={onSourceNavigate}
             />
           ) : null}
-          {turn.sources.length > 0 && (
+          {showSourcesFallback && (
             <div className="space-y-1.5 border-t border-eco-border-subtle pt-3">
               <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
                 Sources

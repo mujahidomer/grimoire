@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, X } from "lucide-react";
+import Link from "next/link";
+import { Maximize2, MessageCircle, Send, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
 import { consumeChatStream } from "@/lib/api";
 import { useChatUsage } from "@/lib/use-chat-usage";
@@ -118,9 +119,19 @@ export function ChatDock() {
               <span className="font-display text-lg font-light text-eco-on-surface">
                 Ask Grimoire
               </span>
-              <Button variant="ghost" size="icon" onClick={close} aria-label="Close">
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Link
+                  href="/chat"
+                  aria-label="Open full-screen chat"
+                  title="Full screen"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-surface text-eco-foreground transition-colors duration-eco hover:bg-eco-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-border focus-visible:ring-offset-2"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Link>
+                <Button variant="ghost" size="icon" onClick={close} aria-label="Close">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div

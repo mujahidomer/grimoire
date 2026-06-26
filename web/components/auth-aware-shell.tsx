@@ -12,6 +12,8 @@ const BARE_ROUTES = new Set([
   "/landing",
   "/seed-picker",
   "/onboarding/shortcut",
+  // Full-screen chat renders its own standalone shell (sidebar + header).
+  "/chat",
 ]);
 
 export function AuthAwareShell({ children }: { children: React.ReactNode }) {

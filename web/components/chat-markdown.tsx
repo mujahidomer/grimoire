@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { ChatSource } from "@/lib/types";
 import { linkifyCitations } from "@/lib/linkify-citations";
 import { ChatCitationPill } from "@/components/chat-citation-pill";
@@ -23,9 +24,16 @@ export function ChatMarkdown({
     [content, sources],
   );
 
+  const sourceById = useMemo(() => {
+    const map = new Map<string, ChatSource>();
+    for (const s of sources) map.set(s.id, s);
+    return map;
+  }, [sources]);
+
   return (
-    <div className="prose-reading space-y-2 text-body-md [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+    <div className="chat-md prose-reading space-y-2 text-body-md [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           p: ({ children }) => <p className="leading-relaxed">{children}</p>,
           strong: ({ children }) => (
@@ -42,6 +50,28 @@ export function ChatMarkdown({
           ),
           li: ({ children }) => <li className="leading-relaxed">{children}</li>,
           a: ({ href, children }) => {
+            // Inline source citation emitted as [Title](cite:item_id). Resolve
+            // the id to the saved source so the chip carries the real title/URL.
+            if (href?.startsWith("cite:")) {
+              const id = href.slice("cite:".length);
+              const source = sourceById.get(id);
+              if (source) {
+                return (
+                  <ChatCitationPill
+                    href={`/item/${source.id}`}
+                    onNavigate={onSourceNavigate}
+                  >
+                    {source.title}
+                  </ChatCitationPill>
+                );
+              }
+              return (
+                <ChatCitationPill pending onNavigate={onSourceNavigate}>
+                  {children}
+                </ChatCitationPill>
+              );
+            }
+
             if (href?.startsWith("#cite-")) {
               return (
                 <ChatCitationPill pending onNavigate={onSourceNavigate}>
