@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, MessageCircle, Send, X } from "lucide-react";
+import { MessageCircle, Send, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
-import { askChat } from "@/lib/api";
+import { consumeChatStream } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
 
@@ -17,6 +17,10 @@ interface Turn {
 export function ChatDock() {
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [streamingTurn, setStreamingTurn] = useState<{
+    turn: Turn;
+    progress: string | null;
+  } | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -24,6 +28,7 @@ export function ChatDock() {
   function close() {
     setOpen(false);
     setTurns([]);
+    setStreamingTurn(null);
     setInput("");
   }
 
@@ -32,7 +37,7 @@ export function ChatDock() {
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [turns, loading]);
+  }, [turns, streamingTurn, loading]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -41,10 +46,25 @@ export function ChatDock() {
     setInput("");
     setLoading(true);
     try {
-      const res = await askChat(q);
+      const finalTurn = await consumeChatStream(q, (live) => {
+        setStreamingTurn({
+          turn: {
+            question: live.question,
+            answer: live.answer,
+            empty: live.empty,
+            sources: live.sources,
+          },
+          progress: live.progress,
+        });
+      });
       setTurns((prev) => [
         ...prev,
-        { question: q, answer: res.answer, empty: res.empty, sources: res.sources },
+        {
+          question: finalTurn.question,
+          answer: finalTurn.answer,
+          empty: finalTurn.empty,
+          sources: finalTurn.sources,
+        },
       ]);
     } catch {
       setTurns((prev) => [
@@ -57,6 +77,7 @@ export function ChatDock() {
         },
       ]);
     } finally {
+      setStreamingTurn(null);
       setLoading(false);
     }
   }
@@ -106,10 +127,14 @@ export function ChatDock() {
                 </div>
               ))}
 
-              {loading && (
-                <div className="flex items-center gap-2 text-eco-text/65">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="font-sans text-body-md">Thinking…</span>
+              {streamingTurn && (
+                <div>
+                  {turns.length > 0 && <ChatTurnDivider />}
+                  <ChatTurn
+                    turn={streamingTurn.turn}
+                    progress={streamingTurn.progress}
+                    onSourceNavigate={close}
+                  />
                 </div>
               )}
             </div>

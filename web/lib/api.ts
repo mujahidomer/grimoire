@@ -1,10 +1,10 @@
 import type {
-  ChatResponse,
   DigestResponse,
   Item,
   LinkedResource,
   LinkPreview,
   SaveResponse,
+  ChatSource,
 } from "./types";
 import { createClient as createBrowserClient } from "./supabase/client";
 import { devAuthUserId } from "./dev-auth";
@@ -13,6 +13,29 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const REQUEST_TIMEOUT_MS = 15000;
 // Save runs scraping, transcription, and classification — often >15s on Railway.
 const SAVE_REQUEST_TIMEOUT_MS = 120000;
+
+export type ChatStreamEvent =
+  | { type: "progress"; step: "searching" }
+  | { type: "progress"; step: "reranking"; count: number }
+  | { type: "progress"; step: "synthesizing"; count: number }
+  | { type: "text"; text: string }
+  | { type: "sources"; sources: ChatSource[] }
+  | { type: "empty" }
+  | { type: "error"; message: string };
+
+export function chatProgressLabel(
+  step: "searching" | "reranking" | "synthesizing",
+  count?: number,
+): string {
+  if (step === "searching") return "Searching your library...";
+  if (step === "reranking" && count != null) {
+    return `Found ${count} results, finding the best ones...`;
+  }
+  if (step === "synthesizing" && count != null) {
+    return `Synthesising from ${count} sources...`;
+  }
+  return "Thinking…";
+}
 
 function timeoutMessage(timeoutMs: number): string {
   const seconds = Math.round(timeoutMs / 1000);
@@ -217,13 +240,99 @@ export async function fetchItemMarkdown(id: string): Promise<string> {
   return res.text();
 }
 
-export async function askChat(question: string): Promise<ChatResponse> {
-  const res = await withTimeout(`${BASE}/api/chat`, {
+export async function* streamChatEvents(
+  question: string,
+): AsyncGenerator<ChatStreamEvent> {
+  const res = await fetch(`${BASE}/api/chat`, {
     method: "POST",
     headers: await clientAuthHeaders(),
     body: JSON.stringify({ question }),
   });
-  return json<ChatResponse>(res);
+
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      detail = body.error || body.message || detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(detail);
+  }
+
+  if (!res.body) throw new Error("No response body");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+
+    for (const part of parts) {
+      const line = part
+        .split("\n")
+        .map((l) => l.trim())
+        .find((l) => l.startsWith("data: "));
+      if (!line) continue;
+
+      const payload = line.slice(6);
+      if (payload === "[DONE]") return;
+
+      const event = JSON.parse(payload) as ChatStreamEvent;
+      if (event.type === "error") {
+        throw new Error(event.message);
+      }
+      yield event;
+    }
+  }
+}
+
+export interface StreamingChatTurn {
+  question: string;
+  answer: string;
+  empty: boolean;
+  sources: ChatSource[];
+  progress: string | null;
+}
+
+export async function consumeChatStream(
+  question: string,
+  onUpdate: (turn: StreamingChatTurn) => void,
+): Promise<StreamingChatTurn> {
+  const turn: StreamingChatTurn = {
+    question,
+    answer: "",
+    empty: false,
+    sources: [],
+    progress: chatProgressLabel("searching"),
+  };
+  onUpdate({ ...turn });
+
+  for await (const event of streamChatEvents(question)) {
+    if (event.type === "progress") {
+      turn.progress = chatProgressLabel(event.step, "count" in event ? event.count : undefined);
+    } else if (event.type === "text") {
+      turn.answer += event.text;
+      turn.progress = null;
+    } else if (event.type === "empty") {
+      turn.empty = true;
+      turn.progress = null;
+    } else if (event.type === "sources") {
+      turn.sources = event.sources;
+      turn.progress = null;
+    }
+    onUpdate({ ...turn });
+  }
+
+  turn.progress = null;
+  onUpdate({ ...turn });
+  return turn;
 }
 
 export async function saveUrl(

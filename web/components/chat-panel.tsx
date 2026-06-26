@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
-import { askChat } from "@/lib/api";
+import { consumeChatStream } from "@/lib/api";
 import { useOnboarding } from "@/lib/onboarding";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
@@ -23,6 +23,10 @@ export function ChatPanel({
   onClose: () => void;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [streamingTurn, setStreamingTurn] = useState<{
+    turn: Turn;
+    progress: string | null;
+  } | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -37,14 +41,24 @@ export function ChatPanel({
     loadingRef.current = true;
     setLoading(true);
     try {
-      const res = await askChat(trimmed);
+      const finalTurn = await consumeChatStream(trimmed, (live) => {
+        setStreamingTurn({
+          turn: {
+            question: live.question,
+            answer: live.answer,
+            empty: live.empty,
+            sources: live.sources,
+          },
+          progress: live.progress,
+        });
+      });
       setTurns((prev) => [
         ...prev,
         {
-          question: trimmed,
-          answer: res.answer,
-          empty: res.empty,
-          sources: res.sources,
+          question: finalTurn.question,
+          answer: finalTurn.answer,
+          empty: finalTurn.empty,
+          sources: finalTurn.sources,
         },
       ]);
     } catch {
@@ -58,6 +72,7 @@ export function ChatPanel({
         },
       ]);
     } finally {
+      setStreamingTurn(null);
       loadingRef.current = false;
       setLoading(false);
     }
@@ -85,7 +100,7 @@ export function ChatPanel({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [turns, loading]);
+  }, [turns, streamingTurn, loading]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -129,10 +144,13 @@ export function ChatPanel({
           </div>
         ))}
 
-        {loading && (
-          <div className="flex items-center gap-2 text-eco-foreground/65">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="font-sans text-body-md">Thinking…</span>
+        {streamingTurn && (
+          <div>
+            {turns.length > 0 && <ChatTurnDivider />}
+            <ChatTurn
+              turn={streamingTurn.turn}
+              progress={streamingTurn.progress}
+            />
           </div>
         )}
       </div>

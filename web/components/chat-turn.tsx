@@ -1,6 +1,7 @@
 import type { ChatSource } from "@/lib/types";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { ChatSourceLink } from "@/components/chat-source-link";
+import { Loader2 } from "lucide-react";
 
 export function ChatTurnDivider() {
   return (
@@ -35,6 +36,7 @@ export function ChatQuestionBubble({ children }: { children: React.ReactNode }) 
 export function ChatTurn({
   turn,
   onSourceNavigate,
+  progress,
 }: {
   turn: {
     question: string;
@@ -43,10 +45,18 @@ export function ChatTurn({
     sources: ChatSource[];
   };
   onSourceNavigate?: () => void;
+  progress?: string | null;
 }) {
   return (
     <div className="space-y-3">
       <ChatQuestionBubble>{turn.question}</ChatQuestionBubble>
+
+      {progress && (
+        <div className="flex items-center gap-2 text-eco-foreground/65">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="font-sans text-body-md">{progress}</span>
+        </div>
+      )}
 
       {turn.empty ? (
         <p className="prose-reading text-body-md text-eco-foreground/65">
@@ -55,7 +65,7 @@ export function ChatTurn({
         </p>
       ) : (
         <div className="space-y-3">
-          <ChatMarkdown content={turn.answer} />
+          {turn.answer ? <ChatMarkdown content={turn.answer} /> : null}
           {turn.sources.length > 0 && (
             <div className="space-y-1.5 border-t border-eco-border-subtle pt-3">
               <p className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
