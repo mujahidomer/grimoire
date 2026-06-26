@@ -254,7 +254,7 @@ begin
     raise exception 'Only SELECT queries are allowed';
   end if;
   execute format(
-    'select coalesce(jsonb_agg(q), ''[]''::jsonb) from (select * from (%s) sub limit 100) q',
+    'select coalesce(jsonb_agg(row_to_json(q)), ''[]''::jsonb) from (%s) q',
     query_text
   ) into result;
   return result;
