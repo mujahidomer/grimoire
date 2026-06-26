@@ -14,12 +14,18 @@ const REQUEST_TIMEOUT_MS = 15000;
 // Save runs scraping, transcription, and classification — often >15s on Railway.
 const SAVE_REQUEST_TIMEOUT_MS = 120000;
 
+export interface ChatUsage {
+  input_tokens: number;
+  output_tokens: number;
+}
+
 export type ChatStreamEvent =
   | { type: "progress"; step: "searching" }
   | { type: "progress"; step: "analysing" }
   | { type: "progress"; step: "reranking"; count: number }
   | { type: "progress"; step: "synthesizing"; count: number }
   | { type: "text"; text: string }
+  | { type: "meta"; model: string; usage: ChatUsage }
   | { type: "sources"; sources: ChatSource[] }
   | { type: "empty" }
   | { type: "error"; message: string };
@@ -300,6 +306,8 @@ export interface StreamingChatTurn {
   answer: string;
   empty: boolean;
   sources: ChatSource[];
+  model: string | null;
+  usage: ChatUsage | null;
   progress: string | null;
 }
 
@@ -312,6 +320,8 @@ export async function consumeChatStream(
     answer: "",
     empty: false,
     sources: [],
+    model: null,
+    usage: null,
     progress: chatProgressLabel("searching"),
   };
   onUpdate({ ...turn });
@@ -328,6 +338,9 @@ export async function consumeChatStream(
     } else if (event.type === "sources") {
       turn.sources = event.sources;
       turn.progress = null;
+    } else if (event.type === "meta") {
+      turn.model = event.model;
+      turn.usage = event.usage;
     }
     onUpdate({ ...turn });
   }

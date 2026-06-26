@@ -1,7 +1,28 @@
+import type { ChatUsage } from "@/lib/api";
 import type { ChatSource } from "@/lib/types";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { ChatSourceLink } from "@/components/chat-source-link";
 import { Loader2 } from "lucide-react";
+
+function formatTokenCount(n: number): string {
+  return n.toLocaleString();
+}
+
+function ChatAnswerMeta({
+  model,
+  usage,
+}: {
+  model: string;
+  usage: ChatUsage;
+}) {
+  const total = usage.input_tokens + usage.output_tokens;
+  return (
+    <p className="pt-1 font-sans text-label-md text-eco-foreground/65">
+      {formatTokenCount(total)} tokens ({formatTokenCount(usage.input_tokens)} in,{" "}
+      {formatTokenCount(usage.output_tokens)} out) · {model}
+    </p>
+  );
+}
 
 export function ChatTurnDivider() {
   return (
@@ -43,6 +64,8 @@ export function ChatTurn({
     answer: string;
     empty: boolean;
     sources: ChatSource[];
+    model?: string | null;
+    usage?: ChatUsage | null;
   };
   onSourceNavigate?: () => void;
   progress?: string | null;
@@ -88,6 +111,9 @@ export function ChatTurn({
                 ))}
               </ul>
             </div>
+          )}
+          {turn.model && turn.usage && (
+            <ChatAnswerMeta model={turn.model} usage={turn.usage} />
           )}
         </div>
       )}

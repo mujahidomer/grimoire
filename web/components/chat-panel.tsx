@@ -8,11 +8,15 @@ import { useOnboarding } from "@/lib/onboarding";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
 
+import type { ChatUsage } from "@/lib/api";
+
 interface Turn {
   question: string;
   answer: string;
   empty: boolean;
   sources: ChatSource[];
+  model?: string | null;
+  usage?: ChatUsage | null;
 }
 
 export function ChatPanel({
@@ -48,6 +52,8 @@ export function ChatPanel({
             answer: live.answer,
             empty: live.empty,
             sources: live.sources,
+            model: live.model,
+            usage: live.usage,
           },
           progress: live.progress,
         });
@@ -59,6 +65,8 @@ export function ChatPanel({
           answer: finalTurn.answer,
           empty: finalTurn.empty,
           sources: finalTurn.sources,
+          model: finalTurn.model,
+          usage: finalTurn.usage,
         },
       ]);
     } catch {

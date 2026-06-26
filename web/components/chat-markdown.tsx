@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import type { ChatSource } from "@/lib/types";
 import { linkifyCitations } from "@/lib/linkify-citations";
+import { ChatCitationPill } from "@/components/chat-citation-pill";
 
-const citationClassName =
+const externalLinkClassName =
   "font-medium text-eco-secondary underline decoration-eco-secondary/50 underline-offset-2 transition-colors duration-eco hover:text-eco-primary hover:decoration-eco-primary";
 
 export function ChatMarkdown({
@@ -44,21 +44,17 @@ export function ChatMarkdown({
           a: ({ href, children }) => {
             if (href?.startsWith("#cite-")) {
               return (
-                <span className={`${citationClassName} decoration-dotted`}>
+                <ChatCitationPill pending onNavigate={onSourceNavigate}>
                   {children}
-                </span>
+                </ChatCitationPill>
               );
             }
 
             if (href?.startsWith("/item/")) {
               return (
-                <Link
-                  href={href}
-                  onClick={onSourceNavigate}
-                  className={citationClassName}
-                >
+                <ChatCitationPill href={href} onNavigate={onSourceNavigate}>
                   {children}
-                </Link>
+                </ChatCitationPill>
               );
             }
 
@@ -67,7 +63,7 @@ export function ChatMarkdown({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${citationClassName} hover:underline`}
+                className={externalLinkClassName}
               >
                 {children}
               </a>
