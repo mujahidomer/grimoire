@@ -33,11 +33,37 @@ function sourceIndexFromHref(href: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// Pulls citation chips out of a block's rendered children so they can be hoisted
+// Resolves a link href to the cited item id, mirroring the `a` renderer's three
+// citation forms. Returns null for ordinary external links so they're left in
+// the prose. `#cite-N` is positional and needs the sources array to resolve.
+function citationIdFromHref(
+  href: string | undefined,
+  sources: ChatSource[],
+): string | null {
+  if (!href) return null;
+  if (href.startsWith("cite:")) return href.slice("cite:".length) || null;
+  if (href.startsWith("/item/")) return href.slice("/item/".length) || null;
+  if (href.startsWith("#cite-")) {
+    const index = sourceIndexFromHref(href);
+    return index != null ? (sources[index - 1]?.id ?? null) : null;
+  }
+  return null;
+}
+
+// Pulls citation links out of a block's rendered children so they can be hoisted
 // into a single "From:" line above the claim, instead of sitting inline. Walks
 // recursively (citations may be nested in strong/em), collects the cited item
-// ids in first-seen order, and returns the prose with those chips stripped.
-function extractCitations(children: ReactNode): {
+// ids in first-seen order, and returns the prose with those links stripped.
+//
+// NOTE: matches on the link's `href` prop, not on component identity. At the
+// time this runs, react-markdown has only created lazy elements whose `.type`
+// is the `a` renderer — ChatCitationPill doesn't exist yet (React invokes the
+// `a` renderer later, during reconciliation), so a `=== ChatCitationPill` check
+// never matches. The href is present on the element from the start.
+function extractCitations(
+  children: ReactNode,
+  sources: ChatSource[],
+): {
   prose: ReactNode;
   ids: string[];
 } {
@@ -48,10 +74,11 @@ function extractCitations(children: ReactNode): {
       return node.map((child, i) => <Fragment key={i}>{walk(child)}</Fragment>);
     }
     if (isValidElement(node)) {
-      if (node.type === ChatCitationPill) {
-        const id = (node.props as { itemId?: string }).itemId;
-        if (id) ids.push(id);
-        return null; // strip the inline chip from the prose
+      const href = (node.props as { href?: string }).href;
+      const id = citationIdFromHref(href, sources);
+      if (id) {
+        ids.push(id);
+        return null; // strip the inline citation link from the prose
       }
       const inner = (node.props as { children?: ReactNode }).children;
       if (inner != null) {
@@ -96,7 +123,7 @@ export function ChatMarkdown({
         urlTransform={chatUrlTransform}
         components={{
           p: ({ children }) => {
-            const { prose, ids } = extractCitations(children);
+            const { prose, ids } = extractCitations(children, sources);
             const cited = ids
               .map((id) => sourceById.get(id))
               .filter((s): s is ChatSource => Boolean(s));
@@ -124,7 +151,7 @@ export function ChatMarkdown({
             <ul className="mb-1 list-disc space-y-2.5 pl-5">{children}</ul>
           ),
           li: ({ children }) => {
-            const { prose, ids } = extractCitations(children);
+            const { prose, ids } = extractCitations(children, sources);
             const cited = ids
               .map((id) => sourceById.get(id))
               .filter((s): s is ChatSource => Boolean(s));
