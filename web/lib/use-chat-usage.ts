@@ -10,6 +10,8 @@ export const DEEP_COST = 3;
 
 export interface ChatUsageState {
   usage: ChatUsageInfo | null;
+  /** Account is on the server-side query limit bypass list. */
+  unlimited: boolean;
   /** Credits consumed today (limit - remaining), clamped to [0, limit]. */
   used: number;
   /** Fraction of the daily allowance consumed, 0..1. */
@@ -49,14 +51,16 @@ export function useChatUsage(): ChatUsageState {
     refresh();
   }, [refresh]);
 
+  const unlimited = usage?.unlimited === true;
   const remaining = usage?.remaining ?? DAILY_LIMIT;
-  const used = Math.min(DAILY_LIMIT, Math.max(0, DAILY_LIMIT - remaining));
-  const pct = Math.min(1, used / DAILY_LIMIT);
-  const atLimit = remaining < 1;
-  const nearLimit = used >= 16 && !atLimit;
+  const used = unlimited ? 0 : Math.min(DAILY_LIMIT, Math.max(0, DAILY_LIMIT - remaining));
+  const pct = unlimited ? 0 : Math.min(1, used / DAILY_LIMIT);
+  const atLimit = !unlimited && remaining < 1;
+  const nearLimit = !unlimited && used >= 16 && !atLimit;
 
   return {
     usage,
+    unlimited,
     used,
     pct,
     atLimit,

@@ -13,7 +13,9 @@ export function ChatUsageBar({
   state: ChatUsageState;
   isDeep: boolean;
 }) {
-  const { used, pct, atLimit, nearLimit, resetLabel } = state;
+  const { used, pct, atLimit, nearLimit, resetLabel, unlimited } = state;
+
+  if (unlimited) return null;
 
   const textColor = atLimit
     ? "text-red-600"

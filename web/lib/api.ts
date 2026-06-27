@@ -24,6 +24,7 @@ export interface ChatUsageInfo {
   deepCount: number;
   remaining: number;
   resetAt: string;
+  unlimited?: boolean;
 }
 
 export type ChatStreamEvent =
