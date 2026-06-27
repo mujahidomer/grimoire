@@ -27,6 +27,16 @@ function sourceIndexFromHref(href: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function itemIdFromHref(href: string | undefined): string | undefined {
+  if (!href) return undefined;
+  if (href.startsWith("cite:")) {
+    const id = href.slice("cite:".length).split(/[?#)/]/)[0]?.trim();
+    return id || undefined;
+  }
+  const itemMatch = href.match(/\/item\/([^?#/)]+)/);
+  return itemMatch?.[1]?.trim() || undefined;
+}
+
 export function ChatMarkdown({
   content,
   sources = [],
@@ -75,8 +85,8 @@ export function ChatMarkdown({
             // Inline source citation emitted as [Title](cite:item_id). Resolve
             // the id to the saved source so the chip carries the real title/URL.
             if (href?.startsWith("cite:")) {
-              const id = href.slice("cite:".length);
-              const source = sourceById.get(id);
+              const id = itemIdFromHref(href);
+              const source = id ? sourceById.get(id) : undefined;
               return (
                 <ChatCitationPill
                   itemId={id}
@@ -103,8 +113,8 @@ export function ChatMarkdown({
               );
             }
 
-            if (href?.startsWith("/item/")) {
-              const itemId = href.slice("/item/".length);
+            const itemId = itemIdFromHref(href);
+            if (itemId) {
               return (
                 <ChatCitationPill
                   itemId={itemId}

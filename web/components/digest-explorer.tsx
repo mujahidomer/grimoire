@@ -21,10 +21,10 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { prefetchItem } from "@/lib/api";
+import { useItemPreview } from "@/lib/item-preview-context";
 import { cn, formatDateShort } from "@/lib/utils";
 import type { Entity } from "@/lib/types";
 import { DashboardSourceLink } from "@/components/dashboard-source-link";
-import { ItemPreviewPanel } from "@/components/item-preview-panel";
 import { SearchBox } from "@/components/search-box";
 
 // One entity with its parent item's identity attached, so a deduped row can
@@ -648,6 +648,7 @@ export function DigestExplorer({
   groups: EntityGroup[];
   showTitle?: boolean;
 }) {
+  const { openItemPreview } = useItemPreview();
   // Optimistic per-entity hidden overrides, keyed by entityKey. Seeded lazily
   // from each entity's stored hidden flag the first time it's toggled.
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
@@ -692,7 +693,6 @@ export function DigestExplorer({
       typeof window !== "undefined" &&
       window.matchMedia("(max-width: 639px)").matches,
   );
-  const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -728,8 +728,7 @@ export function DigestExplorer({
   }
 
   function openSourcePreview(itemId: string) {
-    prefetchItem(itemId);
-    setPreviewItemId(itemId);
+    openItemPreview(itemId);
   }
 
   function closeSearch() {
@@ -941,13 +940,6 @@ export function DigestExplorer({
           />
         ))
       )}
-
-      {previewItemId ? (
-        <ItemPreviewPanel
-          itemId={previewItemId}
-          onClose={() => setPreviewItemId(null)}
-        />
-      ) : null}
     </>
   );
 }

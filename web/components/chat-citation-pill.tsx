@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { useOptionalItemPreview } from "@/lib/item-preview-context";
 
 const MAX_LABEL = 20;
 
@@ -26,19 +27,19 @@ const pillClassName =
 
 export function ChatCitationPill({
   itemId,
-  href,
   children,
   onOpenItem,
   onNavigate,
 }: {
   itemId?: string;
-  href?: string;
   children: React.ReactNode;
   onOpenItem?: (itemId: string) => void;
   onNavigate?: () => void;
 }) {
+  const preview = useOptionalItemPreview();
   const title = childText(children);
   const label = truncateLabel(title);
+  const resolvedId = itemId?.trim();
 
   const inner = (
     <>
@@ -47,7 +48,7 @@ export function ChatCitationPill({
     </>
   );
 
-  if (!itemId) {
+  if (!resolvedId) {
     return (
       <span
         className={`${pillClassName} cursor-default opacity-70`}
@@ -58,18 +59,30 @@ export function ChatCitationPill({
     );
   }
 
-  const targetHref = href ?? `/item/${itemId}`;
+  const openPreview = onOpenItem ?? preview?.openItemPreview;
+
+  if (openPreview) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openPreview(resolvedId);
+          onNavigate?.();
+        }}
+        title={title}
+        className={`${pillClassName} cursor-pointer`}
+      >
+        {inner}
+      </button>
+    );
+  }
 
   return (
     <Link
-      href={targetHref}
-      onClick={(e) => {
-        if (onOpenItem) {
-          e.preventDefault();
-          onOpenItem(itemId);
-        }
-        onNavigate?.();
-      }}
+      href={`/item/${resolvedId}`}
+      onClick={onNavigate}
       title={title}
       className={pillClassName}
     >

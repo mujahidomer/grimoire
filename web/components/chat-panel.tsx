@@ -4,12 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Maximize2, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
-import { consumeChatStream, prefetchItem } from "@/lib/api";
+import { consumeChatStream } from "@/lib/api";
 import { useOnboarding } from "@/lib/onboarding";
 import { useChatUsage } from "@/lib/use-chat-usage";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
-import { ItemPreviewPanel } from "@/components/item-preview-panel";
 import { ChatUsageBar, DeepDiveToggle } from "@/components/chat-input-controls";
 
 import type { ChatUsage } from "@/lib/api";
@@ -38,18 +37,12 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isDeep, setIsDeep] = useState(false);
-  const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef(false);
   const deepRef = useRef(false);
   const { markQueryDone } = useOnboarding();
   const usage = useChatUsage();
-
-  const openSourcePreview = useCallback((itemId: string) => {
-    prefetchItem(itemId);
-    setPreviewItemId(itemId);
-  }, []);
 
   const sendQuestion = useCallback(async (q: string) => {
     const trimmed = q.trim();
@@ -176,7 +169,7 @@ export function ChatPanel({
         {turns.map((turn, i) => (
           <div key={i}>
             {i > 0 && <ChatTurnDivider />}
-            <ChatTurn turn={turn} onOpenItem={openSourcePreview} />
+            <ChatTurn turn={turn} />
           </div>
         ))}
 
@@ -186,7 +179,6 @@ export function ChatPanel({
             <ChatTurn
               turn={streamingTurn.turn}
               progress={streamingTurn.progress}
-              onOpenItem={openSourcePreview}
             />
           </div>
         )}
@@ -218,13 +210,6 @@ export function ChatPanel({
         </div>
       </form>
     </aside>
-    ) : null}
-
-    {previewItemId ? (
-      <ItemPreviewPanel
-        itemId={previewItemId}
-        onClose={() => setPreviewItemId(null)}
-      />
     ) : null}
     </>
   );

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ChatSource } from "@/lib/types";
+import { useOptionalItemPreview } from "@/lib/item-preview-context";
 import { SourceThumbnail } from "@/components/source-thumbnail";
 
 function hostname(url: string): string {
@@ -24,7 +25,9 @@ export function ChatSourceLink({
   onOpenItem?: (itemId: string) => void;
   onNavigate?: () => void;
 }) {
+  const preview = useOptionalItemPreview();
   const site = hostname(source.source_url);
+  const openPreview = onOpenItem ?? preview?.openItemPreview;
 
   const inner = (
     <>
@@ -47,16 +50,25 @@ export function ChatSourceLink({
     </>
   );
 
+  if (openPreview) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          openPreview(source.id);
+          onNavigate?.();
+        }}
+        className={sourceLinkClassName}
+      >
+        {inner}
+      </button>
+    );
+  }
+
   return (
     <Link
       href={`/item/${source.id}`}
-      onClick={(e) => {
-        if (onOpenItem) {
-          e.preventDefault();
-          onOpenItem(source.id);
-        }
-        onNavigate?.();
-      }}
+      onClick={onNavigate}
       className={sourceLinkClassName}
     >
       {inner}

@@ -8,7 +8,7 @@ function citationMarkdown(
   const source = sources[n - 1];
   const label = title.trim();
   if (!source) return `[${label}](#cite-${n})`;
-  return `[${label}](/item/${source.id})`;
+  return `[${label}](cite:${source.id})`;
 }
 
 function parseLegacyPart(part: string, sources: ChatSource[]): string {
@@ -54,13 +54,13 @@ export function linkifyCitations(
 }
 
 // True when the answer renders at least one inline citation chip — either the
-// model's [Title](cite:id) form or a marker that linkifyCitations resolves to a
-// /item/ link. Used to hide the bottom Sources list when inline chips exist.
+// model's [Title](cite:id) form or a marker that linkifyCitations resolves to
+// cite: or /item/ links. Used to hide the bottom Sources list when inline chips exist.
 export function hasInlineCitations(
   content: string,
   sources: ChatSource[],
 ): boolean {
   if (!content) return false;
-  if (/\]\(cite:/.test(content)) return true;
-  return /\]\(\/item\//.test(linkifyCitations(content, sources));
+  const linked = linkifyCitations(content, sources);
+  return /\]\((?:cite:|\/item\/|#cite-)/.test(linked);
 }

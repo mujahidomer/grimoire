@@ -17,7 +17,6 @@ import {
   chatProgressLabel,
   fetchChatMessages,
   fetchChats,
-  prefetchItem,
   streamChatEvents,
 } from "@/lib/api";
 import { useOnboarding } from "@/lib/onboarding";
@@ -26,7 +25,6 @@ import { hasInlineCitations } from "@/lib/linkify-citations";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { ChatSourceLink } from "@/components/chat-source-link";
 import { ChatQuestionBubble } from "@/components/chat-turn";
-import { ItemPreviewPanel } from "@/components/item-preview-panel";
 import { ChatUsageBar, DeepDiveToggle } from "@/components/chat-input-controls";
 
 interface Step {
@@ -174,15 +172,7 @@ function ProcessSteps({
   );
 }
 
-function TurnView({
-  turn,
-  phase,
-  onOpenItem,
-}: {
-  turn: PageTurn;
-  phase: Phase;
-  onOpenItem?: (itemId: string) => void;
-}) {
+function TurnView({ turn, phase }: { turn: PageTurn; phase: Phase }) {
   const showSourcesFallback =
     turn.sources.length > 0 && !hasInlineCitations(turn.answer, turn.sources);
 
@@ -207,11 +197,7 @@ function TurnView({
       ) : (
         <div className="space-y-3">
           {turn.answer ? (
-            <ChatMarkdown
-              content={turn.answer}
-              sources={turn.sources}
-              onOpenItem={onOpenItem}
-            />
+            <ChatMarkdown content={turn.answer} sources={turn.sources} />
           ) : phase === "answer" ? (
             <div className="flex items-center gap-2 text-eco-foreground/55">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -227,7 +213,7 @@ function TurnView({
               <ul className="space-y-2">
                 {turn.sources.map((s) => (
                   <li key={s.id}>
-                    <ChatSourceLink source={s} onOpenItem={onOpenItem} />
+                    <ChatSourceLink source={s} />
                   </li>
                 ))}
               </ul>
@@ -247,7 +233,6 @@ export default function ChatPage() {
   const [isDeep, setIsDeep] = useState(false);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
-  const [previewItemId, setPreviewItemId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -394,11 +379,6 @@ export default function ChatPage() {
 
   const isEmpty = turns.length === 0 && !streaming;
 
-  function openSourcePreview(itemId: string) {
-    prefetchItem(itemId);
-    setPreviewItemId(itemId);
-  }
-
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-eco-canvas">
       {/* ── Sidebar ─────────────────────────────────────────────── */}
@@ -525,19 +505,10 @@ export default function ChatPage() {
             ) : (
               <div className="space-y-8">
                 {turns.map((turn, i) => (
-                  <TurnView
-                    key={i}
-                    turn={turn}
-                    phase="done"
-                    onOpenItem={openSourcePreview}
-                  />
+                  <TurnView key={i} turn={turn} phase="done" />
                 ))}
                 {streaming && (
-                  <TurnView
-                    turn={streaming.turn}
-                    phase={streaming.phase}
-                    onOpenItem={openSourcePreview}
-                  />
+                  <TurnView turn={streaming.turn} phase={streaming.phase} />
                 )}
               </div>
             )}
@@ -584,13 +555,6 @@ export default function ChatPage() {
           </form>
         </div>
       </div>
-
-      {previewItemId ? (
-        <ItemPreviewPanel
-          itemId={previewItemId}
-          onClose={() => setPreviewItemId(null)}
-        />
-      ) : null}
     </div>
   );
 }

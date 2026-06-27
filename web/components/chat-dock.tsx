@@ -4,11 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Maximize2, MessageCircle, Send, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
-import { consumeChatStream, prefetchItem } from "@/lib/api";
+import { consumeChatStream } from "@/lib/api";
 import { useChatUsage } from "@/lib/use-chat-usage";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
-import { ItemPreviewPanel } from "@/components/item-preview-panel";
 import { ChatUsageBar, DeepDiveToggle } from "@/components/chat-input-controls";
 
 import type { ChatUsage } from "@/lib/api";
@@ -32,7 +31,6 @@ export function ChatDock() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isDeep, setIsDeep] = useState(false);
-  const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const usage = useChatUsage();
 
@@ -98,11 +96,6 @@ export function ChatDock() {
     }
   }
 
-  function openSourcePreview(itemId: string) {
-    prefetchItem(itemId);
-    setPreviewItemId(itemId);
-  }
-
   return (
     <>
       {!open && (
@@ -154,7 +147,7 @@ export function ChatDock() {
               {turns.map((turn, i) => (
                 <div key={i}>
                   {i > 0 && <ChatTurnDivider />}
-                  <ChatTurn turn={turn} onOpenItem={openSourcePreview} />
+                  <ChatTurn turn={turn} />
                 </div>
               ))}
 
@@ -164,7 +157,6 @@ export function ChatDock() {
                   <ChatTurn
                     turn={streamingTurn.turn}
                     progress={streamingTurn.progress}
-                    onOpenItem={openSourcePreview}
                   />
                 </div>
               )}
@@ -197,13 +189,6 @@ export function ChatDock() {
           </div>
         </>
       )}
-
-      {previewItemId ? (
-        <ItemPreviewPanel
-          itemId={previewItemId}
-          onClose={() => setPreviewItemId(null)}
-        />
-      ) : null}
     </>
   );
 }
