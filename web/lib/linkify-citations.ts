@@ -28,8 +28,10 @@ export function linkifyCitations(
 
   let text = content;
 
-  // Preferred format: [[N|Title]]
-  text = text.replace(/\[\[(\d+)\|([^\]]+)\]\]/g, (_, n, title) =>
+  // Preferred format: [[s3|Title]] — short handle the model copies verbatim.
+  // Legacy chats used [[3|Title]] (bare number); the optional `s` covers both.
+  // Either way the digits index positionally into `sources` (1-based).
+  text = text.replace(/\[\[s?(\d+)\|([^\]]+)\]\]/g, (_, n, title) =>
     citationMarkdown(parseInt(n, 10), title, sources),
   );
 

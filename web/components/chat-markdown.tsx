@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import {
+  Fragment,
+  cloneElement,
+  isValidElement,
+  useMemo,
+  type ReactNode,
+} from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatSource } from "@/lib/types";
 import { linkifyCitations } from "@/lib/linkify-citations";
-import { ChatCitationPill } from "@/components/chat-citation-pill";
+import { ChatCitationLine, ChatCitationPill } from "@/components/chat-citation-pill";
 
 const externalLinkClassName =
   "font-medium text-eco-secondary underline decoration-eco-secondary/50 underline-offset-2 transition-colors duration-eco hover:text-eco-primary hover:decoration-eco-primary";
@@ -25,6 +31,40 @@ function sourceIndexFromHref(href: string): number | null {
   if (!href.startsWith("#cite-")) return null;
   const n = parseInt(href.slice("#cite-".length), 10);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+// Pulls citation chips out of a block's rendered children so they can be hoisted
+// into a single "From:" line above the claim, instead of sitting inline. Walks
+// recursively (citations may be nested in strong/em), collects the cited item
+// ids in first-seen order, and returns the prose with those chips stripped.
+function extractCitations(children: ReactNode): {
+  prose: ReactNode;
+  ids: string[];
+} {
+  const ids: string[] = [];
+
+  const walk = (node: ReactNode): ReactNode => {
+    if (Array.isArray(node)) {
+      return node.map((child, i) => <Fragment key={i}>{walk(child)}</Fragment>);
+    }
+    if (isValidElement(node)) {
+      if (node.type === ChatCitationPill) {
+        const id = (node.props as { itemId?: string }).itemId;
+        if (id) ids.push(id);
+        return null; // strip the inline chip from the prose
+      }
+      const inner = (node.props as { children?: ReactNode }).children;
+      if (inner != null) {
+        return cloneElement(node, undefined, walk(inner));
+      }
+    }
+    return node;
+  };
+
+  const prose = walk(children);
+  const seen = new Set<string>();
+  const unique = ids.filter((id) => !seen.has(id) && seen.add(id));
+  return { prose, ids: unique };
 }
 
 export function ChatMarkdown({
@@ -55,7 +95,24 @@ export function ChatMarkdown({
         remarkPlugins={[remarkGfm]}
         urlTransform={chatUrlTransform}
         components={{
-          p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+          p: ({ children }) => {
+            const { prose, ids } = extractCitations(children);
+            const cited = ids
+              .map((id) => sourceById.get(id))
+              .filter((s): s is ChatSource => Boolean(s));
+            return (
+              <div className="space-y-1">
+                {cited.length > 0 && (
+                  <ChatCitationLine
+                    sources={cited}
+                    onOpenItem={onOpenItem}
+                    onNavigate={onSourceNavigate}
+                  />
+                )}
+                <p className="leading-relaxed">{prose}</p>
+              </div>
+            );
+          },
           strong: ({ children }) => (
             <strong className="font-extrabold text-eco-heading">{children}</strong>
           ),
@@ -66,11 +123,24 @@ export function ChatMarkdown({
           ul: ({ children }) => (
             <ul className="mb-1 list-disc space-y-2.5 pl-5">{children}</ul>
           ),
-          li: ({ children }) => (
-            <li className="leading-relaxed [&>p]:mb-0 [&>p:first-child>strong:first-child:not(:has(a,button))]:mb-0.5 [&>p:first-child>strong:first-child:not(:has(a,button))]:block [&>p:first-child>strong:first-child:not(:has(a,button))]:font-extrabold [&>p:first-child>strong:first-child:not(:has(a,button))]:text-eco-heading [&>strong:first-child:not(:has(a,button))]:mb-0.5 [&>strong:first-child:not(:has(a,button))]:block [&>strong:first-child:not(:has(a,button))]:font-extrabold [&>strong:first-child:not(:has(a,button))]:text-eco-heading">
-              {children}
-            </li>
-          ),
+          li: ({ children }) => {
+            const { prose, ids } = extractCitations(children);
+            const cited = ids
+              .map((id) => sourceById.get(id))
+              .filter((s): s is ChatSource => Boolean(s));
+            return (
+              <li className="leading-relaxed [&>p]:mb-0 [&>p:first-child>strong:first-child:not(:has(a,button))]:mb-0.5 [&>p:first-child>strong:first-child:not(:has(a,button))]:block [&>p:first-child>strong:first-child:not(:has(a,button))]:font-extrabold [&>p:first-child>strong:first-child:not(:has(a,button))]:text-eco-heading [&>strong:first-child:not(:has(a,button))]:mb-0.5 [&>strong:first-child:not(:has(a,button))]:block [&>strong:first-child:not(:has(a,button))]:font-extrabold [&>strong:first-child:not(:has(a,button))]:text-eco-heading">
+                {cited.length > 0 && (
+                  <ChatCitationLine
+                    sources={cited}
+                    onOpenItem={onOpenItem}
+                    onNavigate={onSourceNavigate}
+                  />
+                )}
+                {prose}
+              </li>
+            );
+          },
           a: ({ href, children }) => {
             // Inline source citation emitted as [Title](cite:item_id). Resolve
             // the id to the saved source so the chip carries the real title/URL.

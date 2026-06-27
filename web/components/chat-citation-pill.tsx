@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import type { ChatSource } from "@/lib/types";
 
 const MAX_LABEL = 20;
 
@@ -75,5 +77,84 @@ export function ChatCitationPill({
     >
       {inner}
     </Link>
+  );
+}
+
+// How many sources show before collapsing into a "+N more" toggle.
+const FROM_VISIBLE = 2;
+
+const refClassName =
+  "rounded font-sans text-label-md text-eco-secondary underline decoration-eco-secondary/40 underline-offset-2 transition-colors duration-eco hover:text-eco-primary hover:decoration-eco-primary";
+
+function CitationRef({
+  source,
+  onOpenItem,
+  onNavigate,
+}: {
+  source: ChatSource;
+  onOpenItem?: (itemId: string) => void;
+  onNavigate?: () => void;
+}) {
+  const label = truncateLabel(source.title);
+
+  return (
+    <Link
+      href={`/item/${source.id}`}
+      onClick={(e) => {
+        if (onOpenItem) {
+          e.preventDefault();
+          onOpenItem(source.id);
+        }
+        onNavigate?.();
+      }}
+      title={source.title}
+      className={refClassName}
+    >
+      {label}
+    </Link>
+  );
+}
+
+// Per-claim attribution line rendered ABOVE the paragraph or bullet it sources.
+// Shows the first FROM_VISIBLE titles, then a tappable "+N more" that expands
+// the rest inline. Replaces the old mid-prose citation chips.
+export function ChatCitationLine({
+  sources,
+  onOpenItem,
+  onNavigate,
+}: {
+  sources: ChatSource[];
+  onOpenItem?: (itemId: string) => void;
+  onNavigate?: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (sources.length === 0) return null;
+
+  const visible = expanded ? sources : sources.slice(0, FROM_VISIBLE);
+  const hidden = sources.length - visible.length;
+
+  return (
+    <div className="mb-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 leading-snug">
+      <span className="font-sans text-label-md font-light uppercase tracking-wide text-eco-foreground/65">
+        From:
+      </span>
+      {visible.map((s, i) => (
+        <span key={s.id} className="inline-flex items-baseline">
+          <CitationRef source={s} onOpenItem={onOpenItem} onNavigate={onNavigate} />
+          {i < visible.length - 1 ? (
+            <span className="text-eco-foreground/45">,</span>
+          ) : null}
+        </span>
+      ))}
+      {hidden > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="rounded font-sans text-label-md text-eco-foreground/55 underline decoration-dotted underline-offset-2 transition-colors duration-eco hover:text-eco-primary"
+        >
+          +{hidden} more
+        </button>
+      )}
+    </div>
   );
 }
