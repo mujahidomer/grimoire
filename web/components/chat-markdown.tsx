@@ -1,17 +1,11 @@
 "use client";
 
-import {
-  Fragment,
-  cloneElement,
-  isValidElement,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { useMemo } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatSource } from "@/lib/types";
 import { linkifyCitations } from "@/lib/linkify-citations";
-import { ChatCitationLine, ChatCitationPill } from "@/components/chat-citation-pill";
+import { ChatCitationPill } from "@/components/chat-citation-pill";
 
 const externalLinkClassName =
   "font-medium text-eco-secondary underline decoration-eco-secondary/50 underline-offset-2 transition-colors duration-eco hover:text-eco-primary hover:decoration-eco-primary";
@@ -31,67 +25,6 @@ function sourceIndexFromHref(href: string): number | null {
   if (!href.startsWith("#cite-")) return null;
   const n = parseInt(href.slice("#cite-".length), 10);
   return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-// Resolves a link href to the cited item id, mirroring the `a` renderer's three
-// citation forms. Returns null for ordinary external links so they're left in
-// the prose. `#cite-N` is positional and needs the sources array to resolve.
-function citationIdFromHref(
-  href: string | undefined,
-  sources: ChatSource[],
-): string | null {
-  if (!href) return null;
-  if (href.startsWith("cite:")) return href.slice("cite:".length) || null;
-  if (href.startsWith("/item/")) return href.slice("/item/".length) || null;
-  if (href.startsWith("#cite-")) {
-    const index = sourceIndexFromHref(href);
-    return index != null ? (sources[index - 1]?.id ?? null) : null;
-  }
-  return null;
-}
-
-// Pulls citation links out of a block's rendered children so they can be hoisted
-// into a single "From:" line above the claim, instead of sitting inline. Walks
-// recursively (citations may be nested in strong/em), collects the cited item
-// ids in first-seen order, and returns the prose with those links stripped.
-//
-// NOTE: matches on the link's `href` prop, not on component identity. At the
-// time this runs, react-markdown has only created lazy elements whose `.type`
-// is the `a` renderer — ChatCitationPill doesn't exist yet (React invokes the
-// `a` renderer later, during reconciliation), so a `=== ChatCitationPill` check
-// never matches. The href is present on the element from the start.
-function extractCitations(
-  children: ReactNode,
-  sources: ChatSource[],
-): {
-  prose: ReactNode;
-  ids: string[];
-} {
-  const ids: string[] = [];
-
-  const walk = (node: ReactNode): ReactNode => {
-    if (Array.isArray(node)) {
-      return node.map((child, i) => <Fragment key={i}>{walk(child)}</Fragment>);
-    }
-    if (isValidElement(node)) {
-      const href = (node.props as { href?: string }).href;
-      const id = citationIdFromHref(href, sources);
-      if (id) {
-        ids.push(id);
-        return null; // strip the inline citation link from the prose
-      }
-      const inner = (node.props as { children?: ReactNode }).children;
-      if (inner != null) {
-        return cloneElement(node, undefined, walk(inner));
-      }
-    }
-    return node;
-  };
-
-  const prose = walk(children);
-  const seen = new Set<string>();
-  const unique = ids.filter((id) => !seen.has(id) && seen.add(id));
-  return { prose, ids: unique };
 }
 
 export function ChatMarkdown({
@@ -122,24 +55,7 @@ export function ChatMarkdown({
         remarkPlugins={[remarkGfm]}
         urlTransform={chatUrlTransform}
         components={{
-          p: ({ children }) => {
-            const { prose, ids } = extractCitations(children, sources);
-            const cited = ids
-              .map((id) => sourceById.get(id))
-              .filter((s): s is ChatSource => Boolean(s));
-            return (
-              <div className="space-y-1">
-                {cited.length > 0 && (
-                  <ChatCitationLine
-                    sources={cited}
-                    onOpenItem={onOpenItem}
-                    onNavigate={onSourceNavigate}
-                  />
-                )}
-                <p className="leading-relaxed">{prose}</p>
-              </div>
-            );
-          },
+          p: ({ children }) => <p className="leading-relaxed">{children}</p>,
           strong: ({ children }) => (
             <strong className="font-extrabold text-eco-heading">{children}</strong>
           ),
@@ -150,24 +66,11 @@ export function ChatMarkdown({
           ul: ({ children }) => (
             <ul className="mb-1 list-disc space-y-2.5 pl-5">{children}</ul>
           ),
-          li: ({ children }) => {
-            const { prose, ids } = extractCitations(children, sources);
-            const cited = ids
-              .map((id) => sourceById.get(id))
-              .filter((s): s is ChatSource => Boolean(s));
-            return (
-              <li className="leading-relaxed [&>p]:mb-0 [&>p:first-child>strong:first-child:not(:has(a,button))]:mb-0.5 [&>p:first-child>strong:first-child:not(:has(a,button))]:block [&>p:first-child>strong:first-child:not(:has(a,button))]:font-extrabold [&>p:first-child>strong:first-child:not(:has(a,button))]:text-eco-heading [&>strong:first-child:not(:has(a,button))]:mb-0.5 [&>strong:first-child:not(:has(a,button))]:block [&>strong:first-child:not(:has(a,button))]:font-extrabold [&>strong:first-child:not(:has(a,button))]:text-eco-heading">
-                {cited.length > 0 && (
-                  <ChatCitationLine
-                    sources={cited}
-                    onOpenItem={onOpenItem}
-                    onNavigate={onSourceNavigate}
-                  />
-                )}
-                {prose}
-              </li>
-            );
-          },
+          li: ({ children }) => (
+            <li className="leading-relaxed [&>p]:mb-0 [&>p:first-child>strong:first-child:not(:has(a,button))]:mb-0.5 [&>p:first-child>strong:first-child:not(:has(a,button))]:block [&>p:first-child>strong:first-child:not(:has(a,button))]:font-extrabold [&>p:first-child>strong:first-child:not(:has(a,button))]:text-eco-heading [&>strong:first-child:not(:has(a,button))]:mb-0.5 [&>strong:first-child:not(:has(a,button))]:block [&>strong:first-child:not(:has(a,button))]:font-extrabold [&>strong:first-child:not(:has(a,button))]:text-eco-heading">
+              {children}
+            </li>
+          ),
           a: ({ href, children }) => {
             // Inline source citation emitted as [Title](cite:item_id). Resolve
             // the id to the saved source so the chip carries the real title/URL.

@@ -85,8 +85,8 @@ export function ChatTurn({
   onSourceNavigate?: () => void;
   progress?: string | null;
 }) {
-  // Sources render as per-claim "From:" lines inside the answer. The bottom
-  // Sources list is a fallback, shown only when the answer carried no citations.
+  // Sources render inline as citation chips inside the answer. The bottom
+  // Sources list is a fallback, shown only when no inline chip was rendered.
   const showSourcesFallback =
     turn.sources.length > 0 && !hasInlineCitations(turn.answer, turn.sources);
 
