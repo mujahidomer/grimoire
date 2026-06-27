@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatSource } from "@/lib/types";
 import { linkifyCitations } from "@/lib/linkify-citations";
@@ -10,13 +10,32 @@ import { ChatCitationPill } from "@/components/chat-citation-pill";
 const externalLinkClassName =
   "font-medium text-eco-secondary underline decoration-eco-secondary/50 underline-offset-2 transition-colors duration-eco hover:text-eco-primary hover:decoration-eco-primary";
 
+function chatUrlTransform(url: string): string {
+  if (
+    url.startsWith("/item/") ||
+    url.startsWith("#cite-") ||
+    url.startsWith("cite:")
+  ) {
+    return url;
+  }
+  return defaultUrlTransform(url);
+}
+
+function sourceIndexFromHref(href: string): number | null {
+  if (!href.startsWith("#cite-")) return null;
+  const n = parseInt(href.slice("#cite-".length), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export function ChatMarkdown({
   content,
   sources = [],
+  onOpenItem,
   onSourceNavigate,
 }: {
   content: string;
   sources?: ChatSource[];
+  onOpenItem?: (itemId: string) => void;
   onSourceNavigate?: () => void;
 }) {
   const linked = useMemo(
@@ -31,58 +50,67 @@ export function ChatMarkdown({
   }, [sources]);
 
   return (
-    <div className="chat-md prose-reading space-y-2 text-body-md [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+    <div className="chat-md prose-reading space-y-3 text-body-md [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        urlTransform={chatUrlTransform}
         components={{
           p: ({ children }) => <p className="leading-relaxed">{children}</p>,
           strong: ({ children }) => (
-            <strong className="font-semibold text-eco-secondary">
-              {children}
-            </strong>
+            <strong className="font-extrabold text-eco-heading">{children}</strong>
           ),
           em: ({ children }) => <em className="italic">{children}</em>,
           ol: ({ children }) => (
-            <ol className="list-decimal space-y-2 pl-5">{children}</ol>
+            <ol className="mb-1 list-decimal space-y-2.5 pl-5">{children}</ol>
           ),
           ul: ({ children }) => (
-            <ul className="list-disc space-y-2 pl-5">{children}</ul>
+            <ul className="mb-1 list-disc space-y-2.5 pl-5">{children}</ul>
           ),
-          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          li: ({ children }) => (
+            <li className="leading-relaxed [&>p]:mb-0 [&>p:first-child>strong:first-child:not(:has(a,button))]:mb-0.5 [&>p:first-child>strong:first-child:not(:has(a,button))]:block [&>p:first-child>strong:first-child:not(:has(a,button))]:font-extrabold [&>p:first-child>strong:first-child:not(:has(a,button))]:text-eco-heading [&>strong:first-child:not(:has(a,button))]:mb-0.5 [&>strong:first-child:not(:has(a,button))]:block [&>strong:first-child:not(:has(a,button))]:font-extrabold [&>strong:first-child:not(:has(a,button))]:text-eco-heading">
+              {children}
+            </li>
+          ),
           a: ({ href, children }) => {
             // Inline source citation emitted as [Title](cite:item_id). Resolve
             // the id to the saved source so the chip carries the real title/URL.
             if (href?.startsWith("cite:")) {
               const id = href.slice("cite:".length);
               const source = sourceById.get(id);
-              if (source) {
-                return (
-                  <ChatCitationPill
-                    href={`/item/${source.id}`}
-                    onNavigate={onSourceNavigate}
-                  >
-                    {source.title}
-                  </ChatCitationPill>
-                );
-              }
               return (
-                <ChatCitationPill pending onNavigate={onSourceNavigate}>
-                  {children}
+                <ChatCitationPill
+                  itemId={id}
+                  onOpenItem={onOpenItem}
+                  onNavigate={onSourceNavigate}
+                >
+                  {source?.title ?? children}
                 </ChatCitationPill>
               );
             }
 
             if (href?.startsWith("#cite-")) {
+              const index = sourceIndexFromHref(href);
+              const source =
+                index != null ? sources[index - 1] : undefined;
               return (
-                <ChatCitationPill pending onNavigate={onSourceNavigate}>
-                  {children}
+                <ChatCitationPill
+                  itemId={source?.id}
+                  onOpenItem={onOpenItem}
+                  onNavigate={onSourceNavigate}
+                >
+                  {source?.title ?? children}
                 </ChatCitationPill>
               );
             }
 
             if (href?.startsWith("/item/")) {
+              const itemId = href.slice("/item/".length);
               return (
-                <ChatCitationPill href={href} onNavigate={onSourceNavigate}>
+                <ChatCitationPill
+                  itemId={itemId}
+                  onOpenItem={onOpenItem}
+                  onNavigate={onSourceNavigate}
+                >
                   {children}
                 </ChatCitationPill>
               );

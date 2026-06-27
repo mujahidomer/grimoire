@@ -3,6 +3,7 @@ import type { ChatSource } from "@/lib/types";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { ChatSourceLink } from "@/components/chat-source-link";
 import { hasInlineCitations } from "@/lib/linkify-citations";
+import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
 function formatTokenCount(n: number): string {
@@ -45,10 +46,21 @@ export function ChatTurnDivider() {
   );
 }
 
-export function ChatQuestionBubble({ children }: { children: React.ReactNode }) {
+export function ChatQuestionBubble({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[90%] rounded-[18px] rounded-br-sm bg-eco-secondary/[0.07] px-3.5 py-2.5 font-sans text-body-md leading-snug text-eco-heading ring-1 ring-black/[0.05]">
+      <div
+        className={cn(
+          "max-w-[90%] rounded-[18px] rounded-br-sm bg-eco-secondary/[0.07] px-3.5 py-2.5 font-sans text-body-md leading-snug text-eco-heading ring-1 ring-eco-border-subtle dark:bg-eco-secondary/[0.12] dark:ring-eco-border-muted",
+          className,
+        )}
+      >
         {children}
       </div>
     </div>
@@ -57,6 +69,7 @@ export function ChatQuestionBubble({ children }: { children: React.ReactNode }) 
 
 export function ChatTurn({
   turn,
+  onOpenItem,
   onSourceNavigate,
   progress,
 }: {
@@ -68,6 +81,7 @@ export function ChatTurn({
     model?: string | null;
     usage?: ChatUsage | null;
   };
+  onOpenItem?: (itemId: string) => void;
   onSourceNavigate?: () => void;
   progress?: string | null;
 }) {
@@ -98,6 +112,7 @@ export function ChatTurn({
             <ChatMarkdown
               content={turn.answer}
               sources={turn.sources}
+              onOpenItem={onOpenItem}
               onSourceNavigate={onSourceNavigate}
             />
           ) : null}
@@ -111,6 +126,7 @@ export function ChatTurn({
                   <li key={s.id}>
                     <ChatSourceLink
                       source={s}
+                      onOpenItem={onOpenItem}
                       onNavigate={onSourceNavigate}
                     />
                   </li>

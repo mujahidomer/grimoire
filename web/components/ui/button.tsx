@@ -10,7 +10,7 @@ const variants: Record<Variant, string> = {
   secondary:
     "bg-eco-primary text-eco-on-accent hover:bg-eco-tertiary hover:text-eco-on-accent [&_svg]:text-eco-on-accent focus-visible:ring-eco-primary",
   ghost:
-    "text-eco-foreground hover:bg-eco-primary/10 focus-visible:ring-eco-border",
+    "text-eco-foreground hover:bg-eco-primary/10 dark:hover:bg-eco-hover-strong focus-visible:ring-eco-border",
   outline:
     "border border-eco-border bg-eco-input text-eco-text hover:bg-eco-primary/10 focus-visible:ring-eco-border",
 };

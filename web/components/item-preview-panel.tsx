@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ExternalLink, Loader2, X } from "lucide-react";
 import { fetchItem } from "@/lib/api";
@@ -18,6 +19,11 @@ export function ItemPreviewPanel({
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,10 +63,12 @@ export function ItemPreviewPanel({
     };
   }, []);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 z-40 bg-eco-overlay/80"
+        className="fixed inset-0 z-[80] bg-eco-overlay/80"
         onClick={onClose}
         aria-hidden
       />
@@ -68,7 +76,7 @@ export function ItemPreviewPanel({
         role="dialog"
         aria-modal="true"
         aria-label="Saved item preview"
-        className="fixed bottom-0 right-0 z-50 flex h-[min(92dvh,100%)] w-full max-w-xl flex-col rounded-t-2xl border-t border-eco-border-subtle bg-eco-surface shadow-2xl sm:rounded-none sm:border-l sm:border-t-0 lg:h-full lg:max-h-none"
+        className="fixed bottom-0 right-0 z-[90] flex h-[min(92dvh,100%)] w-full max-w-xl flex-col rounded-t-2xl border-t border-eco-border-subtle bg-eco-surface shadow-2xl sm:rounded-none sm:border-l sm:border-t-0 lg:h-full lg:max-h-none"
       >
         <div className="flex justify-center pt-2 lg:hidden" aria-hidden>
           <div className="h-1 w-10 rounded-full bg-black/10" />
@@ -111,6 +119,7 @@ export function ItemPreviewPanel({
           ) : null}
         </div>
       </aside>
-    </>
+    </>,
+    document.body,
   );
 }

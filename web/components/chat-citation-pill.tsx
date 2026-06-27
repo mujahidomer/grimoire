@@ -22,17 +22,19 @@ function childText(children: React.ReactNode): string {
 }
 
 const pillClassName =
-  "mx-0.5 inline-flex max-w-[calc(20ch+1.25rem)] items-center gap-1 rounded-full border border-eco-border-subtle bg-[var(--eco-badge-bg)] px-2 py-0.5 align-middle font-sans text-label-md leading-none text-eco-secondary no-underline ring-1 ring-inset ring-[var(--eco-badge-border)] transition-colors duration-eco hover:border-eco-primary/30 hover:bg-eco-surface hover:text-eco-primary";
+  "mx-0.5 inline-flex max-w-[calc(20ch+1.25rem)] items-center gap-1 rounded-full border border-eco-border-subtle bg-[var(--eco-badge-bg)] px-2 py-0.5 align-middle font-sans text-label-md leading-none text-eco-secondary no-underline ring-1 ring-inset ring-[var(--eco-badge-border)] transition-colors duration-eco hover:border-eco-primary/30 hover:bg-eco-surface hover:text-eco-primary dark:hover:bg-eco-hover-strong";
 
 export function ChatCitationPill({
+  itemId,
   href,
   children,
-  pending = false,
+  onOpenItem,
   onNavigate,
 }: {
+  itemId?: string;
   href?: string;
   children: React.ReactNode;
-  pending?: boolean;
+  onOpenItem?: (itemId: string) => void;
   onNavigate?: () => void;
 }) {
   const title = childText(children);
@@ -45,7 +47,7 @@ export function ChatCitationPill({
     </>
   );
 
-  if (pending || !href) {
+  if (!itemId) {
     return (
       <span
         className={`${pillClassName} cursor-default opacity-70`}
@@ -56,8 +58,21 @@ export function ChatCitationPill({
     );
   }
 
+  const targetHref = href ?? `/item/${itemId}`;
+
   return (
-    <Link href={href} onClick={onNavigate} title={title} className={pillClassName}>
+    <Link
+      href={targetHref}
+      onClick={(e) => {
+        if (onOpenItem) {
+          e.preventDefault();
+          onOpenItem(itemId);
+        }
+        onNavigate?.();
+      }}
+      title={title}
+      className={pillClassName}
+    >
       {inner}
     </Link>
   );

@@ -12,21 +12,22 @@ function hostname(url: string): string {
   }
 }
 
+const sourceLinkClassName =
+  "group flex w-full items-center gap-3 rounded-lg border border-eco-border-subtle bg-eco-input p-2 text-left transition-colors duration-eco hover:border-eco-primary/30 hover:bg-eco-surface dark:hover:bg-eco-hover-strong";
+
 export function ChatSourceLink({
   source,
+  onOpenItem,
   onNavigate,
 }: {
   source: ChatSource;
+  onOpenItem?: (itemId: string) => void;
   onNavigate?: () => void;
 }) {
   const site = hostname(source.source_url);
 
-  return (
-    <Link
-      href={`/item/${source.id}`}
-      onClick={onNavigate}
-      className="group flex items-center gap-3 rounded-lg border border-eco-border-subtle bg-eco-input p-2 transition-colors duration-eco hover:border-eco-primary/30 hover:bg-eco-surface"
-    >
+  const inner = (
+    <>
       <SourceThumbnail
         url={source.source_url}
         className="h-12 w-16 shrink-0 rounded-md"
@@ -43,6 +44,22 @@ export function ChatSourceLink({
           </p>
         )}
       </div>
+    </>
+  );
+
+  return (
+    <Link
+      href={`/item/${source.id}`}
+      onClick={(e) => {
+        if (onOpenItem) {
+          e.preventDefault();
+          onOpenItem(source.id);
+        }
+        onNavigate?.();
+      }}
+      className={sourceLinkClassName}
+    >
+      {inner}
     </Link>
   );
 }

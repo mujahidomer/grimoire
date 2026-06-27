@@ -17,6 +17,7 @@ import {
   chatProgressLabel,
   fetchChatMessages,
   fetchChats,
+  prefetchItem,
   streamChatEvents,
 } from "@/lib/api";
 import { useOnboarding } from "@/lib/onboarding";
@@ -24,6 +25,8 @@ import { useChatUsage } from "@/lib/use-chat-usage";
 import { hasInlineCitations } from "@/lib/linkify-citations";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { ChatSourceLink } from "@/components/chat-source-link";
+import { ChatQuestionBubble } from "@/components/chat-turn";
+import { ItemPreviewPanel } from "@/components/item-preview-panel";
 import { ChatUsageBar, DeepDiveToggle } from "@/components/chat-input-controls";
 
 interface Step {
@@ -171,18 +174,23 @@ function ProcessSteps({
   );
 }
 
-function TurnView({ turn, phase }: { turn: PageTurn; phase: Phase }) {
+function TurnView({
+  turn,
+  phase,
+  onOpenItem,
+}: {
+  turn: PageTurn;
+  phase: Phase;
+  onOpenItem?: (itemId: string) => void;
+}) {
   const showSourcesFallback =
     turn.sources.length > 0 && !hasInlineCitations(turn.answer, turn.sources);
 
   return (
     <div className="space-y-3">
-      {/* User message — right-aligned pill, max 70%. */}
-      <div className="flex justify-end">
-        <div className="max-w-[70%] rounded-[18px] rounded-br-sm bg-eco-secondary/[0.07] px-4 py-2.5 font-sans text-body-md leading-snug text-eco-heading ring-1 ring-black/[0.05]">
-          {turn.question}
-        </div>
-      </div>
+      <ChatQuestionBubble className="max-w-[70%] px-4">
+        {turn.question}
+      </ChatQuestionBubble>
 
       <ProcessSteps
         steps={turn.steps}
@@ -199,7 +207,11 @@ function TurnView({ turn, phase }: { turn: PageTurn; phase: Phase }) {
       ) : (
         <div className="space-y-3">
           {turn.answer ? (
-            <ChatMarkdown content={turn.answer} sources={turn.sources} />
+            <ChatMarkdown
+              content={turn.answer}
+              sources={turn.sources}
+              onOpenItem={onOpenItem}
+            />
           ) : phase === "answer" ? (
             <div className="flex items-center gap-2 text-eco-foreground/55">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -215,7 +227,7 @@ function TurnView({ turn, phase }: { turn: PageTurn; phase: Phase }) {
               <ul className="space-y-2">
                 {turn.sources.map((s) => (
                   <li key={s.id}>
-                    <ChatSourceLink source={s} />
+                    <ChatSourceLink source={s} onOpenItem={onOpenItem} />
                   </li>
                 ))}
               </ul>
@@ -235,6 +247,7 @@ export default function ChatPage() {
   const [isDeep, setIsDeep] = useState(false);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [previewItemId, setPreviewItemId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -381,6 +394,11 @@ export default function ChatPage() {
 
   const isEmpty = turns.length === 0 && !streaming;
 
+  function openSourcePreview(itemId: string) {
+    prefetchItem(itemId);
+    setPreviewItemId(itemId);
+  }
+
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-eco-canvas">
       {/* ── Sidebar ─────────────────────────────────────────────── */}
@@ -507,10 +525,19 @@ export default function ChatPage() {
             ) : (
               <div className="space-y-8">
                 {turns.map((turn, i) => (
-                  <TurnView key={i} turn={turn} phase="done" />
+                  <TurnView
+                    key={i}
+                    turn={turn}
+                    phase="done"
+                    onOpenItem={openSourcePreview}
+                  />
                 ))}
                 {streaming && (
-                  <TurnView turn={streaming.turn} phase={streaming.phase} />
+                  <TurnView
+                    turn={streaming.turn}
+                    phase={streaming.phase}
+                    onOpenItem={openSourcePreview}
+                  />
                 )}
               </div>
             )}
@@ -557,6 +584,13 @@ export default function ChatPage() {
           </form>
         </div>
       </div>
+
+      {previewItemId ? (
+        <ItemPreviewPanel
+          itemId={previewItemId}
+          onClose={() => setPreviewItemId(null)}
+        />
+      ) : null}
     </div>
   );
 }

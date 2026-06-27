@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Maximize2, X } from "lucide-react";
 import type { ChatSource } from "@/lib/types";
-import { consumeChatStream } from "@/lib/api";
+import { consumeChatStream, prefetchItem } from "@/lib/api";
 import { useOnboarding } from "@/lib/onboarding";
 import { useChatUsage } from "@/lib/use-chat-usage";
 import { Button } from "@/components/ui/button";
 import { ChatTurn, ChatTurnDivider } from "@/components/chat-turn";
+import { ItemPreviewPanel } from "@/components/item-preview-panel";
 import { ChatUsageBar, DeepDiveToggle } from "@/components/chat-input-controls";
 
 import type { ChatUsage } from "@/lib/api";
@@ -37,12 +38,18 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isDeep, setIsDeep] = useState(false);
+  const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef(false);
   const deepRef = useRef(false);
   const { markQueryDone } = useOnboarding();
   const usage = useChatUsage();
+
+  const openSourcePreview = useCallback((itemId: string) => {
+    prefetchItem(itemId);
+    setPreviewItemId(itemId);
+  }, []);
 
   const sendQuestion = useCallback(async (q: string) => {
     const trimmed = q.trim();
@@ -129,9 +136,9 @@ export function ChatPanel({
     await sendQuestion(q);
   }
 
-  if (!open) return null;
-
   return (
+    <>
+    {open ? (
     <aside className="app-chat-sidebar">
       <div className="flex justify-center pt-2 lg:hidden" aria-hidden>
         <div className="h-1 w-10 rounded-full bg-black/10" />
@@ -146,7 +153,7 @@ export function ChatPanel({
             href="/chat"
             aria-label="Open full-screen chat"
             title="Full screen"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-surface text-eco-foreground transition-colors duration-eco hover:bg-eco-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-border focus-visible:ring-offset-2"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-surface text-eco-foreground transition-colors duration-eco hover:bg-eco-primary/10 dark:hover:bg-eco-hover-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-border focus-visible:ring-offset-2"
           >
             <Maximize2 className="h-4 w-4" />
           </Link>
@@ -169,7 +176,7 @@ export function ChatPanel({
         {turns.map((turn, i) => (
           <div key={i}>
             {i > 0 && <ChatTurnDivider />}
-            <ChatTurn turn={turn} />
+            <ChatTurn turn={turn} onOpenItem={openSourcePreview} />
           </div>
         ))}
 
@@ -179,6 +186,7 @@ export function ChatPanel({
             <ChatTurn
               turn={streamingTurn.turn}
               progress={streamingTurn.progress}
+              onOpenItem={openSourcePreview}
             />
           </div>
         )}
@@ -210,5 +218,14 @@ export function ChatPanel({
         </div>
       </form>
     </aside>
+    ) : null}
+
+    {previewItemId ? (
+      <ItemPreviewPanel
+        itemId={previewItemId}
+        onClose={() => setPreviewItemId(null)}
+      />
+    ) : null}
+    </>
   );
 }
