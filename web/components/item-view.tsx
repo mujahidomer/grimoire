@@ -26,6 +26,7 @@ import { AddLinkedResource } from "@/components/add-linked-resource";
 import { DeleteItemButton } from "@/components/delete-item-button";
 import { LinkPreviewCard } from "@/components/link-preview-card";
 import { ItemDigestRefs } from "@/components/item-digest-refs";
+import { MoveCategoryMenu } from "@/components/move-category-menu";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -330,9 +331,10 @@ export function ItemView({
   const [resources, setResources] = useState<LinkedResource[]>(
     item.linked_resources ?? [],
   );
+  const [current, setCurrent] = useState(item);
 
-  const hasArtifact = item.artifact_type && item.artifact_type !== "none";
-  const hasTranscript = !!(item.transcript && item.transcript.trim());
+  const hasArtifact = current.artifact_type && current.artifact_type !== "none";
+  const hasTranscript = !!(current.transcript && current.transcript.trim());
 
   return (
     <div
@@ -353,30 +355,38 @@ export function ItemView({
       ) : null}
 
       <article>
-        {item.source_url && (
+        {current.source_url && (
           <LinkPreviewCard
-            url={item.source_url}
-            fallbackTitle={item.title}
-            fallbackDescription={item.summary}
-            type={item.type}
+            url={current.source_url}
+            fallbackTitle={current.title}
+            fallbackDescription={current.summary}
+            type={current.type}
           />
         )}
 
         <h1 className="font-display text-[2rem] font-normal leading-tight text-eco-heading">
-          {item.title}
+          {current.title}
         </h1>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-body-md text-eco-foreground/85">
-          <span>{item.category}</span>
+          <span>
+            {current.top_category
+              ? `${current.top_category} › ${current.category}`
+              : current.category}
+          </span>
           <span aria-hidden>·</span>
-          <span>{formatType(item.type)}</span>
+          <span>{formatType(current.type)}</span>
           <span aria-hidden>·</span>
-          <span>{formatDate(item.date_saved)}</span>
+          <span>{formatDate(current.date_saved)}</span>
         </div>
 
-        {item.tags.length > 0 && (
+        <div className="mt-2">
+          <MoveCategoryMenu item={current} onMoved={setCurrent} />
+        </div>
+
+        {current.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
-            {item.tags.map((tag) =>
+            {current.tags.map((tag) =>
               tag.confidence_pending ? (
                 <Badge
                   key={tag.name}
@@ -398,13 +408,13 @@ export function ItemView({
         {hasArtifact && (
           <div className="mt-5 rounded-xl bg-eco-primary/15 px-4 py-3">
             <p className="font-sans text-body-md text-eco-secondary">
-              {artifactEmoji(item.artifact_type)}{" "}
-              <span className="font-medium">{formatType(item.artifact_type)}</span>
-              {item.artifact_name ? `: ${item.artifact_name}` : ""}
+              {artifactEmoji(current.artifact_type)}{" "}
+              <span className="font-medium">{formatType(current.artifact_type)}</span>
+              {current.artifact_name ? `: ${current.artifact_name}` : ""}
             </p>
-            {item.artifact_url && (
+            {current.artifact_url && (
               <a
-                href={item.artifact_url}
+                href={current.artifact_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-1 inline-flex items-center gap-1 font-sans text-label-md text-eco-secondary transition-colors duration-eco hover:text-eco-primary hover:underline"
@@ -416,26 +426,26 @@ export function ItemView({
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          <RawMarkdownButton itemId={item.id} />
-          <AddLinkedResource itemId={item.id} onAdded={setResources} />
-          <DeleteItemButton itemId={item.id} itemTitle={item.title} />
+          <RawMarkdownButton itemId={current.id} />
+          <AddLinkedResource itemId={current.id} onAdded={setResources} />
+          <DeleteItemButton itemId={current.id} itemTitle={current.title} />
         </div>
 
         <hr className="my-8 border-eco-border-subtle" />
 
-        {item.summary && (
+        {current.summary && (
           <section className="mb-10">
             <SectionHeading>Summary</SectionHeading>
             <p className="prose-reading whitespace-pre-wrap text-base">
-              {item.summary}
+              {current.summary}
             </p>
           </section>
         )}
 
-        {!isEmptyTakeaways(item.key_takeaways) && (
+        {!isEmptyTakeaways(current.key_takeaways) && (
           <section className="mb-10">
             <SectionHeading>Key Takeaways</SectionHeading>
-            {renderTakeaways(item.key_takeaways, item.category)}
+            {renderTakeaways(current.key_takeaways, current.category)}
           </section>
         )}
 
@@ -460,17 +470,17 @@ export function ItemView({
             </button>
             {showTranscript && (
               <p className="prose-reading mt-4 whitespace-pre-wrap text-base">
-                {item.transcript}
+                {current.transcript}
               </p>
             )}
           </section>
         )}
 
-        {item.caption && (
+        {current.caption && (
           <section className="mb-10">
             <SectionHeading>Caption</SectionHeading>
             <p className="prose-reading whitespace-pre-wrap text-base italic">
-              {item.caption}
+              {current.caption}
             </p>
           </section>
         )}
@@ -511,8 +521,8 @@ export function ItemView({
           </section>
         )}
 
-        {item.entities && item.entities.length > 0 ? (
-          <ItemDigestRefs entities={item.entities} />
+        {current.entities && current.entities.length > 0 ? (
+          <ItemDigestRefs entities={current.entities} />
         ) : null}
       </article>
     </div>

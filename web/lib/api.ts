@@ -1,10 +1,13 @@
 import type {
+  ConsolidateSubcategoriesResponse,
+  DashboardResponse,
   DigestResponse,
   Item,
   LinkedResource,
   LinkPreview,
   SaveResponse,
   ChatSource,
+  SubcategoriesResponse,
 } from "./types";
 import { createClient as createBrowserClient } from "./supabase/client";
 import { devAuthUserId } from "./dev-auth";
@@ -233,6 +236,11 @@ export interface ItemsQuery {
   q?: string;
   category?: string;
   tag?: string;
+  limit?: number;
+  // New hierarchical category params — additive alongside the legacy
+  // `category` (flat) filter above.
+  topCategory?: string;
+  subcategory?: string;
 }
 
 export async function fetchItems(
@@ -243,6 +251,9 @@ export async function fetchItems(
   if (query.q) params.set("q", query.q);
   if (query.category) params.set("category", query.category);
   if (query.tag) params.set("tag", query.tag);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.topCategory) params.set("top_category", query.topCategory);
+  if (query.subcategory) params.set("subcategory", query.subcategory);
   const qs = params.toString();
   const headers =
     accessToken !== undefined
@@ -270,6 +281,73 @@ export async function fetchDigest(
     cache: "no-store",
   });
   return json<DigestResponse>(res);
+}
+
+// Category dashboard landing (/home) — all 13 top categories with counts and
+// their latest item, plus the 8 most-recently-saved items across the library.
+export async function fetchDashboard(
+  accessToken?: string | null,
+): Promise<DashboardResponse> {
+  const headers =
+    accessToken !== undefined
+      ? serverAuthHeaders(accessToken)
+      : await clientAuthHeaders();
+  const res = await withTimeout(`${BASE}/api/dashboard`, {
+    headers,
+    cache: "no-store",
+  });
+  return json<DashboardResponse>(res);
+}
+
+// Topic subcategories nested under one top_category, sorted by count desc.
+export async function fetchSubcategories(
+  topCategory: string,
+  accessToken?: string | null,
+): Promise<SubcategoriesResponse> {
+  const params = new URLSearchParams({ top_category: topCategory });
+  const headers =
+    accessToken !== undefined
+      ? serverAuthHeaders(accessToken)
+      : await clientAuthHeaders();
+  const res = await withTimeout(`${BASE}/api/subcategories?${params}`, {
+    headers,
+    cache: "no-store",
+  });
+  return json<SubcategoriesResponse>(res);
+}
+
+// Move an item to a different top_category. The server resets its
+// subcategory to "General" and marks category_manually_set.
+export async function recategorizeItem(
+  id: string,
+  topCategory: string,
+): Promise<Item> {
+  const res = await withTimeout(`${BASE}/api/items/${id}/category`, {
+    method: "PATCH",
+    headers: await clientAuthHeaders(),
+    body: JSON.stringify({ top_category: topCategory }),
+  });
+  const data = await json<{ item: Item }>(res);
+  invalidateItemCache(id);
+  return data.item;
+}
+
+// Preview (apply: false) or perform (apply: true) merging near-duplicate
+// subcategories. Always call with apply:false first to show a preview —
+// never apply directly without the user confirming the proposed merges.
+export async function consolidateSubcategories(opts: {
+  topCategory?: string;
+  apply: boolean;
+}): Promise<ConsolidateSubcategoriesResponse> {
+  const res = await withTimeout(`${BASE}/api/subcategories/consolidate`, {
+    method: "POST",
+    headers: await clientAuthHeaders(),
+    body: JSON.stringify({
+      top_category: opts.topCategory,
+      apply: opts.apply,
+    }),
+  });
+  return json<ConsolidateSubcategoriesResponse>(res);
 }
 
 export function previewImageUrl(imageUrl: string): string {

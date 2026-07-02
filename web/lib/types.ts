@@ -35,7 +35,16 @@ export interface Item {
   // Absent on legacy rows — treat as completed.
   status?: "pending" | "processing" | "completed" | "failed";
   title: string;
+  // Free-text topic subcategory under top_category (e.g. "Prompt Engineering").
+  // Historically this held the item's whole category; it is now the specific
+  // subcategory label, scoped by top_category below.
   category: string;
+  // One of the 13 fixed TOP_CATEGORIES, or null for items not yet
+  // backfilled/classified into the new hierarchy.
+  top_category: string | null;
+  // True once a user has explicitly moved this item to a top_category
+  // (via the recategorize endpoint), overriding the classifier's pick.
+  category_manually_set?: boolean;
   type: string; // 'video' | 'article'
   source_url: string;
   date_saved: string;
@@ -146,7 +155,9 @@ export interface SaveResponse {
   message?: string;
 }
 
-// The 10 fixed categories (from the backend classifier / schema).
+// Legacy: the 10 fixed categories from the old flat classifier/schema. Kept
+// untouched — some code still imports this — but new code should use
+// TOP_CATEGORIES, the 13-value hierarchical top-level list, instead.
 export const CATEGORIES = [
   "Food & Cooking",
   "Technology",
@@ -159,3 +170,89 @@ export const CATEGORIES = [
   "Personal Development",
   "Other",
 ] as const;
+
+// The 13 fixed top-level categories in the new hierarchical category model.
+// Closed list — exact order and spelling matter, they mirror the backend.
+// Item.category is now a free-text topic subcategory nested under one of these.
+export const TOP_CATEGORIES = [
+  "Technology & AI",
+  "Business & Finance",
+  "Health & Wellness",
+  "Personal Development",
+  "Relationships & Family",
+  "Religion & Spirituality",
+  "Food & Cooking",
+  "Travel",
+  "Home & Lifestyle",
+  "Arts & Entertainment",
+  "Education & Learning",
+  "News & Politics",
+  "Other",
+] as const;
+
+export type TopCategory = (typeof TOP_CATEGORIES)[number];
+
+// "Technology & AI" -> "technology-ai". Lowercase, '&' dropped, any run of
+// non-alphanumeric characters collapsed to a single hyphen, trimmed.
+export function slugifyTopCategory(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/&/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+const SLUG_TO_TOP_CATEGORY = new Map<string, TopCategory>(
+  TOP_CATEGORIES.map((name) => [slugifyTopCategory(name), name]),
+);
+
+// Reverse lookup for /home/[categorySlug] routes. Returns null for an
+// unrecognized slug so callers can notFound().
+export function topCategoryFromSlug(slug: string): TopCategory | null {
+  return SLUG_TO_TOP_CATEGORY.get(slug) ?? null;
+}
+
+// One row in GET /api/dashboard's categories array — one per top_category,
+// always all 13 in TOP_CATEGORIES order.
+export interface DashboardCategorySummary {
+  top_category: string;
+  count: number;
+  latest: { id: string; title: string; created_at: string } | null;
+}
+
+export interface DashboardResponse {
+  categories: DashboardCategorySummary[];
+  recent: Item[];
+}
+
+// One row in GET /api/subcategories?top_category=... — topic subcategories
+// within a top_category, sorted by count desc.
+export interface SubcategorySummary {
+  name: string;
+  count: number;
+  latest_created_at: string;
+}
+
+export interface SubcategoriesResponse {
+  top_category: string;
+  subcategories: SubcategorySummary[];
+}
+
+// One proposed/applied merge group from POST /api/subcategories/consolidate.
+export interface SubcategoryMerge {
+  from: string[];
+  to: string;
+  itemCount: number;
+}
+
+export interface SubcategoryMergeGroup {
+  top_category: string;
+  merges: SubcategoryMerge[];
+}
+
+export interface ConsolidateSubcategoriesResponse {
+  applied: boolean;
+  groups: SubcategoryMergeGroup[];
+  totalUpdated: number;
+  warnings: string[];
+}

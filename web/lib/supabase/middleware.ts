@@ -80,11 +80,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Authenticated users skip the pre-auth funnel and land in their library.
-  // Onboarding is now an in-dashboard banner, not a gated route.
+  // Authenticated users skip the pre-auth funnel and land on the category
+  // dashboard. Onboarding is now an in-dashboard banner, not a gated route.
   if (user && isFunnelRoute(pathname)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/home";
     url.search = "";
     return NextResponse.redirect(url);
   }

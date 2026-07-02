@@ -7,6 +7,7 @@ import {
   Bookmark,
   Home,
   LayoutGrid,
+  Library,
   Lock,
   MessageCircle,
   PanelLeftClose,
@@ -48,7 +49,8 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { query, setQuery, category, setCategory } = useLibraryFilters();
-  const isHome = pathname === "/";
+  const isAllItems = pathname === "/";
+  const isHomeDashboard = pathname === "/home" || pathname.startsWith("/home/");
 
   if (!open) return null;
 
@@ -73,6 +75,19 @@ export function Sidebar({
 
       <nav className="flex flex-col gap-0.5 px-2 py-2">
         <Link
+          href="/home"
+          onClick={() => onNavigate?.()}
+          className={cn(
+            "flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-sans text-body-md transition-colors duration-eco",
+            isHomeDashboard && !chatOpen
+              ? "bg-eco-primary/10 text-eco-primary"
+              : "text-eco-foreground hover:bg-eco-hover",
+          )}
+        >
+          <Home className="h-4 w-4 shrink-0 opacity-70" />
+          Home
+        </Link>
+        <Link
           href="/"
           onClick={() => {
             setCategory(null);
@@ -80,13 +95,13 @@ export function Sidebar({
           }}
           className={cn(
             "flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-sans text-body-md transition-colors duration-eco",
-            isHome && !category && !chatOpen
+            isAllItems && !category && !chatOpen
               ? "bg-eco-primary/10 text-eco-primary"
               : "text-eco-foreground hover:bg-eco-hover",
           )}
         >
-          <Home className="h-4 w-4 shrink-0 opacity-70" />
-          Home
+          <Library className="h-4 w-4 shrink-0 opacity-70" />
+          All items
         </Link>
         <button
           type="button"
@@ -115,7 +130,7 @@ export function Sidebar({
           )}
         >
           <LayoutGrid className="h-4 w-4 shrink-0 opacity-70" />
-          Library Digest
+          Digest
         </Link>
         <Link
           href="/onboarding/shortcut"
@@ -145,7 +160,7 @@ export function Sidebar({
             }}
             className={cn(
               "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left font-sans text-body-md transition-colors duration-eco",
-              isHome && !category
+              isAllItems && !category
                 ? "bg-eco-primary/10 text-eco-primary"
                 : "text-eco-foreground hover:bg-eco-hover",
             )}

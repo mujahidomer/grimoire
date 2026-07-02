@@ -27,7 +27,7 @@ function GoogleIcon() {
   );
 }
 
-export function GoogleAuthButton({ next = "/" }: { next?: string }) {
+export function GoogleAuthButton({ next = "/home" }: { next?: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +37,7 @@ export function GoogleAuthButton({ next = "/" }: { next?: string }) {
 
     const supabase = createClient();
     const params = new URLSearchParams();
-    if (next && next !== "/") params.set("next", next);
+    if (next && next !== "/home") params.set("next", next);
     const callbackPath = params.toString()
       ? `/auth/callback?${params}`
       : "/auth/callback";

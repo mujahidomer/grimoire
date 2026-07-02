@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  const next = searchParams.get("next") || "/home";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -118,7 +118,7 @@ export function LoginForm() {
         <p className="text-center font-sans text-body-md text-eco-foreground/75">
           No account?{" "}
           <Link
-            href={`/signup${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
+            href={`/signup${next !== "/home" ? `?next=${encodeURIComponent(next)}` : ""}`}
             className="font-medium text-eco-tertiary hover:underline"
           >
             Create one

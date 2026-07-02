@@ -240,19 +240,32 @@ export function ActivityFeed({
   );
 }
 
-export function RecentSaves({ items }: { items: Item[] }) {
-  const recent = items.slice(0, 3);
+export function RecentSaves({
+  items,
+  limit = 3,
+  title = "Recently saved",
+  showBadge = true,
+}: {
+  items: Item[];
+  /** Max rows to render. Defaults to 3 (the inline library banner). */
+  limit?: number;
+  title?: string;
+  showBadge?: boolean;
+}) {
+  const recent = items.slice(0, limit);
   if (recent.length === 0) return null;
 
   return (
     <section className="mb-10">
       <div className="mb-4 flex items-center gap-2">
         <h2 className="font-sans text-body-md font-medium text-eco-heading">
-          Recently saved
+          {title}
         </h2>
-        <span className="rounded-md bg-eco-primary/15 px-1.5 py-0.5 font-sans text-label-md text-eco-tertiary">
-          New
-        </span>
+        {showBadge && (
+          <span className="rounded-md bg-eco-primary/15 px-1.5 py-0.5 font-sans text-label-md text-eco-tertiary">
+            New
+          </span>
+        )}
       </div>
       <div className="rounded-2xl border border-eco-border-light bg-eco-surface p-1 shadow-eco-sm">
         <ul className="divide-y divide-black/[0.05]">

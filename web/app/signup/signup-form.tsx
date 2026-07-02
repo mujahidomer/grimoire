@@ -13,7 +13,7 @@ import { applyPendingOnboarding } from "@/lib/apply-onboarding";
 export function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  const next = searchParams.get("next") || "/home";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -116,7 +116,7 @@ export function SignupForm() {
         <p className="text-center font-sans text-body-md text-eco-foreground/75">
           Already have an account?{" "}
           <Link
-            href={`/login${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
+            href={`/login${next !== "/home" ? `?next=${encodeURIComponent(next)}` : ""}`}
             className="font-medium text-eco-tertiary hover:underline"
           >
             Sign in

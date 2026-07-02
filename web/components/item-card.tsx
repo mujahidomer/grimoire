@@ -26,7 +26,8 @@ export function ItemCard({ item }: { item: Item }) {
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3 text-label-md text-eco-primary/75">
             <span className="font-sans">
-              {item.category} · {formatType(item.type)}
+              {item.top_category ? `${item.top_category} · ` : ""}
+              {formatType(item.type)}
             </span>
             <span className="whitespace-nowrap font-sans">
               {formatDate(item.date_saved)}
