@@ -16,6 +16,11 @@ import { GetStartedBanner } from "@/components/get-started-banner";
 import { StarterLibraryLoader } from "@/components/starter-library-loader";
 import { useOnboarding } from "@/lib/onboarding";
 import { cn, itemRecencyMs } from "@/lib/utils";
+import {
+  hasActiveProcessingItems,
+  isItemProcessing,
+  PROCESSING_POLL_INTERVAL_MS,
+} from "@/lib/item-status";
 
 const VIEW_STORAGE_KEY = "grimoire-library-view";
 
@@ -73,6 +78,9 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
 
   const reqId = useRef(0);
   const pendingEnsureIds = useRef<string[] | undefined>();
+  const [processingSince, setProcessingSince] = useState<Record<string, number>>(
+    {},
+  );
   const skipInitialFetch = useRef(
     initialItems.length > 0 && !query && !category,
   );
@@ -162,6 +170,55 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
     window.addEventListener("grimoire:refresh", onRefresh);
     return () => window.removeEventListener("grimoire:refresh", onRefresh);
   }, [load, query, category, setCategory, setQuery]);
+
+  useEffect(() => {
+    const now = Date.now();
+    setProcessingSince((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const item of items) {
+        if (isItemProcessing(item)) {
+          if (!next[item.id]) {
+            next[item.id] = now;
+            changed = true;
+          }
+        } else if (next[item.id]) {
+          delete next[item.id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [items]);
+
+  const shouldPollProcessing = useMemo(
+    () => hasActiveProcessingItems(items, processingSince),
+    [items, processingSince],
+  );
+
+  useEffect(() => {
+    if (!shouldPollProcessing || starterLibraryLoading) return;
+
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const next = await fetchItemsWithEnsured(query, category);
+        if (!cancelled) setItems(next);
+      } catch {
+        /* retry on next interval */
+      }
+    }
+
+    const interval = window.setInterval(() => {
+      void poll();
+    }, PROCESSING_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [shouldPollProcessing, starterLibraryLoading, query, category]);
 
   const isFiltered = !!query || !!category;
   const title = category ?? (isFiltered ? "Search results" : "Library");

@@ -31,6 +31,9 @@ export interface LinkedResource {
 
 export interface Item {
   id: string;
+  // Background save pipeline: pending → processing → completed | failed.
+  // Absent on legacy rows — treat as completed.
+  status?: "pending" | "processing" | "completed" | "failed";
   title: string;
   category: string;
   type: string; // 'video' | 'article'

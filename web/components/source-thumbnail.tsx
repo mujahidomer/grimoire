@@ -20,11 +20,22 @@ export function SourceThumbnail({
   url,
   className,
   iconClassName,
+  placeholder = false,
 }: {
   url: string;
   className?: string;
   iconClassName?: string;
+  /** Neutral block while an item is still processing — no fetch/spinner. */
+  placeholder?: boolean;
 }) {
+  if (placeholder) {
+    return (
+      <div
+        className={cn("overflow-hidden bg-eco-border/25", className)}
+        aria-hidden
+      />
+    );
+  }
   const [image, setImage] = useState<string | null>(() => initialImage(url));
   const [loading, setLoading] = useState(() => initiallyLoading(url));
   const [imageFailed, setImageFailed] = useState(false);
