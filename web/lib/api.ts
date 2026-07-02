@@ -11,8 +11,11 @@ import { devAuthUserId } from "./dev-auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const REQUEST_TIMEOUT_MS = 15000;
-// Save runs scraping, transcription, and classification — often >15s on Railway.
-const SAVE_REQUEST_TIMEOUT_MS = 120000;
+// /api/save now responds as soon as a pending row is written (target <500ms) —
+// extraction/classification run in a detached background job server-side, not
+// inline in the request. No need for a long client-side allowance anymore; this
+// only needs to cover a slow/flaky connection to deliver that fast ack.
+const SAVE_REQUEST_TIMEOUT_MS = 15000;
 
 export interface ChatUsage {
   input_tokens: number;
@@ -433,8 +436,10 @@ export async function saveUrl(
       method: "POST",
       headers: await clientAuthHeaders(),
       body: JSON.stringify({ url }),
-      // keepalive lets the request finish even if the tab is backgrounded or
-      // closed (e.g. the iOS share sheet bouncing back to the source app).
+      // Belt-and-suspenders: the backend now responds almost instantly (see
+      // /api/save in index.js), so there's very little window left for iOS
+      // backgrounding to interrupt. keepalive still helps that last stretch —
+      // no harm in keeping it — but it is no longer load-bearing.
       keepalive: opts.keepalive,
     },
     SAVE_REQUEST_TIMEOUT_MS,

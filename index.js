@@ -7,7 +7,7 @@ const { processContent, researchUrl, processLinkedResource } = require('./lib/cl
 const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
   upsertItem, upsertItemTags, upsertLinkedResource, findItemBySourceUrl, getItemById,
-  promotedArtifactUrl
+  promotedArtifactUrl, updateItemStatus
 } = require('./lib/repository');
 const { normalizeUrl } = require('./lib/url');
 const { embedItemInBackground } = require('./lib/embeddings');
@@ -104,6 +104,46 @@ async function saveFromUrl(url, userId) {
 
   return runPipeline(extracted.text, url, extracted.hashtags,
     { caption: extracted.caption, transcript: extracted.transcript }, userId);
+}
+
+// Runs the actual extract → classify → save pipeline for POST /api/save AFTER
+// the fast pending-row ack has already been sent to the client. Deliberately
+// not awaited by the request handler — req/res must not be touched from here.
+// itemId/url/userId are captured in closure at call time, before the response
+// went out.
+//
+// KNOWN GAP: this is in-process continuation, not a real job queue. If the
+// Railway container restarts (deploy, crash, OOM) while this is running, the
+// save is lost outright — no retry, no re-enqueue — and the item stays stuck
+// at status='pending'/'processing' forever. Acceptable for now; revisit if
+// stuck items become a real problem.
+async function processSaveInBackground(itemId, url, userId) {
+  console.log(`[save:${itemId}] background processing started for ${url}`);
+  try {
+    await updateItemStatus(itemId, userId, 'processing');
+    console.log(`[save:${itemId}] extracting content...`);
+    const saved = await saveFromUrl(url, userId);
+
+    if (!saved || saved.length === 0) {
+      console.warn(`[save:${itemId}] no content extracted for ${url}, marking failed`);
+      await updateItemStatus(itemId, userId, 'failed');
+      return;
+    }
+
+    // saveFromUrl already persisted the classified item(s) via saveItem(), which
+    // upserts on (user_id, source_url) — the same key as the pending row above,
+    // so this overwrites it in place with status defaulting to 'completed'.
+    // (A URL that yields multiple items collapses to the last one written —
+    // pre-existing upsertItem behavior, not something this change introduces.)
+    console.log(`[save:${itemId}] completed (${saved.length} item(s)) for ${url}`);
+  } catch (err) {
+    console.error(`[save:${itemId}] background processing failed for ${url}:`, err);
+    try {
+      await updateItemStatus(itemId, userId, 'failed');
+    } catch (err2) {
+      console.error(`[save:${itemId}] also failed to mark status=failed:`, err2);
+    }
+  }
 }
 
 async function sendSavedConfirmation(bot, chatId, saved) {
@@ -238,25 +278,33 @@ app.get('/health', (req, res) => res.json({ status: 'ok', user: !!USER_ID }));
 // Retrieval + chat API (Doc A item 5): GET /api/items, GET /api/items/:id, POST /api/chat.
 registerApiRoutes(app);
 
-// POST /api/save — the web paste-box save flow (Doc B). Same pipeline as the
-// Telegram/iOS capture path, just a clean HTTP entry point. Body: { url }.
-// Returns a top-level { id, title } for the first saved item (what the paste-box
-// links to) plus the full items array, since one URL can yield multiple items.
+// POST /api/save — the web paste-box + iOS Shortcut/share-sheet save flow
+// (Doc B). Body: { url }. Responds fast (target <500ms): validates the URL and
+// writes a 'pending' placeholder row, then hands off extraction + classification
+// to a detached background job (processSaveInBackground) so the HTTP response
+// doesn't sit open for however long Jina/Supadata/Apify + classification take
+// (seconds to several minutes on the Apify path) — that's what was letting iOS
+// kill backgrounded-tab saves even with fetch keepalive, since keepalive isn't
+// built to hold a connection open across a long, unbounded server-side wait.
+// Returns { id, status: 'pending', url } immediately; the item's `status`
+// column tracks pending → processing → completed/failed from here.
 app.post('/api/save', requireAuth(async (req, res) => {
   const { url } = req.body || {};
   if (!url) return res.status(400).json({ error: 'url is required' });
+
+  const userId = req.userId;
+  let itemId;
   try {
-    const saved = await saveFromUrl(url, req.userId);
-    if (!saved || saved.length === 0) {
-      return res.status(422).json({ success: false, error: 'no_content',
-        message: 'Nothing extractable found at that URL.' });
-    }
-    const items = saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type }));
-    res.json({ success: true, id: items[0].id, title: items[0].title, count: items.length, items });
+    itemId = await upsertItem({ sourceUrl: url, status: 'pending' }, { userId, source: 'web' });
   } catch (err) {
-    console.error('POST /api/save error:', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('POST /api/save pending-row error:', err);
+    return res.status(500).json({ success: false, error: err.message });
   }
+
+  console.log(`[save:${itemId}] pending row created for ${url}, request received`);
+  res.json({ success: true, id: itemId, status: 'pending', url });
+
+  processSaveInBackground(itemId, url, userId);
 }));
 
 // POST /api/seed — copy pre-processed starter-library items into the caller's

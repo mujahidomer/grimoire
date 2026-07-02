@@ -164,9 +164,15 @@ export function ShareHandler() {
     setStatus("saving");
     setError(null);
     try {
-      // keepalive keeps the POST in flight even if iOS bounces back to the
-      // source app or the tab is backgrounded mid-save.
+      // /api/save now responds as soon as a pending row is written (extraction
+      // + classification happen in a detached background job server-side), so
+      // this resolves almost instantly — there's no need to keep the tab open
+      // or foregrounded for it to complete. keepalive covers the tiny window
+      // where iOS bounces back to the source app before the ack lands.
       const res = await saveUrl(sharedUrl, { keepalive: true });
+      // title is not yet known — extraction hasn't run — so this only carries
+      // the (stable) item id for the "View it" link; the UI copy reflects that
+      // saving succeeded but details are still processing.
       setSaved({ id: res.id, title: res.title });
       setStatus("saved");
     } catch (err) {
@@ -207,7 +213,7 @@ export function ShareHandler() {
           <h1 className="font-display text-2xl text-eco-heading">Grimoire</h1>
           <p className="mt-1.5 font-sans text-body-md text-eco-foreground/75">
             {status === "saved"
-              ? "Saved to your library"
+              ? "Saved — processing"
               : status === "error"
                 ? "Couldn’t save that link"
                 : "Saving to your library"}
@@ -345,9 +351,12 @@ export function ShareHandler() {
                 />
               </svg>
               <div className="save-success-label space-y-1.5">
-                <p className="font-display text-2xl text-eco-heading">Saved</p>
+                <p className="font-display text-2xl text-eco-heading">
+                  Saved — processing
+                </p>
                 <p className="font-sans text-[15px] text-eco-foreground/55">
-                  You can close this tab
+                  We&apos;re still extracting the details in the background —
+                  you can close this tab now.
                 </p>
                 {saved?.id && (
                   <Link

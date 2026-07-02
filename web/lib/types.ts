@@ -131,6 +131,11 @@ export interface ChatResponse {
 export interface SaveResponse {
   success: boolean;
   id?: string;
+  // Present on the fast /api/save ack: 'pending' while extraction/classification
+  // are still running in the background. title/count/items reflect the older
+  // synchronous shape and are absent from that ack (unknown until processing
+  // finishes) — callers should treat them as optional.
+  status?: "pending" | "processing" | "completed" | "failed";
   title?: string;
   count?: number;
   items?: { id: string; title: string; category: string; type: string }[];

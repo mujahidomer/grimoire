@@ -105,6 +105,11 @@ alter table items add column if not exists entities jsonb;
 alter table items add column if not exists data_version text default 'v1';
 alter table items add column if not exists subcategory text;
 update items set data_version = 'v1' where data_version is null;
+-- Save-pipeline status: 'pending' (row created, extraction not started yet) ->
+-- 'processing' (background job running) -> 'completed' | 'failed'. Existing
+-- rows predate the async /api/save split and are fully saved, hence 'completed'.
+alter table items add column if not exists status text not null default 'completed';
+create index if not exists items_status_idx on items (status) where status in ('pending', 'processing');
 
 -- ─── tags (canonical vocabulary) ──────────────────────────────────────────────
 create table if not exists tags (
