@@ -8,6 +8,7 @@ import type {
   SaveResponse,
   ChatSource,
   SubcategoriesResponse,
+  SubcategoryMergeGroup,
 } from "./types";
 import { createClient as createBrowserClient } from "./supabase/client";
 import { devAuthUserId } from "./dev-auth";
@@ -338,6 +339,9 @@ export async function recategorizeItem(
 export async function consolidateSubcategories(opts: {
   topCategory?: string;
   apply: boolean;
+  // On apply, pass back the previewed groups so the server applies exactly
+  // what the user confirmed instead of re-proposing (which could differ).
+  groups?: SubcategoryMergeGroup[];
 }): Promise<ConsolidateSubcategoriesResponse> {
   const res = await withTimeout(`${BASE}/api/subcategories/consolidate`, {
     method: "POST",
@@ -345,6 +349,7 @@ export async function consolidateSubcategories(opts: {
     body: JSON.stringify({
       top_category: opts.topCategory,
       apply: opts.apply,
+      groups: opts.groups,
     }),
   });
   return json<ConsolidateSubcategoriesResponse>(res);

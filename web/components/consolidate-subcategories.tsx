@@ -51,6 +51,9 @@ export function ConsolidateSubcategories({
       const result = await consolidateSubcategories({
         topCategory,
         apply: true,
+        // Send the previewed groups back so the server applies exactly what
+        // the user is looking at, not a fresh proposal.
+        groups,
       });
       setTotalUpdated(result.totalUpdated ?? 0);
       setStep("done");

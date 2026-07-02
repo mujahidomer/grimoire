@@ -110,6 +110,24 @@ update items set data_version = 'v1' where data_version is null;
 -- rows predate the async /api/save split and are fully saved, hence 'completed'.
 alter table items add column if not exists status text not null default 'completed';
 create index if not exists items_status_idx on items (status) where status in ('pending', 'processing');
+-- ⚠️  MANUAL STEP FOR MUJI: run this block in the Supabase SQL editor BEFORE
+--     deploying the category-dashboard release (it is idempotent and harmless
+--     to the running app — old code never touches these columns).
+-- Hierarchical categories:
+--   * top_category — one of the fixed 13 top-level categories (closed list in
+--     lib/topCategories.js). Null = saved before this feature / still
+--     processing; the backfill script assigns it.
+--   * category — REPURPOSED as the free-text topic subcategory under
+--     top_category (LLM-generated, e.g. 'Prompt Engineering'). The FK to the
+--     legacy 10-value categories lookup is dropped; `categories` remains only
+--     as historical scaffolding.
+--   * category_manually_set — true once the user manually moves an item;
+--     save-time reclassification, consolidation, and backfill must all skip
+--     such rows (enforced in their queries, see lib/repository.js).
+alter table items add column if not exists top_category text;
+alter table items add column if not exists category_manually_set boolean not null default false;
+alter table items drop constraint if exists items_category_fkey;
+create index if not exists items_top_category_idx on items (user_id, top_category);
 
 -- ─── tags (canonical vocabulary) ──────────────────────────────────────────────
 create table if not exists tags (
