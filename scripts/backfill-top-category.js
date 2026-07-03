@@ -24,6 +24,9 @@ const path = require('path');
 const { getSupabase, defaultUserId } = require('../lib/supabase');
 const { getAnthropicClient } = require('../lib/anthropicClient');
 const { getTopCategories, refreshTopCategories, DEFAULT_SUBCATEGORY, normalizeTopCategory, normalizeSubcategoryLabel } = require('../lib/topCategories');
+// Reuse the live classifier's tie-break rule and junk detector so this backfill
+// classifies with the SAME logic as save-time (no duplicated/stale copy).
+const { TOP_CATEGORY_TIEBREAK, isFailedCapture } = require('../lib/classifier');
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -79,7 +82,8 @@ For each item, choose:
 Hints:
 - Items with artifact_type "islamic" belong under "Religion & Spirituality".
 - Items with artifact_type "recipe" belong under "Food & Cooking".
-- If the content is primarily about using, building, or learning an AI tool, software tool, or technical workflow — even when the subject matter is design, marketing, business, or another domain — classify as Technology & AI. Reserve other top-level categories for content where the AI/tool angle is incidental, not the primary subject. Reserve Education & Learning specifically for structured courses, curricula, or general skill-building content with no significant tool/software component.
+
+${TOP_CATEGORY_TIEBREAK}
 
 Items:
 ${JSON.stringify(list, null, 2)}
@@ -155,12 +159,25 @@ async function main() {
   const items = await fetchItems(sb, userId);
   const total = items.length;
 
+  // Route obvious failed/blocked captures to Other without an LLM call, using
+  // the SAME detector as the live classifier (isFailedCapture) — applied to the
+  // stored title+summary, since the backfill never re-fetches page content.
+  const junkItems = items.filter(
+    it => isFailedCapture(`${it.title || ''}\n${it.summary || ''}`, ''),
+  );
+  const junkIds = new Set(junkItems.map(it => it.id));
+  const classifiable = items.filter(it => !junkIds.has(it.id));
+
   console.log(`[backfill-top-category] ${DRY_RUN ? 'DRY RUN — ' : ''}${total} item(s) to classify${LIMIT !== null ? ` (limit ${LIMIT})` : ''}\n`);
+  if (junkItems.length > 0) {
+    console.log(`[backfill-top-category] ${junkItems.length} item(s) caught by junk/failed-capture filter → Other (no LLM call)\n`);
+  }
 
   const summary = {
     processed: 0,
     fromLlm: 0,
     fromFallback: 0,
+    fromJunk: 0,
     failedBatches: 0,
     byTopCategory: {}
   };
@@ -172,8 +189,8 @@ async function main() {
   const fallbackHits = [];
 
   const batches = [];
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    batches.push(items.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < classifiable.length; i += BATCH_SIZE) {
+    batches.push(classifiable.slice(i, i + BATCH_SIZE));
   }
 
   let batchNum = 0;
@@ -245,9 +262,31 @@ async function main() {
     }
   }
 
+  // Junk/failed-capture items: deterministic Other assignment, no LLM.
+  for (const item of junkItems) {
+    const topCategory = 'Other';
+    const subcategory = 'Failed Capture';
+    summary.fromJunk++;
+    summary.byTopCategory[topCategory] = (summary.byTopCategory[topCategory] || 0) + 1;
+    summary.processed++;
+
+    if (DRY_RUN) {
+      dryRunAssignments.push({ title: item.title, topCategory, subcategory, source: 'junk' });
+      continue;
+    }
+
+    const { error: updErr } = await sb
+      .from('items')
+      .update({ top_category: topCategory, topic_subcategory: subcategory })
+      .eq('user_id', userId)
+      .eq('id', item.id);
+    if (updErr) throw new Error(`update failed for ${item.id}: ${updErr.message}`);
+  }
+
   console.log(`\n[backfill-top-category] Done. ${summary.processed} item(s) ${DRY_RUN ? 'would be ' : ''}processed.`);
   console.log(`  From LLM:      ${summary.fromLlm}`);
   console.log(`  From fallback: ${summary.fromFallback}`);
+  console.log(`  From junk filter: ${summary.fromJunk}`);
   console.log(`  Failed batches (both attempts): ${summary.failedBatches}`);
   console.log(`  By top_category:`);
   for (const cat of getTopCategories()) {
