@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,25 +15,13 @@ import {
   PenLine,
   Users,
 } from "lucide-react";
-import { CATEGORIES } from "@/lib/types";
+import type { TopCategoryRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useLibraryFilters } from "@/lib/library-context";
+import { fetchTopCategories } from "@/lib/api";
 import { SearchBox } from "@/components/search-box";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { UserMenu } from "@/components/user-menu";
-
-function categoryIcon(category: string) {
-  if (category.includes("Food")) return "🍳";
-  if (category.includes("Technology")) return "💻";
-  if (category.includes("Health")) return "💪";
-  if (category.includes("Finance")) return "💰";
-  if (category.includes("Learning")) return "📚";
-  if (category.includes("Entertainment")) return "🎬";
-  if (category.includes("Travel")) return "✈️";
-  if (category.includes("Business")) return "💼";
-  if (category.includes("Personal")) return "🌱";
-  return "📁";
-}
 
 export function Sidebar({
   open,
@@ -48,9 +37,40 @@ export function Sidebar({
   chatOpen: boolean;
 }) {
   const pathname = usePathname();
-  const { query, setQuery, category, setCategory } = useLibraryFilters();
+  const { query, setQuery, topCategory, setTopCategory } = useLibraryFilters();
   const isAllItems = pathname === "/";
   const isHomeDashboard = pathname === "/home" || pathname.startsWith("/home/");
+
+  // Spaces = the live, data-driven top categories (top_categories table),
+  // ordered by sort_order.
+  const [spaces, setSpaces] = useState<TopCategoryRecord[]>([]);
+  // fetchTopCategories() swallows errors and returns []; the endpoint always
+  // yields >=13 (seed fallback) when reachable, so an empty result means the
+  // fetch itself failed. Track that so an outage shows an inline error instead
+  // of an empty list that looks like "you have no categories" — retry once
+  // before giving up.
+  const [spacesError, setSpacesError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    async function loadSpaces() {
+      for (let attempt = 0; attempt < 2 && active; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
+        const records = await fetchTopCategories();
+        if (!active) return;
+        if (records.length > 0) {
+          setSpaces([...records].sort((a, b) => a.sort_order - b.sort_order));
+          setSpacesError(false);
+          return;
+        }
+      }
+      if (active) setSpacesError(true);
+    }
+    void loadSpaces();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (!open) return null;
 
@@ -90,12 +110,12 @@ export function Sidebar({
         <Link
           href="/"
           onClick={() => {
-            setCategory(null);
+            setTopCategory(null);
             onNavigate?.();
           }}
           className={cn(
             "flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-sans text-body-md transition-colors duration-eco",
-            isAllItems && !category && !chatOpen
+            isAllItems && !topCategory && !chatOpen
               ? "bg-eco-primary/10 text-eco-primary"
               : "text-eco-foreground hover:bg-eco-hover",
           )}
@@ -155,12 +175,12 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => {
-              setCategory(null);
+              setTopCategory(null);
               onNavigate?.();
             }}
             className={cn(
               "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left font-sans text-body-md transition-colors duration-eco",
-              isAllItems && !category
+              isAllItems && !topCategory
                 ? "bg-eco-primary/10 text-eco-primary"
                 : "text-eco-foreground hover:bg-eco-hover",
             )}
@@ -168,27 +188,32 @@ export function Sidebar({
             <Lock className="h-4 w-4 shrink-0 opacity-50" />
             My library
           </button>
-          {CATEGORIES.slice(0, 5).map((cat) => (
+          {spaces.map((space) => (
             <button
-              key={cat}
+              key={space.slug}
               type="button"
               onClick={() => {
-                setCategory(cat);
+                setTopCategory(space.name);
                 onNavigate?.();
               }}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left font-sans text-body-md transition-colors duration-eco",
-                category === cat
+                topCategory === space.name
                   ? "bg-eco-primary/10 text-eco-primary"
                   : "text-eco-foreground hover:bg-eco-hover",
               )}
             >
               <span className="flex h-4 w-4 shrink-0 items-center justify-center text-xs">
-                {categoryIcon(cat)}
+                {space.emoji}
               </span>
-              <span className="truncate">{cat}</span>
+              <span className="truncate">{space.name}</span>
             </button>
           ))}
+          {spacesError && (
+            <p className="px-2 py-1.5 font-sans text-label-md text-eco-foreground/50">
+              Couldn&apos;t load categories.
+            </p>
+          )}
         </div>
       </div>
 

@@ -10,14 +10,14 @@ import { useLibraryFilters } from "@/lib/library-context";
 // existing filtered fetch takes over. No new search logic.
 export function DashboardSearchBar() {
   const router = useRouter();
-  const { setQuery, setCategory } = useLibraryFilters();
+  const { setQuery, setTopCategory } = useLibraryFilters();
   const [value, setValue] = useState("");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = value.trim();
     if (!trimmed) return;
-    setCategory(null);
+    setTopCategory(null);
     setQuery(trimmed);
     router.push("/");
   }

@@ -37,7 +37,7 @@ async function fetchItemsWithEnsured(
 ): Promise<Item[]> {
   let next = await fetchItems({
     q: q.trim() || undefined,
-    category: cat || undefined,
+    topCategory: cat || undefined,
   });
 
   if (ensureIds?.length) {
@@ -64,7 +64,7 @@ function readStoredView(): LibraryViewMode {
 }
 
 export function Library({ initialItems }: { initialItems: Item[] }) {
-  const { query, setQuery, category, setCategory } = useLibraryFilters();
+  const { query, setQuery, topCategory, setTopCategory } = useLibraryFilters();
   const {
     starterLibraryLoading,
     starterLibraryExpected,
@@ -82,7 +82,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
     {},
   );
   const skipInitialFetch = useRef(
-    initialItems.length > 0 && !query && !category,
+    initialItems.length > 0 && !query && !topCategory,
   );
 
   useEffect(() => {
@@ -124,8 +124,8 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
   }, []);
 
   const refresh = useCallback(() => {
-    load(query, category);
-  }, [load, query, category]);
+    load(query, topCategory);
+  }, [load, query, topCategory]);
 
   useEffect(() => {
     if (starterLibraryLoading) return;
@@ -135,16 +135,16 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
       pendingEnsureIds.current = undefined;
 
       // SSR already fetched the unfiltered library — skip the duplicate round trip.
-      if (skipInitialFetch.current && !query && !category && !ensureIds?.length) {
+      if (skipInitialFetch.current && !query && !topCategory && !ensureIds?.length) {
         skipInitialFetch.current = false;
         return;
       }
       skipInitialFetch.current = false;
 
-      load(query, category, ensureIds);
+      load(query, topCategory, ensureIds);
     }, delay);
     return () => clearTimeout(t);
-  }, [query, category, load, starterLibraryLoading]);
+  }, [query, topCategory, load, starterLibraryLoading]);
 
   useEffect(() => {
     function onRefresh(e: Event) {
@@ -152,12 +152,12 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
       const savedIds = detail?.savedIds?.filter(Boolean);
 
       // After a save, clear filters so the new item is not hidden by an active
-      // category/search. Queue ensureIds for the filter-driven reload so we
+      // topCategory/search. Queue ensureIds for the filter-driven reload so we
       // don't race two concurrent list fetches.
       if (savedIds?.length) {
         pendingEnsureIds.current = savedIds;
-        if (query || category) {
-          setCategory(null);
+        if (query || topCategory) {
+          setTopCategory(null);
           setQuery("");
         } else {
           load("", null, savedIds);
@@ -165,11 +165,11 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
         return;
       }
 
-      load(query, category);
+      load(query, topCategory);
     }
     window.addEventListener("grimoire:refresh", onRefresh);
     return () => window.removeEventListener("grimoire:refresh", onRefresh);
-  }, [load, query, category, setCategory, setQuery]);
+  }, [load, query, topCategory, setTopCategory, setQuery]);
 
   useEffect(() => {
     const now = Date.now();
@@ -203,7 +203,7 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
 
     async function poll() {
       try {
-        const next = await fetchItemsWithEnsured(query, category);
+        const next = await fetchItemsWithEnsured(query, topCategory);
         if (!cancelled) setItems(next);
       } catch {
         /* retry on next interval */
@@ -218,10 +218,10 @@ export function Library({ initialItems }: { initialItems: Item[] }) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [shouldPollProcessing, starterLibraryLoading, query, category]);
+  }, [shouldPollProcessing, starterLibraryLoading, query, topCategory]);
 
-  const isFiltered = !!query || !!category;
-  const title = category ?? (isFiltered ? "Search results" : "Library");
+  const isFiltered = !!query || !!topCategory;
+  const title = topCategory ?? (isFiltered ? "Search results" : "Library");
   const { recentItems, feedItems } = useMemo(() => {
     const sorted = sortItems(items);
     const recent = isFiltered ? [] : sorted.slice(0, 3);
