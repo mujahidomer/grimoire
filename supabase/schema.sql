@@ -103,7 +103,6 @@ alter table items add column if not exists skills jsonb;
 -- skills is kept for now during the transition (don't drop yet).
 alter table items add column if not exists entities jsonb;
 alter table items add column if not exists data_version text default 'v1';
-alter table items add column if not exists subcategory text;
 update items set data_version = 'v1' where data_version is null;
 -- Save-pipeline status: 'pending' (row created, extraction not started yet) ->
 -- 'processing' (background job running) -> 'completed' | 'failed'. Existing
@@ -111,22 +110,52 @@ update items set data_version = 'v1' where data_version is null;
 alter table items add column if not exists status text not null default 'completed';
 create index if not exists items_status_idx on items (status) where status in ('pending', 'processing');
 -- ⚠️  MANUAL STEP FOR MUJI: run this block in the Supabase SQL editor BEFORE
---     deploying the category-dashboard release (it is idempotent and harmless
---     to the running app — old code never touches these columns).
--- Hierarchical categories:
+--     deploying the category-dashboard release (it is idempotent, guarded, and
+--     safe to re-run — every statement is a no-op once already applied).
+-- Hierarchical categories + column renames:
 --   * top_category — one of the fixed 13 top-level categories (closed list in
 --     lib/topCategories.js). Null = saved before this feature / still
 --     processing; the backfill script assigns it.
---   * category — REPURPOSED as the free-text topic subcategory under
---     top_category (LLM-generated, e.g. 'Prompt Engineering'). The FK to the
---     legacy 10-value categories lookup is dropped; `categories` remains only
---     as historical scaffolding.
+--   * topic_subcategory — RENAMED from the legacy `category` column, which is
+--     repurposed as the free-text topic subcategory under top_category
+--     (LLM-generated, e.g. 'Prompt Engineering'). The FK to the legacy
+--     10-value categories lookup is dropped first; `categories` remains only as
+--     historical scaffolding.
+--   * artifact_subcategory — RENAMED from the legacy `subcategory` column
+--     (artifact-scoped label, a separate axis from topic_subcategory).
 --   * category_manually_set — true once the user manually moves an item;
 --     save-time reclassification, consolidation, and backfill must all skip
 --     such rows (enforced in their queries, see lib/repository.js).
 alter table items add column if not exists top_category text;
 alter table items add column if not exists category_manually_set boolean not null default false;
 alter table items drop constraint if exists items_category_fkey;
+
+-- Rename category -> topic_subcategory (guarded: only when the old name still
+-- exists and the new one doesn't, so re-running is a no-op). Any index/constraint
+-- on the column follows the rename automatically.
+do $$ begin
+  if exists (select 1 from information_schema.columns
+             where table_name = 'items' and column_name = 'category')
+     and not exists (select 1 from information_schema.columns
+             where table_name = 'items' and column_name = 'topic_subcategory') then
+    alter table items rename column category to topic_subcategory;
+  end if;
+end $$;
+alter table items add column if not exists topic_subcategory text;
+
+-- Rename subcategory -> artifact_subcategory (same guard). On a fresh database
+-- the legacy `subcategory` column was never created, so the rename is skipped
+-- and the add-if-not-exists below provisions it directly.
+do $$ begin
+  if exists (select 1 from information_schema.columns
+             where table_name = 'items' and column_name = 'subcategory')
+     and not exists (select 1 from information_schema.columns
+             where table_name = 'items' and column_name = 'artifact_subcategory') then
+    alter table items rename column subcategory to artifact_subcategory;
+  end if;
+end $$;
+alter table items add column if not exists artifact_subcategory text;
+
 create index if not exists items_top_category_idx on items (user_id, top_category);
 
 -- ─── tags (canonical vocabulary) ──────────────────────────────────────────────

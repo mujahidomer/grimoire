@@ -62,7 +62,7 @@ function buildPrompt(batch) {
     id: item.id,
     title: item.title || null,
     summary: truncate(item.summary || '', 300),
-    legacy_category: item.category || null,
+    legacy_category: item.topic_subcategory || null,
     artifact_type: item.artifact_type || null
   }));
 
@@ -125,7 +125,7 @@ async function fetchItems(sb, userId) {
     const to = from + PAGE_SIZE - 1;
     const { data, error } = await sb
       .from('items')
-      .select('id, title, summary, category, subcategory, artifact_type')
+      .select('id, title, summary, topic_subcategory, artifact_type')
       .eq('user_id', userId)
       .is('top_category', null)
       .eq('category_manually_set', false)
@@ -201,7 +201,7 @@ async function main() {
       let subcategory = raw ? normalizeSubcategoryLabel(raw.subcategory) : null;
       const source = topCategory ? 'llm' : 'fallback';
 
-      if (!topCategory) topCategory = fallbackTopCategory(item.category);
+      if (!topCategory) topCategory = fallbackTopCategory(item.topic_subcategory);
       if (!subcategory) subcategory = DEFAULT_SUBCATEGORY;
 
       if (source === 'llm') summary.fromLlm++;
@@ -219,7 +219,7 @@ async function main() {
 
       const { error: updErr } = await sb
         .from('items')
-        .update({ top_category: topCategory, category: subcategory })
+        .update({ top_category: topCategory, topic_subcategory: subcategory })
         .eq('user_id', userId)
         .eq('id', item.id);
       if (updErr) throw new Error(`update failed for ${item.id}: ${updErr.message}`);
