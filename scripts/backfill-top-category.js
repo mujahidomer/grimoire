@@ -19,6 +19,8 @@
 // manually moved (category_manually_set = true), are skipped on the next run.
 
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const { getSupabase, defaultUserId } = require('../lib/supabase');
 const { getAnthropicClient } = require('../lib/anthropicClient');
 const { TOP_CATEGORIES, DEFAULT_SUBCATEGORY, normalizeTopCategory, normalizeSubcategoryLabel } = require('../lib/topCategories');
@@ -77,6 +79,7 @@ For each item, choose:
 Hints:
 - Items with artifact_type "islamic" belong under "Religion & Spirituality".
 - Items with artifact_type "recipe" belong under "Food & Cooking".
+- If the content is primarily about using, building, or learning an AI tool, software tool, or technical workflow — even when the subject matter is design, marketing, business, or another domain — classify as Technology & AI. Reserve other top-level categories for content where the AI/tool angle is incidental, not the primary subject. Reserve Education & Learning specifically for structured courses, curricula, or general skill-building content with no significant tool/software component.
 
 Items:
 ${JSON.stringify(list, null, 2)}
@@ -156,7 +159,12 @@ async function main() {
     failedBatches: 0,
     byTopCategory: {}
   };
-  const dryRunSamples = [];
+  const dryRunAssignments = [];
+  // Every item that resolves via LEGACY_TOP_CATEGORY_MAP (or its 'Other'
+  // default) instead of the LLM — captured so a live run can be audited for
+  // fallback hits afterwards. Records the topic_subcategory value used as the
+  // map key and the top_category it produced.
+  const fallbackHits = [];
 
   const batches = [];
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -205,15 +213,21 @@ async function main() {
       if (!subcategory) subcategory = DEFAULT_SUBCATEGORY;
 
       if (source === 'llm') summary.fromLlm++;
-      else summary.fromFallback++;
+      else {
+        summary.fromFallback++;
+        fallbackHits.push({
+          id: item.id,
+          title: item.title,
+          topicSubcategory: item.topic_subcategory ?? null,
+          topCategory,
+        });
+      }
 
       summary.byTopCategory[topCategory] = (summary.byTopCategory[topCategory] || 0) + 1;
       summary.processed++;
 
       if (DRY_RUN) {
-        if (dryRunSamples.length < 20) {
-          dryRunSamples.push({ title: item.title, topCategory, subcategory, source });
-        }
+        dryRunAssignments.push({ title: item.title, topCategory, subcategory, source });
         continue;
       }
 
@@ -235,11 +249,34 @@ async function main() {
     if (summary.byTopCategory[cat]) console.log(`    ${cat}: ${summary.byTopCategory[cat]}`);
   }
 
-  if (DRY_RUN && dryRunSamples.length > 0) {
-    console.log(`\n[backfill-top-category] Sample of ${dryRunSamples.length} proposed assignment(s):`);
-    for (const s of dryRunSamples) {
-      console.log(`  "${s.title}" → ${s.topCategory} / ${s.subcategory}  (${s.source})`);
+  if (DRY_RUN && dryRunAssignments.length > 0) {
+    console.log(`\n[backfill-top-category] All ${dryRunAssignments.length} proposed assignment(s):`);
+    const lines = [];
+    for (const s of dryRunAssignments) {
+      const line = `"${s.title}" → ${s.topCategory} / ${s.subcategory}  (${s.source})`;
+      console.log(`  ${line}`);
+      lines.push(line);
     }
+
+    const outPath = path.resolve(__dirname, 'dry-run-assignments.txt');
+    const header = `Dry-run proposed assignments — ${new Date().toISOString()}\n${dryRunAssignments.length} item(s)\n${'─'.repeat(60)}\n`;
+    fs.writeFileSync(outPath, header + lines.join('\n') + '\n', 'utf8');
+    console.log(`\n[backfill-top-category] Full output written to ${outPath}`);
+  }
+
+  // Audit trail: write every fallback hit (id + the topic_subcategory value
+  // that keyed LEGACY_TOP_CATEGORY_MAP) so a live run can be reviewed for
+  // items the LLM did not classify. Written on both dry and live runs.
+  if (fallbackHits.length > 0) {
+    const outPath = path.resolve(__dirname, 'fallback-log.txt');
+    const header = `Fallback hits — ${new Date().toISOString()}${DRY_RUN ? ' (DRY RUN)' : ''}\n${fallbackHits.length} item(s) resolved via LEGACY_TOP_CATEGORY_MAP\n${'─'.repeat(60)}\n`;
+    const lines = fallbackHits.map(
+      h => `${h.id}\ttopic_subcategory=${JSON.stringify(h.topicSubcategory)} → ${h.topCategory}\t"${h.title}"`,
+    );
+    fs.writeFileSync(outPath, header + lines.join('\n') + '\n', 'utf8');
+    console.log(`[backfill-top-category] ${fallbackHits.length} fallback hit(s) logged to ${outPath}`);
+  } else {
+    console.log(`[backfill-top-category] No fallback hits (all items classified by LLM).`);
   }
 }
 
