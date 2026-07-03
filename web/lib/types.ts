@@ -206,10 +206,21 @@ const SLUG_TO_TOP_CATEGORY = new Map<string, TopCategory>(
   TOP_CATEGORIES.map((name) => [slugifyTopCategory(name), name]),
 );
 
-// Reverse lookup for /home/[categorySlug] routes. Returns null for an
-// unrecognized slug so callers can notFound().
+// Reverse lookup for /home/[categorySlug] routes against the BUILT-IN list.
+// Returns null for an unrecognized slug. This is now the static fallback used
+// when the live (DB-driven) list can't be fetched; prefer resolving against
+// fetchTopCategories() so DB-added categories resolve too.
 export function topCategoryFromSlug(slug: string): TopCategory | null {
   return SLUG_TO_TOP_CATEGORY.get(slug) ?? null;
+}
+
+// One row from GET /api/top-categories — the data-driven top-level category
+// list. name is canonical, slug matches slugifyTopCategory(name).
+export interface TopCategoryRecord {
+  name: string;
+  slug: string;
+  emoji: string;
+  sort_order: number;
 }
 
 // One row in GET /api/dashboard's categories array — one per top_category,

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { fetchSubcategories } from "@/lib/api";
+import { fetchSubcategories, resolveTopCategorySlug } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
-import { topCategoryFromSlug } from "@/lib/types";
 import type { SubcategorySummary } from "@/lib/types";
 import { CategoryDetail } from "@/components/category-detail";
 
@@ -14,7 +13,7 @@ export default async function CategoryDashboardPage({
 }: {
   params: { categorySlug: string };
 }) {
-  const topCategory = topCategoryFromSlug(params.categorySlug);
+  const topCategory = await resolveTopCategorySlug(params.categorySlug);
   if (!topCategory) notFound();
 
   const supabase = createClient();

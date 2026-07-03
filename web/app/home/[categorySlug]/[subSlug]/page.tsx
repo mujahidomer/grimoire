@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { fetchItems, fetchSubcategories } from "@/lib/api";
+import {
+  fetchItems,
+  fetchSubcategories,
+  resolveTopCategorySlug,
+} from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
-import { slugifyTopCategory, topCategoryFromSlug } from "@/lib/types";
+import { slugifyTopCategory } from "@/lib/types";
 import type { Item } from "@/lib/types";
 import { ItemCard } from "@/components/item-card";
 
@@ -14,7 +18,7 @@ export default async function SubcategoryPage({
 }: {
   params: { categorySlug: string; subSlug: string };
 }) {
-  const topCategory = topCategoryFromSlug(params.categorySlug);
+  const topCategory = await resolveTopCategorySlug(params.categorySlug);
   if (!topCategory) notFound();
 
   const supabase = createClient();

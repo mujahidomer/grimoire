@@ -9,7 +9,9 @@ import type {
   ChatSource,
   SubcategoriesResponse,
   SubcategoryMergeGroup,
+  TopCategoryRecord,
 } from "./types";
+import { topCategoryFromSlug } from "./types";
 import { createClient as createBrowserClient } from "./supabase/client";
 import { devAuthUserId } from "./dev-auth";
 
@@ -284,8 +286,38 @@ export async function fetchDigest(
   return json<DigestResponse>(res);
 }
 
-// Category dashboard landing (/home) — all 13 top categories with counts and
-// their latest item, plus the 8 most-recently-saved items across the library.
+// The live, ordered top-level category list from the data-driven backend table
+// (name, slug, emoji). Public reference data — no auth — so both server and
+// client components can call it. Returns [] on any failure; callers fall back to
+// the built-in TOP_CATEGORIES seed.
+export async function fetchTopCategories(): Promise<TopCategoryRecord[]> {
+  try {
+    const res = await withTimeout(`${BASE}/api/top-categories`, {
+      cache: "no-store",
+    });
+    const data = await json<{ categories: TopCategoryRecord[] }>(res);
+    return data.categories ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// Resolve a /home/[categorySlug] slug to its canonical top_category name using
+// the LIVE list (so DB-added categories resolve). If the live list loads and the
+// slug isn't in it, returns null (caller notFound()s). If the list can't be
+// fetched, falls back to the built-in slug map so existing categories still work.
+export async function resolveTopCategorySlug(
+  slug: string,
+): Promise<string | null> {
+  const records = await fetchTopCategories();
+  const match = records.find((r) => r.slug === slug);
+  if (match) return match.name;
+  if (records.length > 0) return null;
+  return topCategoryFromSlug(slug);
+}
+
+// Category dashboard landing (/home) — the top categories (from the data-driven
+// list) with counts and their latest item, plus the 8 most-recently-saved items.
 export async function fetchDashboard(
   accessToken?: string | null,
 ): Promise<DashboardResponse> {

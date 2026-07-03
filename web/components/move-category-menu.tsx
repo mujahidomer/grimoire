@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { TOP_CATEGORIES } from "@/lib/types";
 import type { Item } from "@/lib/types";
-import { recategorizeItem } from "@/lib/api";
+import { fetchTopCategories, recategorizeItem } from "@/lib/api";
 import { showToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,28 @@ export function MoveCategoryMenu({
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Move targets come from the live (DB-driven) category list; seed with the
+  // built-in list so the control renders instantly and still works if the fetch
+  // fails, then swap in the live list (which includes any DB-added categories).
+  const [categories, setCategories] = useState<string[]>(() => [
+    ...TOP_CATEGORIES,
+  ]);
+
+  useEffect(() => {
+    let active = true;
+    fetchTopCategories()
+      .then((records) => {
+        if (active && records.length > 0) {
+          setCategories(records.map((r) => r.name));
+        }
+      })
+      .catch(() => {
+        // Keep the seed list on failure.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value;
@@ -56,7 +78,7 @@ export function MoveCategoryMenu({
               Move to…
             </option>
           )}
-          {TOP_CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <option key={cat} value={cat}>
               {cat}
             </option>
