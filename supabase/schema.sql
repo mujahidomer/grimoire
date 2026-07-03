@@ -158,6 +158,48 @@ alter table items add column if not exists artifact_subcategory text;
 
 create index if not exists items_top_category_idx on items (user_id, top_category);
 
+-- ⚠️  MANUAL STEP FOR MUJI: run this block in the Supabase SQL editor alongside
+--     the category-dashboard migration above (idempotent, safe to re-run).
+-- Data-driven top categories. The 13-value list is no longer hardcoded — it
+-- lives here so a new category (e.g. "Automotive") is a one-row insert, no code
+-- change and no redeploy. lib/topCategories.js loads + caches this table and
+-- falls back to its built-in seed if the table is missing/empty, so the app
+-- keeps working before this runs.
+--   * slug       — URL slug for /home/[categorySlug]; must match
+--                  slugifyTopCategory() (lowercase, '&' dropped, non-alphanumeric
+--                  runs collapsed to '-').
+--   * emoji      — icon shown in the sidebar / dashboard cards.
+--   * sort_order — display order (ascending).
+--   * is_active  — soft-disable without deleting (inactive rows are hidden and
+--                  no longer offered to the classifier).
+create table if not exists top_categories (
+  id         serial primary key,
+  name       text not null unique,
+  slug       text not null unique,
+  emoji      text,
+  sort_order integer not null default 0,
+  is_active  boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Seed the current 13. on conflict (name) keeps existing rows untouched so a
+-- re-run never clobbers manual edits (renamed emoji, reordering, new rows).
+insert into top_categories (name, slug, emoji, sort_order) values
+  ('Technology & AI',         'technology-ai',          '💻',  0),
+  ('Business & Finance',      'business-finance',       '💰',  1),
+  ('Health & Wellness',       'health-wellness',        '💪',  2),
+  ('Personal Development',    'personal-development',   '🌱',  3),
+  ('Relationships & Family',  'relationships-family',   '👨‍👩‍👧', 4),
+  ('Religion & Spirituality', 'religion-spirituality',  '🕌',  5),
+  ('Food & Cooking',          'food-cooking',           '🍳',  6),
+  ('Travel',                  'travel',                 '✈️',  7),
+  ('Home & Lifestyle',        'home-lifestyle',         '🏠',  8),
+  ('Arts & Entertainment',    'arts-entertainment',     '🎬',  9),
+  ('Education & Learning',    'education-learning',      '📚', 10),
+  ('News & Politics',         'news-politics',          '📰', 11),
+  ('Other',                   'other',                  '📁', 12)
+on conflict (name) do nothing;
+
 -- ─── tags (canonical vocabulary) ──────────────────────────────────────────────
 create table if not exists tags (
   id         uuid primary key default gen_random_uuid(),

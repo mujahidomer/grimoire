@@ -13,6 +13,7 @@ const { normalizeUrl } = require('./lib/url');
 const { embedItemInBackground } = require('./lib/embeddings');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
+const { refreshTopCategories } = require('./lib/topCategories');
 const { requireAuth } = require('./lib/request-auth');
 const { seedUserLibrary } = require('./lib/seed');
 
@@ -418,6 +419,11 @@ app.post('/process-text', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 async function start() {
+  // Warm the top-category cache from the DB (top_categories table) once at
+  // startup. Non-fatal: on failure the built-in seed list is used, so the app
+  // still boots with the default categories.
+  await refreshTopCategories();
+
   const bot = await initTelegramBot();
   if (bot) registerTelegramHandlers(bot);
 

@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { getSupabase, defaultUserId } = require('../lib/supabase');
 const { getAnthropicClient } = require('../lib/anthropicClient');
-const { TOP_CATEGORIES, DEFAULT_SUBCATEGORY, normalizeTopCategory, normalizeSubcategoryLabel } = require('../lib/topCategories');
+const { getTopCategories, refreshTopCategories, DEFAULT_SUBCATEGORY, normalizeTopCategory, normalizeSubcategoryLabel } = require('../lib/topCategories');
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -68,9 +68,9 @@ function buildPrompt(batch) {
     artifact_type: item.artifact_type || null
   }));
 
-  return `Classify each item below into exactly one of these 13 top-level categories, and a short reusable topic subcategory within it.
+  return `Classify each item below into exactly one of these top-level categories, and a short reusable topic subcategory within it.
 
-TOP_CATEGORIES (use EXACTLY one of these values, verbatim): ${TOP_CATEGORIES.join(' | ')}
+TOP_CATEGORIES (use EXACTLY one of these values, verbatim): ${getTopCategories().join(' | ')}
 
 For each item, choose:
 - "top_category": exactly one value from TOP_CATEGORIES above — never invent a new one.
@@ -146,6 +146,11 @@ async function fetchItems(sb, userId) {
 async function main() {
   const sb = getSupabase();
   const userId = defaultUserId();
+
+  // Load the live category list from the DB (falls back to the built-in seed
+  // if the top_categories table isn't there yet) so the classifier prompt and
+  // validation reflect any categories added since deploy.
+  await refreshTopCategories();
 
   const items = await fetchItems(sb, userId);
   const total = items.length;
@@ -245,7 +250,7 @@ async function main() {
   console.log(`  From fallback: ${summary.fromFallback}`);
   console.log(`  Failed batches (both attempts): ${summary.failedBatches}`);
   console.log(`  By top_category:`);
-  for (const cat of TOP_CATEGORIES) {
+  for (const cat of getTopCategories()) {
     if (summary.byTopCategory[cat]) console.log(`    ${cat}: ${summary.byTopCategory[cat]}`);
   }
 
