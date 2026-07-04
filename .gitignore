@@ -134,3 +134,12 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# macOS folder metadata
+.DS_Store
+
+# Claude Code local config (launch configs, local settings)
+.claude/
+
+# Generated backfill dry-run output (regenerable via scripts/backfill-top-category.js --dry-run)
+scripts/dry-run-assignments.txt
