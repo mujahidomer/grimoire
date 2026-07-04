@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import type { Item } from "@/lib/types";
 import { prefetchItem } from "@/lib/api";
