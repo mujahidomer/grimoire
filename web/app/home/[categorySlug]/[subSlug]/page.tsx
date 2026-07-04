@@ -9,7 +9,8 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { slugifyTopCategory } from "@/lib/types";
 import type { Item } from "@/lib/types";
-import { ItemCard } from "@/components/item-card";
+import { itemRecencyMs } from "@/lib/utils";
+import { ActivityFeed } from "@/components/activity-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function SubcategoryPage({
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 lg:px-8 lg:py-10">
+    <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
       <nav className="mb-4 flex flex-wrap items-center gap-1.5 font-sans text-label-md text-eco-foreground/65">
         <Link
           href="/home"
@@ -88,11 +89,10 @@ export default async function SubcategoryPage({
           Nothing saved here yet.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {items.map((item) => (
-            <ItemCard key={item.id} item={item} />
-          ))}
-        </div>
+        <ActivityFeed
+          items={[...items].sort((a, b) => itemRecencyMs(b) - itemRecencyMs(a))}
+          view="list"
+        />
       )}
     </div>
   );
