@@ -200,6 +200,38 @@ insert into top_categories (name, slug, emoji, sort_order) values
   ('Other',                   'other',                  '📁', 12)
 on conflict (name) do nothing;
 
+-- ─── subcategories (closed topic-subcategory vocabulary) — EXISTS IN PROD ──────
+-- The `subcategories` table already exists in production and is intentionally
+-- NOT (re)defined here so this file never diverges from it. For reference, its
+-- live shape is:
+--   id              integer primary key
+--   top_category_id text not null   -- holds the top_category NAME (not an int id)
+--   name            text not null   -- the topic subcategory label
+--   created_at      timestamptz
+--   unique (top_category_id, name)
+--   foreign key (top_category_id) references top_categories(name)
+-- It is GLOBAL (no user_id): one shared vocabulary. lib/classifier.js selects the
+-- topic subcategory from this closed set; lib/repository.js (getSubcategoryVocabulary
+-- / recordSubcategory) reads it and inserts genuinely-new labels under the ≥10
+-- per-top_category cap.
+
+-- ─── subcategory_creation_log (audit of new closed-vocab labels) ──────────────
+-- ⚠️  MANUAL STEP FOR MUJI: run in the Supabase SQL editor (idempotent). Records
+--     which item first introduced each new subcategory (the `subcategories` table
+--     itself has no item_id). Mirrors the subcategories convention: top_category_id
+--     is the top_category NAME (text), FK → top_categories(name).
+create table if not exists subcategory_creation_log (
+  id               uuid primary key default gen_random_uuid(),
+  top_category_id  text not null references top_categories(name),
+  subcategory_name text not null,
+  item_id          uuid references items on delete set null,
+  created_at       timestamptz not null default now()
+);
+create index if not exists subcat_creation_log_top_idx
+  on subcategory_creation_log (top_category_id, created_at);
+-- Service-role writes only (the capture pipeline); no client-facing policy needed.
+alter table subcategory_creation_log enable row level security;
+
 -- ─── tags (canonical vocabulary) ──────────────────────────────────────────────
 create table if not exists tags (
   id         uuid primary key default gen_random_uuid(),

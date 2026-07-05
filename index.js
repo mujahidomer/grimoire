@@ -7,7 +7,7 @@ const { processContent, researchUrl, processLinkedResource } = require('./lib/cl
 const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
   upsertItem, upsertItemTags, upsertLinkedResource, findItemBySourceUrl, getItemById,
-  promotedArtifactUrl, updateItemStatus
+  promotedArtifactUrl, updateItemStatus, getSubcategoryVocabulary
 } = require('./lib/repository');
 const { normalizeUrl } = require('./lib/url');
 const { embedItemInBackground } = require('./lib/embeddings');
@@ -73,7 +73,8 @@ async function saveItem(item, sourceUrl, userId) {
 }
 
 async function researchAndSave(sourceUrl, userId) {
-  const items = await researchUrl(sourceUrl);
+  const subcategoryVocab = await getSubcategoryVocabulary();
+  const items = await researchUrl(sourceUrl, subcategoryVocab);
   if (!items || items.length === 0) return [];
   const saved = [];
   for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
@@ -81,7 +82,8 @@ async function researchAndSave(sourceUrl, userId) {
 }
 
 async function runPipeline(rawText, sourceUrl, hashtags, parts = {}, userId) {
-  const items = await processContent(rawText, sourceUrl, hashtags, parts);
+  const subcategoryVocab = await getSubcategoryVocabulary();
+  const items = await processContent(rawText, sourceUrl, hashtags, parts, subcategoryVocab);
   if (!items || items.length === 0) return [];
   const saved = [];
   for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
@@ -339,10 +341,11 @@ app.post('/api/items/:id/reclassify', requireAuth(async (req, res) => {
       });
     }
 
+    const subcategoryVocab = await getSubcategoryVocabulary();
     const [classified] = await processContent(text, item.source_url, [], {
       transcript: item.transcript,
       caption: item.caption
-    });
+    }, subcategoryVocab);
     classified.sourceUrl = item.source_url;
     const itemId = await upsertItem(classified, { userId: req.userId, source: item.source });
     embedItemInBackground(classified, itemId, req.userId);
