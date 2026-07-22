@@ -318,10 +318,26 @@ create table if not exists canonical_entities (
   -- periodic review query (select * from canonical_entities where needs_review);
   -- a human merges it into another row or flips this back to false.
   needs_review   boolean not null default false,
+  -- URL resolution (populated 2026-07-21 by the logo/link enrichment pass):
+  --   'resolved'       → canonical_url + logo_url are trustworthy (179 rows)
+  --   'not_applicable' → no external link makes sense (duas, verses…) (85 rows)
+  --   'unresolved'     → not yet resolved / no confident link found (60 rows)
+  -- The Digest entity sheet shows a "Visit" button only for 'resolved'.
+  canonical_url  text,
+  logo_url       text,                          -- https://img.logo.dev/<domain> (no token; client appends its own)
+  url_status     text not null default 'unresolved',
+  owned_domain   boolean,                        -- true when the entity owns its canonical link (logo derivable from it)
   first_seen_at  timestamptz not null default now(),
   last_seen_at   timestamptz not null default now(),
   unique (entity_type, canonical_name)
 );
+-- ⚠️  The four url columns above were added to the live DB via ALTER after the
+--     table already existed, so `create table if not exists` won't add them to
+--     an existing install. This idempotent block backfills them; safe to re-run.
+alter table canonical_entities add column if not exists canonical_url text;
+alter table canonical_entities add column if not exists logo_url      text;
+alter table canonical_entities add column if not exists url_status    text not null default 'unresolved';
+alter table canonical_entities add column if not exists owned_domain  boolean;
 create index if not exists canonical_entities_type_idx on canonical_entities (entity_type);
 create index if not exists canonical_entities_review_idx
   on canonical_entities (needs_review) where needs_review = true;
