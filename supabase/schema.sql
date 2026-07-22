@@ -292,6 +292,44 @@ create index if not exists embeddings_item_idx on embeddings (item_id);
 create index if not exists embeddings_vector_idx
   on embeddings using ivfflat (embedding vector_cosine_ops) with (lists = 100);
 
+-- ─── canonical_entities (entity identity registry) — BUILT THIS PHASE ─────────
+-- ⚠️  MANUAL STEP FOR MUJI: this table is NEW. Run the block below (through the
+--     match_canonical_entities function further down) in the Supabase SQL editor
+--     once — `create table if not exists` is a no-op if already applied.
+--     lib/entityResolution.js reads/writes this at save time.
+--
+-- GLOBAL (no user_id), same convention as `subcategories`/`subcategory_creation_log`
+-- (schema.sql above) — one shared vocabulary; entity identity ("Higgsfield is
+-- Higgsfield") isn't a per-user concept on a single-user library. Mirrors the
+-- embeddings table's vector(1536)/OpenAI text-embedding-3-small choice so the
+-- same embed call in lib/embeddings.js is reusable, not a second model.
+create table if not exists canonical_entities (
+  id             uuid primary key default gen_random_uuid(),
+  entity_type    text not null,                 -- 'tool' | 'skill' | 'resource' | 'workflow' | ... (matches entities[].type)
+  canonical_name text not null,
+  aliases        text[] not null default '{}',  -- raw extracted names that resolved here
+  category_path  text[] not null default '{}',  -- mirrors items.entities[].category_path shape
+  meta_category  text,
+  description    text,
+  embedding      vector(1536),                  -- OpenAI text-embedding-3-small
+  mention_count  int not null default 1,
+  -- Set true when a save resolves to UNCERTAIN (genuinely ambiguous vs. every
+  -- candidate) rather than forcing a confident MATCH/NEW guess. Surfaced by a
+  -- periodic review query (select * from canonical_entities where needs_review);
+  -- a human merges it into another row or flips this back to false.
+  needs_review   boolean not null default false,
+  first_seen_at  timestamptz not null default now(),
+  last_seen_at   timestamptz not null default now(),
+  unique (entity_type, canonical_name)
+);
+create index if not exists canonical_entities_type_idx on canonical_entities (entity_type);
+create index if not exists canonical_entities_review_idx
+  on canonical_entities (needs_review) where needs_review = true;
+-- Cosine-distance ANN index, same lists=100 choice as embeddings_vector_idx
+-- (personal-scale registry; raise it if it grows large).
+create index if not exists canonical_entities_vector_idx
+  on canonical_entities using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+
 -- ─── query_usage (per-user daily chat rate limits) — BUILT THIS PHASE ─────────
 -- ⚠️  MANUAL STEP FOR MUJI: this table is NEW. Run the block below in the
 --     Supabase SQL editor (Dashboard → SQL Editor) once — `create table if not
@@ -369,6 +407,32 @@ language sql stable as $$
   where e.user_id = match_user
   group by e.item_id
   having max(1 - (e.embedding <=> query_embedding)) >= match_threshold
+  order by similarity desc
+  limit match_count;
+$$;
+
+-- ─── Entity identity recall RPC ───────────────────────────────────────────────
+-- Vector recall ONLY — validated against real duplicate/lookalike entity pairs
+-- (see the resolution flow's design notes) that no fixed similarity threshold
+-- reliably separates "same entity" from "different but topically adjacent"
+-- entity. match_threshold here is therefore a low noise floor (~0.40) meant to
+-- exclude genuinely unrelated candidates, NOT to decide identity — the Haiku
+-- confirmation step in lib/entityResolution.js makes that call for every
+-- candidate this returns.
+create or replace function match_canonical_entities(
+  query_embedding vector(1536),
+  match_type      text,
+  match_threshold float default 0.40,
+  match_count     int   default 8
+)
+returns table (id uuid, canonical_name text, aliases text[], category_path text[],
+               meta_category text, description text, mention_count int, similarity float)
+language sql stable as $$
+  select ce.id, ce.canonical_name, ce.aliases, ce.category_path, ce.meta_category,
+         ce.description, ce.mention_count, 1 - (ce.embedding <=> query_embedding) as similarity
+  from canonical_entities ce
+  where ce.entity_type = match_type
+    and 1 - (ce.embedding <=> query_embedding) >= match_threshold
   order by similarity desc
   limit match_count;
 $$;

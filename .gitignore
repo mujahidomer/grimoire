@@ -143,3 +143,7 @@ dist
 
 # Generated backfill dry-run output (regenerable via scripts/backfill-top-category.js --dry-run)
 scripts/dry-run-assignments.txt
+.env.bak-*
+
+# Pre-write DB snapshots taken before destructive maintenance scripts
+scripts/backups/

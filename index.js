@@ -10,6 +10,7 @@ const {
 } = require('./lib/repository');
 const { normalizeUrl } = require('./lib/url');
 const { embedItemInBackground } = require('./lib/embeddings');
+const { resolveEntities } = require('./lib/entityResolution');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 const { refreshTopCategories } = require('./lib/topCategories');
@@ -69,6 +70,7 @@ async function researchAndSave(sourceUrl, userId) {
   const subcategoryVocab = await getSubcategoryVocabulary();
   const items = await researchUrl(sourceUrl, subcategoryVocab);
   if (!items || items.length === 0) return [];
+  for (const item of items) await resolveEntities(item.entities);
   const saved = [];
   for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
   return saved;
@@ -78,6 +80,11 @@ async function runPipeline(rawText, sourceUrl, hashtags, parts = {}, userId) {
   const subcategoryVocab = await getSubcategoryVocabulary();
   const items = await processContent(rawText, sourceUrl, hashtags, parts, subcategoryVocab);
   if (!items || items.length === 0) return [];
+  // Resolve entity identity against the canonical registry (lib/entityResolution.js)
+  // before the item is persisted — entities is a single jsonb blob written once
+  // by upsertItem, so canonicalization has to land before that write, same as
+  // reconcileSubcategory() does for topic_subcategory inside processContent().
+  for (const item of items) await resolveEntities(item.entities);
   const saved = [];
   for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
   return saved;
@@ -214,6 +221,7 @@ app.post('/api/items/:id/reclassify', requireAuth(async (req, res) => {
       caption: item.caption
     }, subcategoryVocab);
     classified.sourceUrl = item.source_url;
+    await resolveEntities(classified.entities);
     const itemId = await upsertItem(classified, { userId: req.userId, source: item.source });
     embedItemInBackground(classified, itemId, req.userId);
 
