@@ -311,12 +311,13 @@ create table if not exists canonical_entities (
   category_path  text[] not null default '{}',  -- mirrors items.entities[].category_path shape
   -- The top shelf the iOS Digest groups this entity under; null shows as
   -- "Uncategorized". Closed per-entity_type vocabulary (9 tool / 9 skill /
-  -- 7 resource / 5 workflow, plus 'Islamic Knowledge' as the single shelf
-  -- shared by dua / islamic_concept / quranic_verse) owned by
-  -- lib/entityMetaCategories.js, which the save path calls on every insert.
-  -- A type with no vocabulary there stays null by design — as `hadith` does
-  -- today, having no canonical_entities rows yet; when it is registered it
-  -- joins the other three under 'Islamic Knowledge'.
+  -- 7 resource / 5 workflow, plus 8 thematic shelves shared by dua /
+  -- islamic_concept / quranic_verse — forgiveness, gratitude, protection… by
+  -- the content's nature, mirroring how tool shelves split by domain) owned
+  -- by lib/entityMetaCategories.js, which the save path calls on every
+  -- insert. A type with no vocabulary there stays null by design — as
+  -- `hadith` does today, having no canonical_entities rows yet; when it is
+  -- registered it shares the Islamic shelves.
   meta_category  text,
   description    text,
   embedding      vector(1536),                  -- OpenAI text-embedding-3-small
@@ -335,6 +336,7 @@ create table if not exists canonical_entities (
   logo_url       text,                          -- https://img.logo.dev/<domain> (no token; client appends its own)
   url_status     text not null default 'unresolved',
   owned_domain   boolean,                        -- true when the entity owns its canonical link (logo derivable from it)
+  resolution_note text,                          -- why URL resolution failed for this row (from URL-resolution passes)
   first_seen_at  timestamptz not null default now(),
   last_seen_at   timestamptz not null default now(),
   unique (entity_type, canonical_name)
@@ -346,6 +348,8 @@ alter table canonical_entities add column if not exists canonical_url text;
 alter table canonical_entities add column if not exists logo_url      text;
 alter table canonical_entities add column if not exists url_status    text not null default 'unresolved';
 alter table canonical_entities add column if not exists owned_domain  boolean;
+-- Added 2026-07-23: stores the failure reason recorded by URL-resolution passes.
+alter table canonical_entities add column if not exists resolution_note text;
 create index if not exists canonical_entities_type_idx on canonical_entities (entity_type);
 create index if not exists canonical_entities_review_idx
   on canonical_entities (needs_review) where needs_review = true;
