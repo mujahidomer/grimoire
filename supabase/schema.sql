@@ -309,6 +309,12 @@ create table if not exists canonical_entities (
   canonical_name text not null,
   aliases        text[] not null default '{}',  -- raw extracted names that resolved here
   category_path  text[] not null default '{}',  -- mirrors items.entities[].category_path shape
+  -- The top shelf the iOS Digest groups this entity under; null shows as
+  -- "Uncategorized". Closed per-entity_type vocabulary (9 tool / 9 skill /
+  -- 7 resource / 5 workflow) owned by lib/entityMetaCategories.js, which the
+  -- save path calls on every insert. Types outside those four (dua,
+  -- islamic_concept, quranic_verse…) have no approved vocabulary yet and stay
+  -- null by design.
   meta_category  text,
   description    text,
   embedding      vector(1536),                  -- OpenAI text-embedding-3-small
