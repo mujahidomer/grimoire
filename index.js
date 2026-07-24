@@ -11,6 +11,7 @@ const {
 const { normalizeUrl } = require('./lib/url');
 const { embedItemInBackground } = require('./lib/embeddings');
 const { resolveEntities } = require('./lib/entityResolution');
+const { verifyItemEntitiesInBackground } = require('./lib/passageVerification');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 const { refreshTopCategories } = require('./lib/topCategories');
@@ -61,6 +62,7 @@ async function saveItem(item, sourceUrl, userId) {
   }
 
   embedItemInBackground(item, itemId, userId);
+  verifyItemEntitiesInBackground(itemId, userId);
 
   return { itemId, title: item.title, category: item.category, type: item.type,
     summary: item.summary, has_lead_magnet_cta: item.has_lead_magnet_cta };
