@@ -311,10 +311,12 @@ create table if not exists canonical_entities (
   category_path  text[] not null default '{}',  -- mirrors items.entities[].category_path shape
   -- The top shelf the iOS Digest groups this entity under; null shows as
   -- "Uncategorized". Closed per-entity_type vocabulary (9 tool / 9 skill /
-  -- 7 resource / 5 workflow) owned by lib/entityMetaCategories.js, which the
-  -- save path calls on every insert. Types outside those four (dua,
-  -- islamic_concept, quranic_verse…) have no approved vocabulary yet and stay
-  -- null by design.
+  -- 7 resource / 5 workflow, plus 'Islamic Knowledge' as the single shelf
+  -- shared by dua / islamic_concept / quranic_verse) owned by
+  -- lib/entityMetaCategories.js, which the save path calls on every insert.
+  -- A type with no vocabulary there stays null by design — as `hadith` does
+  -- today, having no canonical_entities rows yet; when it is registered it
+  -- joins the other three under 'Islamic Knowledge'.
   meta_category  text,
   description    text,
   embedding      vector(1536),                  -- OpenAI text-embedding-3-small
