@@ -141,8 +141,23 @@ function withTimeout(
     .finally(() => clearTimeout(timeoutId));
 }
 
-// Legacy dev fallback when Supabase auth is not configured.
-const LEGACY_USER_ID = process.env.NEXT_PUBLIC_GRIMOIRE_USER_ID ?? "";
+// Thrown when the API rejects us for want of a session. Callers that can do
+// something useful about it (send the user to /login and resume) branch on this
+// rather than showing a dead-end error.
+export class AuthRequiredError extends Error {
+  constructor(message = "Sign in to save to your library.") {
+    super(message);
+    this.name = "AuthRequiredError";
+  }
+}
+
+// NOTE: there used to be an `x-user-id: NEXT_PUBLIC_GRIMOIRE_USER_ID` fallback
+// here for when no Supabase session was available. The API accepted that header
+// unverified, so it silently wrote every session-less save into one hardcoded
+// library — including saves from people who were never logged in. The API now
+// rejects it outside local dev, which makes the fallback both useless and a way
+// to turn "you're signed out" into an unexplained failure. A missing session
+// must surface as AuthRequiredError instead.
 
 function devBypassHeaders(): HeadersInit {
   const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -169,7 +184,6 @@ async function clientAuthHeaders(): Promise<HeadersInit> {
     /* browser client unavailable (SSR) */
   }
 
-  if (LEGACY_USER_ID) h["x-user-id"] = LEGACY_USER_ID;
   return h;
 }
 
@@ -215,14 +229,13 @@ function serverAuthHeaders(accessToken: string | null | undefined): HeadersInit 
   const h: Record<string, string> = { "Content-Type": "application/json" };
   if (accessToken) {
     h.Authorization = `Bearer ${accessToken}`;
-  } else if (LEGACY_USER_ID) {
-    h["x-user-id"] = LEGACY_USER_ID;
   }
   return h;
 }
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    if (res.status === 401) throw new AuthRequiredError();
     let detail = res.statusText;
     try {
       const body = await res.json();
@@ -559,6 +572,7 @@ export async function saveUrl(
     },
     SAVE_REQUEST_TIMEOUT_MS,
   );
+  if (res.status === 401) throw new AuthRequiredError();
   const data = (await res.json().catch(() => ({}))) as SaveResponse;
   if (!res.ok || !data.success) {
     throw new Error(data.message || data.error || "Couldn't save that link.");

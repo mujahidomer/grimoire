@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Circle, Globe, Link2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { previewImageUrl, saveUrl } from "@/lib/api";
+import { AuthRequiredError, previewImageUrl, saveUrl } from "@/lib/api";
 import { loadLinkPreview } from "@/lib/preview-cache";
 import { SAVE_LINK_STEPS, useSaveLinkProgress } from "@/lib/save-link-progress";
 import type { LinkPreview } from "@/lib/types";
 import { cn, truncate } from "@/lib/utils";
 
-type Status = "saving" | "saved" | "error";
+type Status = "saving" | "saved" | "error" | "needs-auth";
 
 // Bare domain for the muted source line, e.g. "instagram.com".
 function hostname(value: string): string {
@@ -176,6 +176,15 @@ export function ShareHandler() {
       setSaved({ id: res.id, title: res.title });
       setStatus("saved");
     } catch (err) {
+      // A share that arrives without a session is the normal first-run case on
+      // iOS: the Shortcut opens this page in Safari, which doesn't share
+      // storage with the installed PWA, so the user can be signed in there and
+      // signed out here. Offer the sign-in that fixes it and come back to this
+      // exact URL so the link isn't lost.
+      if (err instanceof AuthRequiredError) {
+        setStatus("needs-auth");
+        return;
+      }
       setStatus("error");
       setError(err instanceof Error ? err.message : "Couldn't save that link.");
     }
@@ -201,6 +210,13 @@ export function ShareHandler() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
+  // Where /login sends us back to. Re-encoding the resolved URL as a single
+  // param sidesteps the `&`-truncation problem the raw share intent has (see
+  // the note above), so the save resumes on the right link.
+  const returnPath = sharedUrl
+    ? `/share-handler?url=${encodeURIComponent(sharedUrl)}`
+    : "/home";
+
   const domain = sharedUrl ? hostname(sharedUrl) : "";
   const cardTitle = saved?.title || preview?.title || null;
   const previewImage = preview?.image;
@@ -214,9 +230,11 @@ export function ShareHandler() {
           <p className="mt-1.5 font-sans text-body-md text-eco-foreground/75">
             {status === "saved"
               ? "Saved — processing"
-              : status === "error"
-                ? "Couldn’t save that link"
-                : "Saving to your library"}
+              : status === "needs-auth"
+                ? "Sign in to save this"
+                : status === "error"
+                  ? "Couldn’t save that link"
+                  : "Saving to your library"}
           </p>
         </div>
 
@@ -367,6 +385,21 @@ export function ShareHandler() {
                   </Link>
                 )}
               </div>
+            </div>
+          )}
+
+          {status === "needs-auth" && (
+            <div className="space-y-4 py-2 text-center">
+              <p className="font-sans text-body-md text-eco-foreground/75">
+                You’re not signed in on this browser. Sign in and this link will
+                save automatically — you won’t lose it.
+              </p>
+              <Link
+                href={`/login?next=${encodeURIComponent(returnPath)}`}
+                className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-eco-primary font-sans text-body-md font-medium text-eco-on-accent transition-colors duration-eco hover:bg-eco-secondary"
+              >
+                Sign in
+              </Link>
             </div>
           )}
 
