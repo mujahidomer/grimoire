@@ -17,7 +17,7 @@ const { resolveEntityUrlsInBackground } = require('./lib/entityUrlResolution');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 const { refreshTopCategories } = require('./lib/topCategories');
-const { requireAuth } = require('./lib/request-auth');
+const { requireAuth, logAuthMode } = require('./lib/request-auth');
 const { seedUserLibrary } = require('./lib/seed');
 
 const app = express();
@@ -30,9 +30,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// The single hardcoded capture user for the testing phase (Doc A §Auth). The
-// schema is multi-user from day one; this is just whose library the legacy
-// capture endpoints fill.
+// Reported by /health so a deployment can be checked for a complete env. No
+// route resolves a user from this any more: callers authenticate with a Supabase
+// JWT or a grim_ API token, and only the dev fallback in lib/request-auth.js
+// still reads GRIMOIRE_USER_ID.
 const USER_ID = (() => {
   try { return defaultUserId(); }
   catch (err) { console.error('⚠️', err.message); return null; }
@@ -341,38 +342,43 @@ app.post('/api/items/:id/linked-resources', requireAuth(async (req, res) => {
   }
 }));
 
-// Legacy capture endpoints (iOS Shortcut), now writing to Postgres.
-app.post('/process-url', async (req, res) => {
+// Legacy capture endpoints (iOS Shortcut), now writing to Postgres. These used
+// to run unauthenticated against GRIMOIRE_USER_ID, which let anyone on the
+// internet write into the library and spend metered extraction/classification
+// credit. They now take the same credentials as every other route — the
+// Shortcut sends `Authorization: Bearer grim_…` (see scripts/mint-api-token.js)
+// and the item lands in whichever user that token belongs to.
+app.post('/process-url', requireAuth(async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'url is required' });
-  if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
   try {
     const extracted = await extractContent(url);
     if (!extracted.text) return res.json({ success: false, error: 'no_transcript', message: 'No transcript available — paste text manually' });
     const saved = await runPipeline(extracted.text, url, extracted.hashtags,
-      { caption: extracted.caption, transcript: extracted.transcript }, USER_ID);
+      { caption: extracted.caption, transcript: extracted.transcript }, req.userId);
     res.json({ success: true, count: saved.length, items: saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post('/process-text', async (req, res) => {
+app.post('/process-text', requireAuth(async (req, res) => {
   const { text, source } = req.body;
   if (!text) return res.status(400).json({ error: 'text is required' });
-  if (!USER_ID) return res.status(503).json({ error: 'GRIMOIRE_USER_ID not configured' });
   try {
-    const saved = await runPipeline(text, source || 'manual', undefined, {}, USER_ID);
+    const saved = await runPipeline(text, source || 'manual', undefined, {}, req.userId);
     res.json({ success: true, count: saved.length, items: saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 
 async function start() {
+  logAuthMode();
+
   // Warm the top-category cache from the DB (top_categories table) once at
   // startup. Non-fatal: on failure the built-in seed list is used, so the app
   // still boots with the default categories.
