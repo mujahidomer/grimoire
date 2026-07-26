@@ -13,6 +13,7 @@ const { embedItemInBackground } = require('./lib/embeddings');
 const { resolveEntities } = require('./lib/entityResolution');
 const { verifyItemEntitiesInBackground } = require('./lib/passageVerification');
 const { geocodeItemEntitiesInBackground } = require('./lib/placeGeocoding');
+const { resolveEntityUrlsInBackground } = require('./lib/entityUrlResolution');
 const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 const { refreshTopCategories } = require('./lib/topCategories');
@@ -67,6 +68,10 @@ async function saveItem(item, sourceUrl, userId) {
   embedItemInBackground(item, itemId, userId);
   verifyItemEntitiesInBackground(itemId, userId);
   geocodeItemEntitiesInBackground(itemId, userId);
+  // Give the save's new registry rows a canonical link + logo. Reads
+  // item.entities post-resolveEntities, so the names are already canonical.
+  // Detached: one metered web search per row the content didn't link itself.
+  resolveEntityUrlsInBackground(item.entities);
   // Mine the save's own linked resources for digest entries too — same rule
   // as the attach-a-resource endpoint, just deferred so the save stays fast.
   attachSavedResourceEntitiesInBackground(itemId, userId, resourceUrls);
@@ -100,6 +105,7 @@ async function attachResourceEntities(itemId, userId, sourceUrl, text) {
     if (added > 0) {
       verifyItemEntitiesInBackground(itemId, userId);
       geocodeItemEntitiesInBackground(itemId, userId);
+      resolveEntityUrlsInBackground(entities);
     }
     console.log(`[linkedResource] ${sourceUrl} → ${added} new entit${added === 1 ? 'y' : 'ies'} on item ${itemId}`);
     return added;
