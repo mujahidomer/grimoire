@@ -2,10 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { extractContent } = require('./lib/extractor');
-const { processContent, researchUrl, processLinkedResource } = require('./lib/classifier');
+const { processContent, researchUrl, processLinkedResource, extractEntities } = require('./lib/classifier');
 const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
-  upsertItem, upsertItemTags, upsertLinkedResource, getItemById,
+  upsertItem, upsertItemTags, upsertLinkedResource, mergeItemEntities, getItemById,
   promotedArtifactUrl, updateItemStatus, getSubcategoryVocabulary
 } = require('./lib/repository');
 const { normalizeUrl } = require('./lib/url');
@@ -55,19 +55,78 @@ async function saveItem(item, sourceUrl, userId) {
   // that same URL as a linked_resources row (mirrors the Drive path's dedup).
   const promoted = promotedArtifactUrl(item);
 
+  const resourceUrls = [];
   for (const lr of Array.isArray(item.linked_resources) ? item.linked_resources : []) {
     const lrUrl = normalizeUrl(typeof lr === 'string' ? lr : (lr.source_url || lr.sourceUrl || lr.url));
     if (promoted && lrUrl === promoted) continue;
     if (typeof lr === 'string') await upsertLinkedResource(itemId, userId, { source_url: lr });
     else await upsertLinkedResource(itemId, userId, lr);
+    if (lrUrl) resourceUrls.push(lrUrl);
   }
 
   embedItemInBackground(item, itemId, userId);
   verifyItemEntitiesInBackground(itemId, userId);
   geocodeItemEntitiesInBackground(itemId, userId);
+  // Mine the save's own linked resources for digest entries too — same rule
+  // as the attach-a-resource endpoint, just deferred so the save stays fast.
+  attachSavedResourceEntitiesInBackground(itemId, userId, resourceUrls);
 
   return { itemId, title: item.title, category: item.category, type: item.type,
     summary: item.summary, has_lead_magnet_cta: item.has_lead_magnet_cta };
+}
+
+// ─── Linked-resource digest entries ───────────────────────────────────────────
+// A linked resource is an extension of the save it hangs off, not an item of
+// its own (Muji 2026-07-25): it gets the same extraction → entity → canonical
+// resolution → verification/geocoding treatment as a save, but its entities
+// land on the PARENT item's blob, so they show up in that item's Digest tab
+// and in the global Digest. Its summary/takeaways are not kept — only the
+// digest entries.
+//
+// Never throws: failing to mine entities out of a follow-up link must not fail
+// the attach (or the save) that triggered it.
+async function attachResourceEntities(itemId, userId, sourceUrl, text) {
+  if (!text || !text.trim()) return 0;
+  try {
+    const subcategoryVocab = await getSubcategoryVocabulary();
+    const entities = await extractEntities(text, sourceUrl, subcategoryVocab);
+    if (entities.length === 0) return 0;
+
+    // Canonicalize before the write, same ordering constraint as the main
+    // pipeline: `entities` is one jsonb blob, so resolution has to land
+    // before it's persisted, not after.
+    await resolveEntities(entities);
+    const { added } = await mergeItemEntities(itemId, userId, entities);
+    if (added > 0) {
+      verifyItemEntitiesInBackground(itemId, userId);
+      geocodeItemEntitiesInBackground(itemId, userId);
+    }
+    console.log(`[linkedResource] ${sourceUrl} → ${added} new entit${added === 1 ? 'y' : 'ies'} on item ${itemId}`);
+    return added;
+  } catch (err) {
+    console.error(`[linkedResource] entity extraction failed for ${sourceUrl}:`, err.message);
+    return 0;
+  }
+}
+
+// Same treatment for linked resources that arrived with the original save
+// (URLs the classifier pulled out of the content). Detached and sequential:
+// each URL is a full extractContent (Supadata/Apify — seconds to minutes, and
+// metered), so this must not sit inside the save's own latency, and the URLs
+// must not all fire at once.
+function attachSavedResourceEntitiesInBackground(itemId, userId, urls) {
+  if (!Array.isArray(urls) || urls.length === 0) return;
+  (async () => {
+    for (const url of urls) {
+      let extracted = null;
+      try { extracted = await extractContent(url); }
+      catch (err) {
+        console.warn(`[linkedResource] extraction failed for ${url}: ${err.message}`);
+        continue;
+      }
+      await attachResourceEntities(itemId, userId, url, extracted && extracted.text);
+    }
+  })().catch(err => console.error('[linkedResource] background pass failed:', err));
 }
 
 async function researchAndSave(sourceUrl, userId) {
@@ -238,8 +297,14 @@ app.post('/api/items/:id/reclassify', requireAuth(async (req, res) => {
 }));
 
 // POST /api/items/:id/linked-resources — attach a follow-up link to an existing
-// item (Doc B Screen 2). Body: { url }. Extracts + classifies the link, upserts it, then returns
-// the item's refreshed linked_resources so the UI can update in place.
+// item (Doc B Screen 2). Body: { url }. Extracts + classifies the link, upserts it,
+// mines it for digest entries that land on the parent item, then returns the
+// item's refreshed linked_resources so the UI can update in place.
+//
+// The entity pass runs inline rather than detached: extractContent above
+// already dominates this request's latency, and the client sits on a spinner
+// then refetches the item — so finishing here is what makes the new digest
+// entries visible on the page the user is already looking at.
 app.post('/api/items/:id/linked-resources', requireAuth(async (req, res) => {
   const { url } = req.body || {};
   if (!url) return res.status(400).json({ error: 'url is required' });
@@ -259,6 +324,8 @@ app.post('/api/items/:id/linked-resources', requireAuth(async (req, res) => {
       type: processed.resource_type,
       body_content: processed.content
     });
+
+    await attachResourceEntities(item.id, userId, url, extracted?.text);
 
     const refreshed = await getItemById(item.id, userId);
     res.json({ success: true, linked_resources: refreshed.linked_resources || [] });
