@@ -400,8 +400,13 @@ create table if not exists messages (
   chat_id    uuid not null references chats on delete cascade,
   role       text not null,
   content    text not null,
+  -- Assistant turns only: the pipeline trace ({ isDeep, steps[], sources[],
+  -- model, tokens }) so a reopened thread can rebuild its thinking timeline,
+  -- token footer and citation chips. Null on user turns and legacy rows.
+  meta       jsonb,
   created_at timestamptz default now()
 );
+alter table messages add column if not exists meta jsonb;
 
 -- ─── updated_at triggers ──────────────────────────────────────────────────────
 do $$
