@@ -465,6 +465,21 @@ test('a wrapper whose u is a non-http scheme is rejected (returned unchanged, ne
   assert.strictEqual(pickBestUrl([igWrapper]), null, 'and an instagram wrapper that stays a wrapper is still a hub');
 });
 
+test('pickBestUrl drops a wrapper that failed to unwrap, on every wrapper host alike', () => {
+  const article = 'https://example.com/the-article';
+  for (const host of ['l.facebook.com', 'lm.facebook.com', 'l.instagram.com']) {
+    const failed = wrap(host, 'javascript:alert(1)');
+    assert.strictEqual(pickBestUrl([failed]), null, `${host} wrapper with a javascript: u`);
+    assert.strictEqual(pickBestUrl(extractUrls({ message: { text: failed } })), null, `${host} via extractUrls`);
+    assert.strictEqual(pickBestUrl([failed, article]), article, `${host}: later real article still wins`);
+  }
+  // no u at all is a failed unwrap too
+  assert.strictEqual(pickBestUrl(['https://l.facebook.com/l.php?h=AT0abc']), null);
+  // a wrapper nested past the two-layer cap is left on a wrapper host and dropped
+  const deep = wrap('lm.facebook.com', wrap('l.instagram.com', wrap('l.facebook.com', wrap('l.facebook.com', article))));
+  assert.strictEqual(pickBestUrl(extractUrls({ message: { text: deep } })), null);
+});
+
 test('a wrapper with no usable u passes through unchanged', () => {
   for (const url of [
     'https://l.instagram.com/',
