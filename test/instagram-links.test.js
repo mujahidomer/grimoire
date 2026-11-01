@@ -521,6 +521,23 @@ test('unwrapLink decodes u exactly once', () => {
   assert.strictEqual(unwrapLink('https://l.instagram.com/?u=https%3A%2F%2Fexample.com%2Fa+b'), 'https://example.com/a+b');
 });
 
+test('an unwrapped url is percent-encoded, never carrying raw whitespace, quotes or angle brackets', () => {
+  const wrapperFor = (encodedInner) => `https://l.instagram.com/?u=${encodedInner}`;
+
+  const script = unwrapLink(wrapperFor('https%3A%2F%2Fexample.com%2F%3Cscript%3Ealert(1)%3C%2Fscript%3E'));
+  assert.strictEqual(script, 'https://example.com/%3Cscript%3Ealert(1)%3C/script%3E');
+
+  const messy = unwrapLink(wrapperFor('https%3A%2F%2Fexample.com%2Fa%0Ab%0Dc%09d%20e%22f'));
+  assert.strictEqual(messy, 'https://example.com/abcd%20e%22f', 'tab, LF and CR are dropped by URL parsing; space and quote are encoded');
+
+  for (const out of [script, messy]) assert.ok(!/[\s<>"]/.test(out), `no raw unsafe character in ${JSON.stringify(out)}`);
+
+  // the same guarantee holds on the paths consumers actually use
+  const viaExtract = extractUrls({ message: { text: wrapperFor('https%3A%2F%2Fexample.com%2F%3Cscript%3Ealert(1)%3C%2Fscript%3E') } });
+  assert.deepStrictEqual(viaExtract, [script]);
+  assert.strictEqual(pickBestUrl(viaExtract), script);
+});
+
 test('unwrapLink follows nested wrappers at most twice', () => {
   const article = 'https://example.com/the-article';
   const one = wrap('l.facebook.com', article);
