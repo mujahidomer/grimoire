@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const {
   handleEvent, sendReply, lookupUsername, rematchPendingCaptures, resolveIgUserId, isInstagramUrl,
 } = require('../lib/instagram/capture');
+const { buildCapturePatch } = require('../lib/instagram/captures');
 
 const USER = '00000000-0000-0000-0000-000000000001';
 const reel = { id: 'item-1', source_author: 'thecreator',
@@ -13,9 +14,10 @@ const liveCapture = (over = {}) => ({ id: 'cap-1', sender_username: 'thecreator'
 
 // Every collaborator is a fake that records its call, in order, in calls.order.
 function deps(over = {}) {
-  const calls = { attached: [], replied: [], updated: [], recorded: [], created: [], looked: [], order: [], users: [] };
+  const calls = { attached: [], replied: [], updated: [], recorded: [], created: [], looked: [], order: [], users: [], logs: [], errors: [] };
   return { calls, ...{
-    log: () => {},
+    log: (m) => calls.logs.push(m),
+    logError: (m) => calls.errors.push(m),
     findActiveCapture: async (u) => { calls.users.push(u); return liveCapture(); },
     createCapture: async (u, c) => { calls.users.push(u); calls.created.push(c); calls.order.push('create');
       return { id: 'cap-new', ...c, sender_username: c.senderUsername, reply_attempts: 0, processed_message_ids: [] }; },
@@ -136,6 +138,7 @@ test('a crash during the work leaves the message id unrecorded so a redelivery r
   assert.strictEqual(action.kind, 'park');
   assert.strictEqual(action.cause, 'attach_failed');
   assert.deepStrictEqual(d.calls.recorded, [], 'failed work is never recorded as done');
+  assert.match(d.calls.errors[0], /attach failed \(capture cap-1, item item-1\): Error: db down/);
   const [, patch] = d.calls.updated[0];
   assert.strictEqual(patch.state, 'needs_user');
   assert.strictEqual(patch.resolved_url, 'https://example.com/guide', 'the raw url is kept for a retry');
@@ -196,10 +199,10 @@ test('the hub verdict is decide()\'s: capture.js passes the resolved url through
   assert.deepStrictEqual(seen, ['candidates'], 'the orchestrator no longer short-circuits before decide()');
 });
 
-test('a hub resolved url does not leave a resolved_url on the parked capture', async () => {
+test('a hub resolved url is never written as resolved_url', async () => {
   const d = deps({ resolveUrl: async () => ({ url: 'https://linktr.ee/thecreator', hops: 2 }) });
   await handleEvent(dm('https://mnch.at/abc'), { userId: USER, deps: d });
-  assert.strictEqual(d.calls.updated[0][1].resolved_url, null);
+  for (const [, patch] of d.calls.updated) assert.ok(!('resolved_url' in buildCapturePatch(patch)));
 });
 
 test('a short link that resolves to a media file parks as unusable_link', async () => {
@@ -238,6 +241,7 @@ test('reply: a failed send is parked as reply_failed, not thrown and not freefor
   const last = d.calls.updated.at(-1)[1];
   assert.deepStrictEqual([last.state, last.needs_user_reason], ['needs_user', 'reply_failed']);
   assert.deepStrictEqual(d.calls.recorded, [['cap-1', 'mid.C']], 'parked visibly, so the message is handled');
+  assert.match(d.calls.errors[0], /reply failed \(capture cap-1\): http_400 code=10/);
   assert.strictEqual(d.calls.updated.some(([, p]) => p.reply_attempts === 1), true, 'the attempt still counts');
 });
 
@@ -287,6 +291,8 @@ test('lookup failure: the DM is parked as unknown_sender with a null username, n
   assert.strictEqual(patch.resolved_url, 'https://example.com/guide', 'a real article stays attachable from the tray');
   assert.deepStrictEqual(d.calls.recorded, [['cap-new', 'mid.X']], 'visibly parked, so handled');
   assert.deepStrictEqual(d.calls.replied, [], 'never a reply to a sender we cannot name');
+  assert.strictEqual(d.calls.errors.length, 1, 'the only trace of a lost DM goes through the injected sink');
+  assert.match(d.calls.errors[0], /mid\.X.*http_503.*unknown_sender/);
   assert.deepStrictEqual(d.calls.attached, [], 'and never an attach: no handle, no match');
 });
 
@@ -465,14 +471,34 @@ test('rematch attaches a waiting no_match article once the reel is saved', async
   assert.deepStrictEqual(d.calls.updated, [['cap-9', { state: 'matched', matched_item_id: 'item-1', needs_user_reason: null }, USER]]);
 });
 
-test('rematch leaves captures that are not waiting on a reel alone', async () => {
+test('rematch leaves alone a capture with no article, and one already matched to an item', async () => {
   const d = rematchDeps([
-    waiting({ id: 'a', needs_user_reason: 'hub_page' }),
-    waiting({ id: 'b', state: 'awaiting_link', needs_user_reason: null }),
-    waiting({ id: 'c', resolved_url: null }),
+    waiting({ id: 'a', resolved_url: null }),
+    waiting({ id: 'b', resolved_url: '' }),
+    waiting({ id: 'c', matched_item_id: 'item-0' }),
   ]);
   assert.strictEqual(await rematchPendingCaptures(USER, 'thecreator', { deps: d }), 0);
   assert.deepStrictEqual(d.calls.attached, []);
+});
+
+test('rematch rules on state, not on the reason label: a replied capture still holding its article is found', async () => {
+  const d = rematchDeps([
+    waiting({ id: 'replied', state: 'replied', needs_user_reason: null }),
+    waiting({ id: 'gate', needs_user_reason: 'freeform_gate' }),
+    waiting({ id: 'hub', needs_user_reason: 'hub_page' }),
+    waiting({ id: 'waiting', state: 'awaiting_link', needs_user_reason: null }),
+  ]);
+  assert.strictEqual(await rematchPendingCaptures(USER, 'thecreator', { deps: d }), 4);
+  assert.deepStrictEqual(d.calls.updated.map(([id]) => id), ['replied', 'gate', 'hub', 'waiting']);
+});
+
+test('rematch failures go through the injected sink and name the cause', async () => {
+  const errors = [];
+  const d = rematchDeps([waiting()], { logError: (m) => errors.push(m),
+    attachLinkedResource: async () => { throw 'plain string rejection'; } });
+  assert.strictEqual(await rematchPendingCaptures(USER, 'thecreator', { deps: d }), 0);
+  assert.strictEqual(errors.length, 1);
+  assert.match(errors[0], /rematch failed \(capture cap-9, item item-1\): plain string rejection/);
 });
 
 test('rematch skips a capture whose creator still has no recent reel', async () => {
@@ -482,7 +508,7 @@ test('rematch skips a capture whose creator still has no recent reel', async () 
 
 test('rematch: one capture failing does not stop the next', async () => {
   let n = 0;
-  const d = rematchDeps([waiting({ id: 'a' }), waiting({ id: 'b' })], {
+  const d = rematchDeps([waiting({ id: 'a' }), waiting({ id: 'b' })], { logError: () => {},
     attachLinkedResource: async () => { if (++n === 1) throw new Error('boom'); return {}; },
   });
   assert.strictEqual(await rematchPendingCaptures(USER, 'thecreator', { deps: d }), 1);
@@ -503,4 +529,113 @@ test('isInstagramUrl is a hostname check', () => {
   assert.strictEqual(isInstagramUrl('https://notinstagram.com/x'), false);
   assert.strictEqual(isInstagramUrl('manual'), false);
   assert.strictEqual(isInstagramUrl(undefined), false);
+});
+
+// ─── A parked article survives later messages ─────────────────────────────────
+
+// A tiny in-memory dm_captures row whose writes go through the REAL
+// buildCapturePatch, so a key that is undefined is skipped exactly as in
+// production and cannot clear a column by accident.
+function store(initial) {
+  const row = { id: 'cap-1', sender_username: 'thecreator', state: 'needs_user', needs_user_reason: 'no_match',
+    reply_attempts: 0, links_seen: [], resolved_url: null, matched_item_id: null, processed_message_ids: [], ...initial };
+  const writes = [];
+  return { row, writes, fakes: {
+    findActiveCapture: async () => row,
+    updateCapture: async (id, patch) => { const fields = buildCapturePatch(patch); writes.push(fields); Object.assign(row, fields); return row; },
+    recordProcessedMessage: async () => true,
+  } };
+}
+const ARTICLE = 'https://example.com/the-article';
+
+test('a capture holding a parked article keeps it when a link-less gate arrives', async () => {
+  const st = store({ resolved_url: ARTICLE, links_seen: [ARTICLE] });
+  const d = deps({ ...st.fakes });
+  const action = await handleEvent(dm('what is your favourite colour?', 'mid.2'), { userId: USER, deps: d });
+  assert.strictEqual(action.reason, 'freeform_gate');
+  assert.strictEqual(st.row.resolved_url, ARTICLE, 'the article is still on the row');
+  assert.strictEqual(st.row.matched_item_id, null);
+});
+
+test('a later hub link neither replaces the parked article nor erases the earlier raw url', async () => {
+  const st = store({ resolved_url: ARTICLE, links_seen: [ARTICLE] });
+  const d = deps({ ...st.fakes, recentInstagramItems: async () => [],
+    resolveUrl: async () => ({ url: 'https://linktr.ee/thecreator', hops: 1 }) });
+  const action = await handleEvent(dm('https://mnch.at/abc', 'mid.3'), { userId: USER, deps: d });
+  assert.strictEqual(action.reason, 'hub_page');
+  assert.strictEqual(st.row.resolved_url, ARTICLE);
+  assert.deepStrictEqual(st.row.links_seen, [ARTICLE, 'https://mnch.at/abc']);
+});
+
+test('links_seen accumulates across messages and does not duplicate', async () => {
+  const st = store();
+  const d = deps({ ...st.fakes, recentInstagramItems: async () => [] });
+  await handleEvent(dm('https://example.com/one', 'mid.1'), { userId: USER, deps: d });
+  await handleEvent(dm('https://example.com/two', 'mid.2'), { userId: USER, deps: d });
+  await handleEvent(dm('https://example.com/one', 'mid.3'), { userId: USER, deps: d });
+  assert.deepStrictEqual(st.row.links_seen, ['https://example.com/one', 'https://example.com/two']);
+  assert.strictEqual(st.row.resolved_url, 'https://example.com/one', 'the latest real article is the one kept');
+});
+
+test('a message with no links leaves links_seen untouched', async () => {
+  const st = store({ links_seen: [ARTICLE], resolved_url: ARTICLE });
+  const d = deps({ ...st.fakes });
+  await handleEvent(dm('hello?', 'mid.4'), { userId: USER, deps: d });
+  assert.ok(st.writes.every((w) => !('links_seen' in w)));
+});
+
+test('unknown_sender parking also merges links_seen and keeps a stored article', async () => {
+  const st = store({ resolved_url: ARTICLE, links_seen: [ARTICLE], sender_username: null });
+  const d = deps({ ...st.fakes, lookupUsername: async () => ({ ok: false, error: 'http_503' }),
+    resolveUrl: async () => ({ url: 'https://linktr.ee/x', hops: 1 }) });
+  await handleEvent(dm('https://mnch.at/abc', 'mid.5'), { userId: USER, deps: d });
+  assert.strictEqual(st.row.resolved_url, ARTICLE);
+  assert.deepStrictEqual(st.row.links_seen, [ARTICLE, 'https://mnch.at/abc']);
+});
+
+test('end to end: an article parked, then a successful reply, is still re-matched on the next save', async () => {
+  const st = store({ resolved_url: ARTICLE, links_seen: [ARTICLE] });
+  const d = deps({ ...st.fakes });
+  const action = await handleEvent(dm('reply DONE', 'mid.6'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'reply');
+  assert.strictEqual(st.row.state, 'replied');
+  assert.strictEqual(st.row.needs_user_reason, null, 'the reason label is gone');
+  assert.strictEqual(st.row.resolved_url, ARTICLE);
+  const r = rematchDeps([st.row], { updateCapture: st.fakes.updateCapture });
+  assert.strictEqual(await rematchPendingCaptures(USER, 'thecreator', { deps: r }), 1);
+  assert.deepStrictEqual(r.calls.attached, [['item-1', USER, ARTICLE]]);
+  assert.strictEqual(st.row.state, 'matched');
+});
+
+// ─── Error text and sinks ─────────────────────────────────────────────────────
+
+test('errors fall back to the log sink when no logError is injected', async () => {
+  const logs = [];
+  const d = deps({ logError: undefined, log: (m) => logs.push(m), findActiveCapture: async () => null,
+    lookupUsername: async () => ({ ok: false, error: 'http_503' }) });
+  await handleEvent(dm('x', 'mid.9'), { userId: USER, deps: d });
+  assert.ok(logs.some((m) => /unknown_sender/.test(m)));
+});
+
+test('a non-Error rejection keeps its text instead of "undefined: undefined"', async () => {
+  const fromSend = await sendReply('igsid-1', 'DONE', { token: 't', fetchImpl: async () => { throw 'ECONNRESET string'; } });
+  assert.deepStrictEqual(fromSend, { ok: false, error: 'ECONNRESET string' });
+  const fromLookup = await lookupUsername('igsid-1', { token: 't', attempts: 1, fetchImpl: async () => { throw { code: 'E_ODD' }; } });
+  assert.strictEqual(fromLookup.ok, false);
+  assert.ok(!/undefined/.test(fromLookup.error), fromLookup.error);
+  assert.deepStrictEqual(await sendReply('igsid-1', 'DONE', { token: 't', fetchImpl: async () => { throw undefined; } }),
+    { ok: false, error: 'undefined' });
+  const d = deps({ attachLinkedResource: async () => { throw 'plain string'; } });
+  await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.match(d.calls.errors[0], /: plain string$/);
+});
+
+test('lookupUsername does not retry a 200 whose body is not JSON', async () => {
+  let n = 0;
+  const fetchImpl = async () => { n += 1; return { ok: true, status: 200, json: async () => { throw new SyntaxError('Unexpected token <'); } }; };
+  const slept = [];
+  const result = await lookupUsername('igsid-1', { fetchImpl, token: 't', sleepImpl: async (ms) => slept.push(ms) });
+  assert.deepStrictEqual(result, { ok: false, error: 'invalid_json_response' });
+  assert.strictEqual(n, 1);
+  assert.deepStrictEqual(slept, []);
 });
