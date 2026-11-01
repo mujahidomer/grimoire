@@ -448,8 +448,9 @@ create unique index if not exists dm_captures_one_active_idx
 -- Atomically record a processed Meta message id. One UPDATE statement, so two
 -- concurrent deliveries serialize on the row lock: the second re-evaluates its
 -- WHERE against the first's committed row, sees the id, and updates nothing.
--- Returns true when this call recorded the id (the caller "claimed" the
--- message), false when it was already recorded. Raises when the capture does
+-- Returns true when this call recorded the id, false when it was already
+-- recorded. Callers record AFTER the message's work succeeds, never before
+-- (a lost message is unrecoverable; duplicate work is idempotent). Raises when the capture does
 -- not exist for that user, so a wrong id is not mistaken for a duplicate.
 create or replace function append_dm_capture_message(
   p_user_id uuid, p_capture_id uuid, p_message_id text
