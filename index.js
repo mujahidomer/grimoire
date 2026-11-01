@@ -22,6 +22,10 @@ const { attachLinkedResource, attachResourceEntities } = require('./lib/linkedRe
 const { seedUserLibrary } = require('./lib/seed');
 const { runPreflight, lastPreflight } = require('./lib/preflight');
 const { registerInstagramWebhook } = require('./lib/instagram/webhook');
+const {
+  handleEvent: handleInstagramEvent, resolveIgUserId, defaultDeps: instagramDeps,
+  rematchInBackground, isInstagramUrl,
+} = require('./lib/instagram/capture');
 
 const app = express();
 // CORS for the web UI (Doc B paste-box + chat panel). The throwaway viewer runs
@@ -135,6 +139,13 @@ async function runPipeline(rawText, sourceUrl, hashtags, parts = {}, userId) {
   for (const item of items) item.source_author = parts.author || null;
   const saved = [];
   for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
+  // A DM article that arrived before this reel was saved is waiting under the
+  // creator's handle (comment first, save later). Detached and logged: this must
+  // never fail or delay a save.
+  if (userId && isInstagramUrl(sourceUrl)) {
+    const authors = new Set(items.map((item) => item.source_author).filter(Boolean));
+    for (const author of authors) rematchInBackground(userId, author);
+  }
   return saved;
 }
 
@@ -211,11 +222,15 @@ app.get('/health', (req, res) => res.json({
 registerApiRoutes(app);
 
 // Instagram DM capture front door (GET handshake + signed POST). Rejects
-// everything until IG_APP_SECRET / IG_WEBHOOK_VERIFY_TOKEN are set. The
-// orchestrator that acts on events is a later task: until then events are
-// acknowledged and logged without their content.
+// everything until IG_APP_SECRET / IG_WEBHOOK_VERIFY_TOKEN are set. Each inbound
+// event goes to lib/instagram/capture.js. The user id is resolved here, per
+// event, from IG_USER_ID (falling back to GRIMOIRE_USER_ID) because Meta's
+// payload carries none; it throws if neither is set, and the webhook logs that.
 registerInstagramWebhook(app, {
-  onEvent: async () => { console.log('[ig-webhook] inbound event received (no handler wired yet)'); },
+  onEvent: async (event) => {
+    const action = await handleInstagramEvent(event, { userId: resolveIgUserId(), deps: instagramDeps() });
+    console.log(`[ig-webhook] event handled: ${action.kind}${action.reason ? ` (${action.reason})` : ''}`);
+  },
 });
 
 // POST /api/save — the web paste-box + iOS Shortcut/share-sheet save flow

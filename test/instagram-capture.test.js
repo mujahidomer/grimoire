@@ -1,0 +1,447 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+const {
+  handleEvent, sendReply, lookupUsername, rematchPendingCaptures, resolveIgUserId, isInstagramUrl,
+  UsernameLookupError,
+} = require('../lib/instagram/capture');
+
+const USER = '00000000-0000-0000-0000-000000000001';
+const reel = { id: 'item-1', source_author: 'thecreator',
+  source_url: 'https://instagram.com/reel/ABC', created_at: '2026-11-01T10:00:00Z' };
+
+const liveCapture = (over = {}) => ({ id: 'cap-1', sender_username: 'thecreator',
+  reply_attempts: 0, state: 'awaiting_link', processed_message_ids: [], ...over });
+
+// Every collaborator is a fake that records its call, in order, in calls.order.
+function deps(over = {}) {
+  const calls = { attached: [], replied: [], updated: [], recorded: [], created: [], looked: [], order: [], users: [] };
+  return { calls, ...{
+    log: () => {},
+    findActiveCapture: async (u) => { calls.users.push(u); return liveCapture(); },
+    createCapture: async (u, c) => { calls.users.push(u); calls.created.push(c); calls.order.push('create');
+      return { id: 'cap-new', ...c, sender_username: c.senderUsername, reply_attempts: 0, processed_message_ids: [] }; },
+    updateCapture: async (id, patch, u) => { calls.users.push(u); calls.updated.push([id, patch]);
+      calls.order.push(`update:${patch.state || (patch.reply_attempts !== undefined ? 'attempt' : 'other')}`);
+      return { id, ...patch }; },
+    recordProcessedMessage: async (id, mid, u) => { calls.users.push(u); calls.recorded.push([id, mid]);
+      calls.order.push('record'); return true; },
+    recentInstagramItems: async (u) => { calls.users.push(u); return [reel]; },
+    resolveUrl: async (u) => ({ url: u, hops: 1 }),
+    lookupUsername: async (igsid) => { calls.looked.push(igsid); return { ok: true, username: 'stranger' }; },
+    attachLinkedResource: async (itemId, u, url) => { calls.users.push(u); calls.attached.push([itemId, url]);
+      calls.order.push('attach'); return {}; },
+    sendReply: async (igsid, text) => { calls.replied.push([igsid, text]); calls.order.push('send'); return { ok: true }; },
+  }, ...over };
+}
+
+const dm = (text, mid = 'mid.A', extra = {}) => ({ sender: { id: 'igsid-1' }, message: { mid, text }, ...extra });
+
+// ─── The brief's six ──────────────────────────────────────────────────────────
+
+test('handleEvent attaches the article to the matched reel', async () => {
+  const d = deps();
+  const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'attach');
+  assert.deepStrictEqual(d.calls.attached, [['item-1', 'https://example.com/guide']]);
+});
+
+// Review Focus 2: a Meta retry must not attach twice
+test('handleEvent ignores a message id it has already processed', async () => {
+  const d = deps({ findActiveCapture: async () => liveCapture({ processed_message_ids: ['mid.A'] }) });
+  const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'ignore');
+  assert.deepStrictEqual(d.calls.attached, []);
+});
+
+test('handleEvent sends the allowlisted reply and counts the attempt', async () => {
+  const d = deps();
+  await handleEvent(dm('reply DONE to get the link', 'mid.B'), { userId: USER, deps: d });
+  assert.deepStrictEqual(d.calls.replied, [['igsid-1', 'DONE']]);
+  assert.strictEqual(d.calls.updated.some(([, p]) => p.reply_attempts === 1), true);
+});
+
+// Review Focus 5: the 24h window has closed
+test('handleEvent parks the capture when the reply fails', async () => {
+  const d = deps({ sendReply: async () => ({ ok: false, error: 'outside_window' }) });
+  const action = await handleEvent(dm('reply DONE', 'mid.C'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'park');
+  assert.strictEqual(d.calls.updated.some(([, p]) => p.state === 'needs_user'), true);
+});
+
+test('handleEvent writes no capture for a stranger with no link', async () => {
+  const d = deps({ findActiveCapture: async () => null, recentInstagramItems: async () => [] });
+  const action = await handleEvent(dm('hey are you free', 'mid.D'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'ignore');
+  assert.deepStrictEqual(d.calls.replied, []);
+  assert.deepStrictEqual(d.calls.created, [], 'no row for a stranger with no link');
+});
+
+test('handleEvent parks a link from a stranger instead of dropping it', async () => {
+  const d = deps({ findActiveCapture: async () => null, recentInstagramItems: async () => [] });
+  const action = await handleEvent(dm('https://example.com/guide', 'mid.E'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'park');
+  assert.deepStrictEqual(d.calls.replied, []);
+  assert.strictEqual(d.calls.created.length, 1);
+});
+
+// ─── Filtering: events that are not messages ──────────────────────────────────
+
+test('handleEvent ignores read, delivery and reaction events before touching anything', async () => {
+  const boom = () => { throw new Error('a collaborator was called for a non-message event'); };
+  const d = deps({ findActiveCapture: boom, createCapture: boom, updateCapture: boom,
+    recordProcessedMessage: boom, recentInstagramItems: boom, resolveUrl: boom,
+    lookupUsername: boom, attachLinkedResource: boom, sendReply: boom });
+  for (const ev of [
+    { sender: { id: 'igsid-1' }, read: { mid: 'mid.R' } },
+    { sender: { id: 'igsid-1' }, delivery: { mids: ['mid.R'] } },
+    { sender: { id: 'igsid-1' }, reaction: { mid: 'mid.R', action: 'react', reaction: 'love' } },
+    { sender: { id: 'igsid-1' }, postback: { mid: 'mid.R', payload: 'x' } },
+    { sender: { id: 'igsid-1' } },
+    {}, null, undefined,
+  ]) {
+    const action = await handleEvent(ev, { userId: USER, deps: d });
+    assert.deepStrictEqual(action, { kind: 'ignore', reason: 'not_a_message' });
+  }
+});
+
+test('handleEvent refuses to run without a userId', async () => {
+  await assert.rejects(handleEvent(dm('x'), { deps: deps() }), /requires a userId/);
+  await assert.rejects(handleEvent(dm('x'), { userId: '', deps: deps() }), /requires a userId/);
+});
+
+test('handleEvent passes the same explicit userId to every collaborator', async () => {
+  const d = deps();
+  await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.ok(d.calls.users.length >= 5, 'find, candidates, attach, update and record all took a user id');
+  assert.deepStrictEqual([...new Set(d.calls.users)], [USER]);
+});
+
+// ─── Ordering: the message id is recorded LAST ────────────────────────────────
+
+test('attach: the message id is recorded after the attach and the state write', async () => {
+  const d = deps();
+  await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.deepStrictEqual(d.calls.order, ['attach', 'update:matched', 'record']);
+  assert.deepStrictEqual(d.calls.recorded, [['cap-1', 'mid.A']]);
+});
+
+test('reply: the attempt is reserved before the send, the id recorded after both', async () => {
+  const d = deps();
+  await handleEvent(dm('reply DONE', 'mid.B'), { userId: USER, deps: d });
+  assert.deepStrictEqual(d.calls.order, ['update:attempt', 'send', 'update:replied', 'record']);
+});
+
+test('a crash during the work leaves the message id unrecorded so a redelivery redoes it', async () => {
+  const d = deps({ attachLinkedResource: async () => { throw new Error('db down'); } });
+  const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'park');
+  assert.strictEqual(action.cause, 'attach_failed');
+  assert.deepStrictEqual(d.calls.recorded, [], 'failed work is never recorded as done');
+  const [, patch] = d.calls.updated[0];
+  assert.strictEqual(patch.state, 'needs_user');
+  assert.strictEqual(patch.resolved_url, 'https://example.com/guide', 'the raw url is kept for a retry');
+});
+
+test('a throw from a write propagates and nothing is recorded', async () => {
+  const d = deps({ updateCapture: async () => { throw new Error('write failed'); } });
+  await assert.rejects(handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d }), /write failed/);
+  assert.deepStrictEqual(d.calls.recorded, []);
+});
+
+test('ignore records nothing: there was no work to claim', async () => {
+  const d = deps({ findActiveCapture: async () => null, recentInstagramItems: async () => [] });
+  await handleEvent(dm('hey are you free', 'mid.D'), { userId: USER, deps: d });
+  assert.deepStrictEqual(d.calls.recorded, []);
+});
+
+// ─── The four action kinds ────────────────────────────────────────────────────
+
+test('attach: the capture becomes matched and keeps the item and the resolved url', async () => {
+  const d = deps();
+  await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  const [id, patch] = d.calls.updated[0];
+  assert.strictEqual(id, 'cap-1');
+  assert.strictEqual(patch.state, 'matched');
+  assert.strictEqual(patch.matched_item_id, 'item-1');
+  assert.strictEqual(patch.resolved_url, 'https://example.com/guide');
+  assert.deepStrictEqual(patch.links_seen, ['https://example.com/guide']);
+  assert.strictEqual(patch.last_message_id, 'mid.A');
+});
+
+test('resolveUrl returns { url, hops }: the FINAL url is what gets attached', async () => {
+  const d = deps({ resolveUrl: async () => ({ url: 'https://example.com/final-article', hops: 3 }) });
+  await handleEvent(dm('https://mnch.at/abc'), { userId: USER, deps: d });
+  assert.deepStrictEqual(d.calls.attached, [['item-1', 'https://example.com/final-article']]);
+});
+
+test('an unresolvable link (resolveUrl null) parks as unusable_link and attaches nothing', async () => {
+  const d = deps({ resolveUrl: async () => null });
+  const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason], ['park', 'unusable_link']);
+  assert.deepStrictEqual(d.calls.attached, []);
+});
+
+test('a short link that resolves to a hub page parks as hub_page and attaches nothing', async () => {
+  const d = deps({ resolveUrl: async () => ({ url: 'https://linktr.ee/thecreator', hops: 2 }) });
+  const action = await handleEvent(dm('https://mnch.at/abc'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason], ['park', 'hub_page']);
+  assert.deepStrictEqual(d.calls.attached, []);
+});
+
+test('a short link that resolves to a media file parks as unusable_link', async () => {
+  const d = deps({ resolveUrl: async () => ({ url: 'https://scontent.cdninstagram.com/v/x.jpg', hops: 1 }) });
+  const action = await handleEvent(dm('https://mnch.at/abc'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason], ['park', 'unusable_link']);
+});
+
+test('a resolved article from a creator with no saved reel parks as no_match and keeps the url', async () => {
+  const d = deps({ recentInstagramItems: async () => [] });
+  const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason], ['park', 'no_match']);
+  const [, patch] = d.calls.updated[0];
+  assert.strictEqual(patch.needs_user_reason, 'no_match');
+  assert.strictEqual(patch.resolved_url, 'https://example.com/guide');
+});
+
+test('park: a freeform prompt from a matched creator goes to the tray with its reason', async () => {
+  const d = deps();
+  const action = await handleEvent(dm('what is your favourite colour?'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason], ['park', 'freeform_gate']);
+  assert.deepStrictEqual(d.calls.replied, []);
+});
+
+test('reply: success moves the capture to replied', async () => {
+  const d = deps();
+  const action = await handleEvent(dm('reply DONE', 'mid.B'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'reply');
+  assert.strictEqual(d.calls.updated.at(-1)[1].state, 'replied');
+});
+
+test('reply: a failed send is parked as a visible needs_user entry, not thrown', async () => {
+  const d = deps({ sendReply: async () => ({ ok: false, error: 'http_400 code=10' }) });
+  const action = await handleEvent(dm('reply DONE', 'mid.C'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason, action.cause], ['park', 'freeform_gate', 'reply_failed']);
+  assert.strictEqual(d.calls.updated.at(-1)[1].state, 'needs_user');
+  assert.strictEqual(d.calls.updated.some(([, p]) => p.reply_attempts === 1), true, 'the attempt still counts');
+});
+
+test('reply: with the budget spent nothing is sent and the capture is parked', async () => {
+  const d = deps({ findActiveCapture: async () => liveCapture({ reply_attempts: 2 }) });
+  const action = await handleEvent(dm('reply DONE', 'mid.F'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'park');
+  assert.deepStrictEqual(d.calls.replied, []);
+});
+
+test('reply: never sent to a sender who matches no saved reel', async () => {
+  const d = deps({ findActiveCapture: async () => null, recentInstagramItems: async () => [] });
+  const action = await handleEvent(dm('reply DONE', 'mid.G'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'ignore');
+  assert.deepStrictEqual(d.calls.replied, []);
+});
+
+// ─── Username resolution ──────────────────────────────────────────────────────
+
+test('the username comes from the capture when it has one: no lookup', async () => {
+  const d = deps();
+  await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.deepStrictEqual(d.calls.looked, []);
+});
+
+test('with no capture the username is looked up and the new row carries it', async () => {
+  const d = deps({ findActiveCapture: async () => null,
+    lookupUsername: async (igsid) => ({ ok: true, username: '@TheCreator' }) });
+  const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'attach', 'the looked-up handle matched the saved reel');
+  assert.strictEqual(d.calls.created[0].senderUsername, 'thecreator', 'normalized before the row is written');
+});
+
+test('lookup failure: throws, writes no capture, sends nothing, records nothing', async () => {
+  const d = deps({ findActiveCapture: async () => null,
+    lookupUsername: async () => ({ ok: false, error: 'http_503' }) });
+  await assert.rejects(
+    handleEvent(dm('https://example.com/guide', 'mid.X'), { userId: USER, deps: d }),
+    (err) => err instanceof UsernameLookupError && /mid\.X/.test(err.message) && /http_503/.test(err.message)
+  );
+  assert.deepStrictEqual(d.calls.created, []);
+  assert.deepStrictEqual(d.calls.updated, []);
+  assert.deepStrictEqual(d.calls.recorded, []);
+  assert.deepStrictEqual(d.calls.replied, []);
+});
+
+test('lookup returning an empty handle is a failure too, never a null-username capture', async () => {
+  const d = deps({ findActiveCapture: async () => null,
+    lookupUsername: async () => ({ ok: true, username: '  @ ' }) });
+  await assert.rejects(handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d }), UsernameLookupError);
+  assert.deepStrictEqual(d.calls.created, []);
+});
+
+test('an existing capture with no username is backfilled once the lookup works', async () => {
+  const d = deps({ findActiveCapture: async () => liveCapture({ sender_username: null }),
+    lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.strictEqual(d.calls.updated[0][1].sender_username, 'thecreator');
+});
+
+test('lookupUsername retries a transient failure and then succeeds', async () => {
+  let n = 0;
+  const fetchImpl = async () => (++n === 1
+    ? { ok: false, status: 503, json: async () => ({}) }
+    : { ok: true, status: 200, json: async () => ({ username: 'TheCreator' }) });
+  const slept = [];
+  const result = await lookupUsername('igsid-1', { fetchImpl, token: 't', sleepImpl: async (ms) => slept.push(ms) });
+  assert.deepStrictEqual(result, { ok: true, username: 'thecreator' });
+  assert.strictEqual(n, 2);
+  assert.strictEqual(slept.length, 1);
+});
+
+test('lookupUsername gives up after its attempts and reports why, without throwing', async () => {
+  let n = 0;
+  const fetchImpl = async () => { n += 1; throw new Error('socket hang up'); };
+  const result = await lookupUsername('igsid-1', { fetchImpl, token: 't', sleepImpl: async () => {} });
+  assert.strictEqual(result.ok, false);
+  assert.match(result.error, /socket hang up/);
+  assert.strictEqual(n, 3);
+});
+
+test('lookupUsername does not retry a 4xx', async () => {
+  let n = 0;
+  const fetchImpl = async () => { n += 1; return { ok: false, status: 400, json: async () => ({ error: { code: 100, message: 'bad' } }) }; };
+  const result = await lookupUsername('igsid-1', { fetchImpl, token: 't', sleepImpl: async () => {} });
+  assert.strictEqual(result.ok, false);
+  assert.match(result.error, /http_400 code=100/);
+  assert.strictEqual(n, 1);
+});
+
+test('lookupUsername with no token fails without a request', async () => {
+  const fetchImpl = async () => { throw new Error('must not be called'); };
+  assert.deepStrictEqual(await lookupUsername('igsid-1', { fetchImpl, token: '' }), { ok: false, error: 'no_access_token' });
+});
+
+test('lookupUsername sends the token as a header, never in the url', async () => {
+  let seen;
+  const fetchImpl = async (url, init) => { seen = { url, init }; return { ok: true, json: async () => ({ username: 'a' }) }; };
+  await lookupUsername('igsid/1', { fetchImpl, token: 'SECRET' });
+  assert.ok(!seen.url.includes('SECRET'));
+  assert.strictEqual(seen.init.headers.Authorization, 'Bearer SECRET');
+  assert.ok(seen.url.includes('igsid%2F1'), 'the id is encoded into the path');
+});
+
+// ─── sendReply ────────────────────────────────────────────────────────────────
+
+test('sendReply posts the recipient and the word, with the token in a header', async () => {
+  let seen;
+  const fetchImpl = async (url, init) => { seen = { url, init }; return { ok: true, status: 200 }; };
+  const result = await sendReply('igsid-1', 'DONE', { fetchImpl, token: 'SECRET' });
+  assert.deepStrictEqual(result, { ok: true });
+  assert.strictEqual(seen.init.method, 'POST');
+  assert.deepStrictEqual(JSON.parse(seen.init.body), { recipient: { id: 'igsid-1' }, message: { text: 'DONE' } });
+  assert.strictEqual(seen.init.headers.Authorization, 'Bearer SECRET');
+  assert.ok(!seen.url.includes('SECRET'));
+});
+
+test('sendReply returns ok:false for a closed messaging window instead of throwing', async () => {
+  const fetchImpl = async () => ({ ok: false, status: 400,
+    json: async () => ({ error: { code: 10, error_subcode: 2534022, message: 'outside of allowed window' } }) });
+  const result = await sendReply('igsid-1', 'DONE', { fetchImpl, token: 'SECRET' });
+  assert.strictEqual(result.ok, false);
+  assert.match(result.error, /http_400 code=10\/2534022 outside of allowed window/);
+  assert.ok(!result.error.includes('SECRET'));
+});
+
+test('sendReply returns ok:false when the network throws, and when the body is not JSON', async () => {
+  const thrown = await sendReply('igsid-1', 'DONE', { fetchImpl: async () => { throw new Error('ECONNRESET'); }, token: 't' });
+  assert.strictEqual(thrown.ok, false);
+  assert.match(thrown.error, /ECONNRESET/);
+  const notJson = await sendReply('igsid-1', 'DONE', { token: 't',
+    fetchImpl: async () => ({ ok: false, status: 502, json: async () => { throw new SyntaxError('x'); } }) });
+  assert.deepStrictEqual(notJson, { ok: false, error: 'http_502' });
+});
+
+test('sendReply refuses anything that is not an allowlisted word, without a request', async () => {
+  const fetchImpl = async () => { throw new Error('must not be called'); };
+  for (const text of ['Hello there', 'done', '', undefined, 'DONE please', null]) {
+    assert.deepStrictEqual(await sendReply('igsid-1', text, { fetchImpl, token: 't' }), { ok: false, error: 'not_allowlisted' });
+  }
+});
+
+test('sendReply with no token or no recipient fails without a request', async () => {
+  const fetchImpl = async () => { throw new Error('must not be called'); };
+  assert.deepStrictEqual(await sendReply('igsid-1', 'DONE', { fetchImpl, token: '' }), { ok: false, error: 'no_access_token' });
+  assert.deepStrictEqual(await sendReply('', 'DONE', { fetchImpl, token: 't' }), { ok: false, error: 'no_igsid' });
+});
+
+// ─── userId resolution ────────────────────────────────────────────────────────
+
+test('resolveIgUserId prefers IG_USER_ID and falls back to the default user', () => {
+  const fallback = () => 'default-user';
+  assert.strictEqual(resolveIgUserId({ env: { IG_USER_ID: 'ig-user' }, fallback }), 'ig-user');
+  assert.strictEqual(resolveIgUserId({ env: { IG_USER_ID: ' ig-user ' }, fallback }), 'ig-user');
+  assert.strictEqual(resolveIgUserId({ env: {}, fallback }), 'default-user');
+  assert.strictEqual(resolveIgUserId({ env: { IG_USER_ID: '' }, fallback }), 'default-user');
+});
+
+test('resolveIgUserId throws rather than return a falsy id', () => {
+  assert.throws(() => resolveIgUserId({ env: {}, fallback: () => { throw new Error('GRIMOIRE_USER_ID is not set'); } }), /GRIMOIRE_USER_ID/);
+  assert.throws(() => resolveIgUserId({ env: {}, fallback: () => undefined }), /no user id/);
+});
+
+// ─── Re-match after a save ────────────────────────────────────────────────────
+
+function rematchDeps(captures, over = {}) {
+  const calls = { attached: [], updated: [], pending: [] };
+  return { calls, ...{
+    findPendingCaptures: async (u, name) => { calls.pending.push([u, name]); return captures; },
+    recentInstagramItems: async () => [reel],
+    attachLinkedResource: async (itemId, u, url) => { calls.attached.push([itemId, u, url]); return {}; },
+    updateCapture: async (id, patch, u) => { calls.updated.push([id, patch, u]); return {}; },
+  }, ...over };
+}
+const waiting = (over = {}) => ({ id: 'cap-9', sender_username: 'thecreator', state: 'needs_user',
+  needs_user_reason: 'no_match', resolved_url: 'https://example.com/guide', ...over });
+
+test('rematch attaches a waiting no_match article once the reel is saved', async () => {
+  const d = rematchDeps([waiting()]);
+  assert.strictEqual(await rematchPendingCaptures(USER, 'TheCreator', { deps: d }), 1);
+  assert.deepStrictEqual(d.calls.attached, [['item-1', USER, 'https://example.com/guide']]);
+  assert.deepStrictEqual(d.calls.updated, [['cap-9', { state: 'matched', matched_item_id: 'item-1', needs_user_reason: null }, USER]]);
+});
+
+test('rematch leaves captures that are not waiting on a reel alone', async () => {
+  const d = rematchDeps([
+    waiting({ id: 'a', needs_user_reason: 'hub_page' }),
+    waiting({ id: 'b', state: 'awaiting_link', needs_user_reason: null }),
+    waiting({ id: 'c', resolved_url: null }),
+  ]);
+  assert.strictEqual(await rematchPendingCaptures(USER, 'thecreator', { deps: d }), 0);
+  assert.deepStrictEqual(d.calls.attached, []);
+});
+
+test('rematch skips a capture whose creator still has no recent reel', async () => {
+  const d = rematchDeps([waiting({ sender_username: 'someoneelse' })]);
+  assert.strictEqual(await rematchPendingCaptures(USER, 'someoneelse', { deps: d }), 0);
+});
+
+test('rematch: one capture failing does not stop the next', async () => {
+  let n = 0;
+  const d = rematchDeps([waiting({ id: 'a' }), waiting({ id: 'b' })], {
+    attachLinkedResource: async () => { if (++n === 1) throw new Error('boom'); return {}; },
+  });
+  assert.strictEqual(await rematchPendingCaptures(USER, 'thecreator', { deps: d }), 1);
+  assert.deepStrictEqual(d.calls.updated.map(([id]) => id), ['b']);
+});
+
+test('rematch with no handle does nothing and never queries', async () => {
+  const d = rematchDeps([waiting()]);
+  assert.strictEqual(await rematchPendingCaptures(USER, null, { deps: d }), 0);
+  assert.deepStrictEqual(d.calls.pending, []);
+  await assert.rejects(rematchPendingCaptures('', 'x', { deps: d }), /requires a userId/);
+});
+
+test('isInstagramUrl is a hostname check', () => {
+  assert.strictEqual(isInstagramUrl('https://www.instagram.com/reel/ABC/'), true);
+  assert.strictEqual(isInstagramUrl('https://instagram.com/reel/ABC'), true);
+  assert.strictEqual(isInstagramUrl('https://example.com/?u=instagram.com'), false);
+  assert.strictEqual(isInstagramUrl('https://notinstagram.com/x'), false);
+  assert.strictEqual(isInstagramUrl('manual'), false);
+  assert.strictEqual(isInstagramUrl(undefined), false);
+});
