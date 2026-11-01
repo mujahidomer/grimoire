@@ -11,7 +11,7 @@
     "migrate": "node scripts/migrate-drive-to-postgres.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.20.0",
+    "@anthropic-ai/sdk": "^0.115.0",
     "@mozilla/readability": "^0.5.0",
     "@supabase/supabase-js": "^2.108.1",
     "@supadata/js": "^1.4.0",
