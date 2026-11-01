@@ -342,7 +342,7 @@ test('decide does not answer ordinary English that happens to contain a keyword'
 });
 
 test('decide prefers a keyword to a digit, wherever the digit sits', () => {
-  assert.deepStrictEqual(replyTo('In 2026 reply DONE'), { kind: 'reply', text: 'DONE' });
+  assert.deepStrictEqual(replyTo('In 2026, reply DONE'), { kind: 'reply', text: 'DONE' });
   assert.deepStrictEqual(replyTo('Reply 1 or just reply DONE'), { kind: 'reply', text: 'DONE' });
 });
 
@@ -377,4 +377,86 @@ test('decide still replies when reply_attempts is missing or a valid integer und
   assert.strictEqual(replyTo('reply DONE', { capture: { sender_username: 'c' } }).kind, 'reply');
   assert.strictEqual(replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: 0 } }).kind, 'reply');
   assert.strictEqual(replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: 1 } }).kind, 'reply');
+});
+
+// --- Review round 3: two tables pin the behaviour, the rule is derived --------
+//
+// The reply rule is exactly what satisfies both tables below. Every string in
+// PARKS once drew an automated reply from a matched creator's DM; every string
+// in REPLIES is a real gate wording that must keep working. Add to a table only
+// with a captured real message (REPLIES) or a real false positive (PARKS).
+
+const PARKS = [
+  'sorry for the late reply! yes of course',
+  'sorry for the late reply, yes I saw it',
+  "sorry for the late reply, send me your email and I'll sort it",
+  'sorry for the slow reply, link below',
+  'thanks for the comment! yes I will',
+  'Thanks for your comment, link coming soon',
+  'Thanks for the comment. Done and dusted',
+  'Appreciate the comment! DONE deal',
+  'I got your DM, yes I can help',
+  'did you get my DM? yes I did',
+  'Just saw your DM — yes!',
+  'No need to reply. GO ahead and read it',
+  'the reply DONE button is broken',
+  "I'll comment done when I post it",
+  'Did the DM send? yes',
+];
+
+const REPLIES = [
+  ['Reply DONE', 'DONE'],
+  ['Comment DONE below', 'DONE'],
+  ['comment DONE 👇', 'DONE'],
+  ['Just comment DONE 👇 and check your DMs', 'DONE'],
+  ['Type YES', 'YES'],
+  ['Type DONE to receive the free guide', 'DONE'],
+  ['DM me GO', 'GO'],
+  ['DM DONE for access', 'DONE'],
+  ['To get the link, reply YES', 'YES'],
+  ['Reply "DONE"', 'DONE'],
+  ["Reply 'LINK' and I'll send it over", 'LINK'],
+  ['reply ✅ to continue', '✅'],
+  ['👉 REPLY DONE 👈', 'DONE'],
+  ['Follow + reply DONE', 'DONE'],
+  ['1. Follow me 2. Reply DONE', 'DONE'],
+  ['To unlock, send DONE', 'DONE'],
+  ['Reply 1 for the guide', '1'],
+  ['type 2 to continue', '2'],
+  ['reply\nDONE', 'DONE'],
+];
+
+test('PARKS table: ordinary DM prose containing a keyword never draws a reply', () => {
+  assert.strictEqual(PARKS.length, 15);
+  for (const text of PARKS) {
+    assert.deepStrictEqual(replyTo(text), { kind: 'park', reason: 'freeform_gate' }, JSON.stringify(text));
+  }
+});
+
+test('REPLIES table: real gate wording is still answered, with the right word', () => {
+  assert.strictEqual(REPLIES.length, 19);
+  for (const [text, word] of REPLIES) {
+    assert.deepStrictEqual(replyTo(text), { kind: 'reply', text: word }, JSON.stringify(text));
+  }
+});
+
+test('the gate wording this rule deliberately leaves unanswered parks (for the tray)', () => {
+  // Strict now, loosened only against captured real wording (Task 8).
+  for (const text of ['Say DONE', 'Write DONE', 'Drop a YES below', 'Tap DONE']) {
+    assert.deepStrictEqual(replyTo(text), { kind: 'park', reason: 'freeform_gate' }, text);
+  }
+});
+
+test('a sentence boundary or line break ends the instruction', () => {
+  assert.strictEqual(replyTo('Thanks for the comment\nDone and dusted').kind, 'park');
+  assert.strictEqual(replyTo('Reply, DONE').kind, 'park');
+  assert.strictEqual(replyTo('Comment. DONE').kind, 'park');
+  assert.strictEqual(replyTo('Reply: DONE').kind, 'reply');
+  assert.strictEqual(replyTo('reply 👉 DONE').kind, 'reply');
+});
+
+test('the verb must open the instruction: a noun use of reply/comment/DM does not', () => {
+  assert.strictEqual(replyTo('my reply: yes').kind, 'park');
+  assert.strictEqual(replyTo('your comment says go').kind, 'park');
+  assert.strictEqual(replyTo('Send the link to me').kind, 'park');
 });
