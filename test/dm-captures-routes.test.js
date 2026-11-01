@@ -117,6 +117,7 @@ test('attach links the stored article, then marks the capture matched', async ()
   const res = await request('POST', `/api/dm-captures/${CAP}/attach`, { body: { itemId: ITEM } });
   assert.strictEqual(res.status, 200);
   assert.strictEqual(res.json.success, true);
+  assert.strictEqual(res.json.content_extracted, true);
   assert.deepStrictEqual(calls, [
     ['attach', ITEM, ME, 'https://example.com/a'],
     ['update', CAP, { state: 'matched', matched_item_id: ITEM, needs_user_reason: null }, ME],
@@ -166,5 +167,20 @@ test('attach: a failing attach leaves the capture parked and reports 500', async
     const res = await request('POST', `/api/dm-captures/${CAP}/attach`, { body: { itemId: ITEM } });
     assert.strictEqual(res.status, 500);
     assert.ok(!calls.some((c) => c[0] === 'update'));
+  } finally { deps.attachLinkedResource = orig; }
+});
+
+test('attach: passes content_extracted=false through, still attaches and matches', async () => {
+  const orig = deps.attachLinkedResource;
+  deps.attachLinkedResource = async (itemId, u, url) => {
+    calls.push(['attach', itemId, u, url]);
+    return { linked_resources: [{ source_url: url }], content_extracted: false };
+  };
+  try {
+    const res = await request('POST', `/api/dm-captures/${CAP}/attach`, { body: { itemId: ITEM } });
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.json.success, true);
+    assert.strictEqual(res.json.content_extracted, false);
+    assert.ok(calls.some((c) => c[0] === 'update' && c[2].state === 'matched'));
   } finally { deps.attachLinkedResource = orig; }
 });
