@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { extractUrls, unwrapLink, isHubPage, isMediaUrl, pickBestUrl, resolveUrl } = require('../lib/instagram/links');
+const { extractUrls, unwrapLink, isHubPage, isMediaUrl, isWrapperUrl, pickBestUrl, resolveUrl } = require('../lib/instagram/links');
 
 test('extractUrls finds a url in message text', () => {
   const ev = { message: { text: 'Here you go https://mnch.at/abc123 enjoy' } };
@@ -551,4 +551,16 @@ test('unwrapLink follows nested wrappers at most twice', () => {
 test('unwrapLink only reads the first u parameter', () => {
   assert.strictEqual(unwrapLink('https://l.instagram.com/?u=https%3A%2F%2Fexample.com%2Fa&u=https%3A%2F%2Fother.example%2Fb'),
     'https://example.com/a');
+});
+
+test('isWrapperUrl is true only for the exact redirect-wrapper hosts', () => {
+  assert.strictEqual(isWrapperUrl('https://l.instagram.com/?u=x'), true);
+  assert.strictEqual(isWrapperUrl('https://l.facebook.com/l.php?u=x'), true);
+  assert.strictEqual(isWrapperUrl('https://lm.facebook.com/l.php?u=x'), true);
+  assert.strictEqual(isWrapperUrl('https://L.Instagram.com/?u=x'), true);
+  assert.strictEqual(isWrapperUrl('https://www.instagram.com/c/'), false);
+  assert.strictEqual(isWrapperUrl('https://evil.l.instagram.com/?u=x'), false);
+  assert.strictEqual(isWrapperUrl('https://example.com/l.instagram.com'), false);
+  assert.strictEqual(isWrapperUrl('not a url ::'), false);
+  assert.strictEqual(isWrapperUrl(undefined), false);
 });

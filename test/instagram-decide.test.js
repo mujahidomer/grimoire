@@ -138,8 +138,20 @@ test('decide parks unusable_link for a facebook wrapper that failed to unwrap', 
   assert.deepStrictEqual(action, { kind: 'park', reason: 'unusable_link' });
 });
 
-test('decide parks hub_page for an instagram wrapper that failed to unwrap (an instagram.com host)', () => {
+test('decide parks unusable_link, not hub_page, for an instagram wrapper that failed to unwrap', () => {
+  // l.instagram.com is an instagram.com host (isHubPage is true) but it is a
+  // wrapper: there is no hub behind it for the user to go and find.
   const action = decide(fromC({ event: { message: { text: 'https://l.instagram.com/?e=abc' } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'unusable_link' });
+  for (const host of ['l.facebook.com', 'lm.facebook.com']) {
+    const a = decide(fromC({ event: { message: { text: `https://${host}/l.php?e=abc` } } }));
+    assert.deepStrictEqual(a, { kind: 'park', reason: 'unusable_link' }, host);
+  }
+});
+
+test('decide still parks hub_page when a real hub sits beside a failed wrapper', () => {
+  const action = decide(fromC({ event: { message: {
+    text: 'https://l.instagram.com/?e=abc https://linktr.ee/c' } } }));
   assert.deepStrictEqual(action, { kind: 'park', reason: 'hub_page' });
 });
 
@@ -204,9 +216,9 @@ test('decide matches allowlist words whole-word and replies in canonical upperca
     { kind: 'park', reason: 'freeform_gate' });
 });
 
-test('decide replies with the first allowlist word in the prompt', () => {
+test('decide replies with the first qualifying allowlist word in the prompt', () => {
   const action = decide(fromC({ event: { message: { text: 'Send me YES and then DONE' } } }));
-  assert.deepStrictEqual(action, { kind: 'reply', text: 'SEND' });
+  assert.deepStrictEqual(action, { kind: 'reply', text: 'YES' });
 });
 
 test('decide still replies on the second attempt and stops on the third', () => {
@@ -264,7 +276,7 @@ test('decide never returns a park reason outside NEEDS_USER_REASONS', () => {
   }
 });
 
-test('decide performs no I/O and does not mutate its input', () => {
+test('decide does not mutate its input and returns a plain object, not a promise', () => {
   const input = fromC({ event: { message: { text: 'reply DONE' } } });
   const snapshot = JSON.stringify(input);
   const result = decide(input);
@@ -272,9 +284,80 @@ test('decide performs no I/O and does not mutate its input', () => {
   assert.strictEqual(typeof result.then, 'undefined'); // a plain object, not a promise
 });
 
-test('decide attaches only when a url resolved: resolvedUrl wins over gate text', () => {
+test('decide: a resolvedUrl takes precedence over gate text in the same message', () => {
   const action = decide(fromC({
     event: { message: { text: 'reply DONE https://example.com/a' } },
     resolvedUrl: 'https://example.com/a' }));
   assert.strictEqual(action.kind, 'attach');
+});
+
+// --- Review fixes: the reply word needs evidence of a gate prompt ----------
+
+const replyTo = (text, extra) => decide(fromC({ event: { message: { text } }, ...extra }));
+
+test('decide does not echo a long digit run (a code, a card number) back to the sender', () => {
+  for (const text of ['your code is 4111111111111111, reply with it', 'reply 123', 'Reply 2026 to enter']) {
+    assert.notStrictEqual(replyTo(text).kind, 'reply', text);
+  }
+  assert.deepStrictEqual(replyTo('Reply 12 for the guide'), { kind: 'reply', text: '12' });
+});
+
+test('decide answers an uppercase keyword on its own, with or without an instruction verb', () => {
+  assert.deepStrictEqual(replyTo('Tap DONE when you are ready'), { kind: 'reply', text: 'DONE' });
+  assert.deepStrictEqual(replyTo('Almost there... YES'), { kind: 'reply', text: 'YES' });
+});
+
+test('decide answers a lowercase keyword only right after an instruction verb', () => {
+  assert.deepStrictEqual(replyTo('just reply done!'), { kind: 'reply', text: 'DONE' });
+  assert.deepStrictEqual(replyTo('type yes to get it'), { kind: 'reply', text: 'YES' });
+  assert.deepStrictEqual(replyTo('comment link below'), { kind: 'reply', text: 'LINK' });
+  assert.deepStrictEqual(replyTo('DM me go and I will send it'), { kind: 'reply', text: 'GO' });
+  assert.deepStrictEqual(replyTo('Reply Done'), { kind: 'reply', text: 'DONE' });
+});
+
+test('decide does not answer ordinary English that happens to contain a keyword', () => {
+  for (const text of [
+    "sure, I'll send it", "let's go", "yes, I'm 25", 'yes', 'go for it',
+    "I'll send you the link tomorrow", 'the link is in my bio', 'Done and dusted',
+  ]) {
+    assert.deepStrictEqual(replyTo(text), { kind: 'park', reason: 'freeform_gate' }, text);
+  }
+});
+
+test('decide prefers a keyword to a digit, wherever the digit sits', () => {
+  assert.deepStrictEqual(replyTo('In 2026 reply DONE'), { kind: 'reply', text: 'DONE' });
+  assert.deepStrictEqual(replyTo('Reply 1 or just reply DONE'), { kind: 'reply', text: 'DONE' });
+});
+
+test('decide answers a bare digit only after an instruction verb', () => {
+  assert.deepStrictEqual(replyTo('Reply 1 for the guide'), { kind: 'reply', text: '1' });
+  assert.deepStrictEqual(replyTo('type 2 to continue'), { kind: 'reply', text: '2' });
+  assert.strictEqual(replyTo("I'm 25").kind, 'park');
+  assert.strictEqual(replyTo('Join 10 readers').kind, 'park');
+});
+
+test('decide answers a check mark only after an instruction verb', () => {
+  assert.deepStrictEqual(replyTo('Reply ✅'), { kind: 'reply', text: '✅' });
+  assert.strictEqual(replyTo('All sorted ✅').kind, 'park');
+});
+
+// --- Review fixes: the attempt counter fails closed --------------------------
+
+test('decide never replies on a corrupt reply_attempts, whatever the prompt', () => {
+  for (const bad of [null, 'abc', '1', -5, -1, 1.5, NaN, Infinity, {}, []]) {
+    const action = replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: bad } });
+    assert.deepStrictEqual(action, { kind: 'park', reason: 'freeform_gate' }, String(JSON.stringify(bad)));
+  }
+});
+
+test('decide treats a corrupt counter like an exhausted one for follow gates too', () => {
+  const action = replyTo('follow me then reply DONE',
+    { capture: { sender_username: 'c', reply_attempts: -5 } });
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'follow_gate' });
+});
+
+test('decide still replies when reply_attempts is missing or a valid integer under the cap', () => {
+  assert.strictEqual(replyTo('reply DONE', { capture: { sender_username: 'c' } }).kind, 'reply');
+  assert.strictEqual(replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: 0 } }).kind, 'reply');
+  assert.strictEqual(replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: 1 } }).kind, 'reply');
 });
