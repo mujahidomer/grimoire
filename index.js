@@ -21,6 +21,7 @@ const { requireAuth, logAuthMode } = require('./lib/request-auth');
 const { attachLinkedResource, attachResourceEntities } = require('./lib/linkedResources');
 const { seedUserLibrary } = require('./lib/seed');
 const { runPreflight, lastPreflight } = require('./lib/preflight');
+const { registerInstagramWebhook } = require('./lib/instagram/webhook');
 
 const app = express();
 // CORS for the web UI (Doc B paste-box + chat panel). The throwaway viewer runs
@@ -30,7 +31,10 @@ app.use(cors({
   origin: process.env.WEB_ORIGIN || true,
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
 }));
-app.use(express.json());
+// The verify hook keeps the raw bytes: Meta's webhook signature is an HMAC of the
+// exact body, which express.json() would otherwise consume and discard. Used by
+// lib/instagram/webhook.js. Do not remove, or every Instagram POST is rejected.
+app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 // Reported by /health so a deployment can be checked for a complete env. No
 // route resolves a user from this any more: callers authenticate with a Supabase
@@ -200,6 +204,14 @@ app.get('/health', (req, res) => res.json({
 
 // Retrieval + chat API (Doc A item 5): GET /api/items, GET /api/items/:id, POST /api/chat.
 registerApiRoutes(app);
+
+// Instagram DM capture front door (GET handshake + signed POST). Rejects
+// everything until IG_APP_SECRET / IG_WEBHOOK_VERIFY_TOKEN are set. The
+// orchestrator that acts on events is a later task: until then events are
+// acknowledged and logged without their content.
+registerInstagramWebhook(app, {
+  onEvent: async () => { console.log('[ig-webhook] inbound event received (no handler wired yet)'); },
+});
 
 // POST /api/save — the web paste-box + iOS Shortcut/share-sheet save flow
 // (Doc B). Body: { url }. Responds fast (target <500ms): validates the URL and
