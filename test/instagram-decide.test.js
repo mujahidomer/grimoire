@@ -1,0 +1,280 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { decide, matchItem, normalizeHandle } = require('../lib/instagram/decide');
+const { normalizeUsername, NEEDS_USER_REASONS } = require('../lib/instagram/captures');
+
+const reel = (author, created) => ({
+  id: `item-${author}-${created}`, source_author: author,
+  source_url: 'https://instagram.com/reel/ABC', created_at: created,
+});
+const base = { capture: { reply_attempts: 0, state: 'awaiting_link' }, candidates: [], resolvedUrl: null };
+const fromC = (extra) => ({ ...base,
+  candidates: [reel('c', '2026-11-01T10:00:00Z')],
+  capture: { ...base.capture, sender_username: 'c' }, ...extra });
+
+// Review Focus 4: case and @ differences between Apify and the DM sender
+test('normalizeHandle strips @ and lowercases', () => {
+  assert.strictEqual(normalizeHandle('@TheCreator'), 'thecreator');
+  assert.strictEqual(normalizeHandle(' thecreator '), 'thecreator');
+});
+
+test('normalizeHandle is the one implementation in captures.js, not a copy', () => {
+  assert.strictEqual(normalizeHandle, normalizeUsername);
+});
+
+test('matchItem matches across case and @ differences', () => {
+  const found = matchItem([reel('TheCreator', '2026-11-01T10:00:00Z')], '@thecreator');
+  assert.strictEqual(found.source_author, 'TheCreator');
+});
+
+test('matchItem takes the most recent of two reels by the same creator', () => {
+  const items = [reel('c', '2026-11-01T09:00:00Z'), reel('c', '2026-11-01T11:00:00Z')];
+  assert.strictEqual(matchItem(items, 'c').created_at, '2026-11-01T11:00:00Z');
+});
+
+test('matchItem returns null when no candidate matches', () => {
+  assert.strictEqual(matchItem([reel('other', '2026-11-01T10:00:00Z')], 'c'), null);
+});
+
+test('matchItem compares exactly: an underscore is not a wildcard', () => {
+  assert.strictEqual(matchItem([reel('axb', '2026-11-01T10:00:00Z')], 'a_b'), null);
+  assert.ok(matchItem([reel('a_b', '2026-11-01T10:00:00Z')], 'A_B'));
+});
+
+test('matchItem copes with a missing sender and items with no author', () => {
+  const items = [reel(null, '2026-11-01T10:00:00Z'), reel('c', '2026-11-01T09:00:00Z')];
+  assert.strictEqual(matchItem(items, null), null);
+  assert.strictEqual(matchItem(items, '@'), null);
+  assert.strictEqual(matchItem(items, 'c').source_author, 'c');
+});
+
+test('decide attaches a resolved url to the matched reel', () => {
+  const action = decide({ ...base,
+    event: { message: { text: 'https://example.com/guide' } },
+    resolvedUrl: 'https://example.com/guide',
+    candidates: [reel('c', '2026-11-01T10:00:00Z')],
+    capture: { ...base.capture, sender_username: 'c' } });
+  assert.strictEqual(action.kind, 'attach');
+  assert.strictEqual(action.url, 'https://example.com/guide');
+});
+
+test('decide attaches to the matched item id, matching across case and @', () => {
+  const action = decide(fromC({
+    event: { message: { text: 'https://example.com/guide' } },
+    resolvedUrl: 'https://example.com/guide?utm=1',
+    capture: { ...base.capture, sender_username: '@C' } }));
+  assert.deepStrictEqual(action,
+    { kind: 'attach', itemId: 'item-c-2026-11-01T10:00:00Z', url: 'https://example.com/guide?utm=1' });
+});
+
+test('decide parks with no_match when the creator has no saved reel', () => {
+  const action = decide({ ...base,
+    event: { message: { text: 'https://example.com/guide' } },
+    resolvedUrl: 'https://example.com/guide',
+    capture: { ...base.capture, sender_username: 'unsaved' } });
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'no_match' });
+});
+
+test('decide replies DONE to an allowlisted gate from a matched creator', () => {
+  const action = decide({ ...base,
+    event: { message: { text: 'Almost! Just reply DONE and I will send it' } },
+    candidates: [reel('c', '2026-11-01T10:00:00Z')],
+    capture: { ...base.capture, sender_username: 'c' } });
+  assert.deepStrictEqual(action, { kind: 'reply', text: 'DONE' });
+});
+
+test('decide parks a follow gate rather than replying', () => {
+  const action = decide({ ...base,
+    event: { message: { text: 'Make sure you follow me first!' } },
+    candidates: [reel('c', '2026-11-01T10:00:00Z')],
+    capture: { ...base.capture, sender_username: 'c' } });
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'follow_gate' });
+});
+
+test('decide parks after two reply attempts', () => {
+  const action = decide({ ...base,
+    event: { message: { text: 'reply DONE' } },
+    candidates: [reel('c', '2026-11-01T10:00:00Z')],
+    capture: { ...base.capture, sender_username: 'c', reply_attempts: 2 } });
+  assert.strictEqual(action.kind, 'park');
+});
+
+test('decide never replies to a sender with no matching saved reel', () => {
+  const action = decide({ ...base,
+    event: { message: { text: 'reply DONE' } },
+    capture: { ...base.capture, sender_username: 'a-stranger' } });
+  assert.notStrictEqual(action.kind, 'reply');
+});
+
+test('decide parks hub_page when the link resolves to a hub', () => {
+  const action = decide({ ...base,
+    event: { message: { text: 'https://linktr.ee/c' } },
+    resolvedUrl: null,
+    candidates: [reel('c', '2026-11-01T10:00:00Z')],
+    capture: { ...base.capture, sender_username: 'c' } });
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'hub_page' });
+});
+
+// --- Additions beyond the brief's eleven -----------------------------------
+
+test('decide parks hub_page for an instagram.com link', () => {
+  const action = decide(fromC({ event: { message: { text: 'see https://www.instagram.com/c/' } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'hub_page' });
+});
+
+test('decide parks unusable_link, not hub_page, for an image-only share', () => {
+  const action = decide(fromC({ event: { message: { attachments: [
+    { type: 'image', payload: { url: 'https://scontent.cdninstagram.com/v/t51/x.jpg' } }] } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'unusable_link' });
+});
+
+test('decide parks unusable_link for an fbcdn media link in text', () => {
+  const action = decide(fromC({ event: { message: { text: 'https://video.fbcdn.net/v/clip.mp4' } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'unusable_link' });
+});
+
+test('decide parks unusable_link for a facebook wrapper that failed to unwrap', () => {
+  const action = decide(fromC({ event: { message: { text: 'https://l.facebook.com/l.php?e=abc' } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'unusable_link' });
+});
+
+test('decide parks hub_page for an instagram wrapper that failed to unwrap (an instagram.com host)', () => {
+  const action = decide(fromC({ event: { message: { text: 'https://l.instagram.com/?e=abc' } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'hub_page' });
+});
+
+test('decide parks unusable_link when the picked article url failed to resolve', () => {
+  // A usable article was found and the fetch failed; the hub in the same
+  // message is not the reason the capture is stuck.
+  const action = decide(fromC({ event: { message: {
+    text: 'https://example.com/guide and https://linktr.ee/c' } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'unusable_link' });
+});
+
+test('decide parks hub_page when the only candidates are hubs, even mixed with media', () => {
+  const action = decide(fromC({ event: { message: {
+    text: 'https://scontent.cdninstagram.com/x.jpg https://linktr.ee/c' } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'hub_page' });
+});
+
+test('decide judges the link before the creator: a hub from an unsaved creator is hub_page', () => {
+  // Only a usable resolved url needs a matched reel; a hub is a hub regardless.
+  const action = decide({ ...base,
+    event: { message: { text: 'https://linktr.ee/c' } },
+    capture: { ...base.capture, sender_username: 'unsaved' } });
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'hub_page' });
+});
+
+test('decide ignores a link-less DM from a sender with no saved reel', () => {
+  const action = decide({ ...base,
+    event: { message: { text: 'hey, how are you?' } },
+    capture: { ...base.capture, sender_username: 'a-stranger' } });
+  assert.strictEqual(action.kind, 'ignore');
+  assert.strictEqual(typeof action.reason, 'string');
+});
+
+test('decide ignores a link-less DM when the capture has no sender_username', () => {
+  const action = decide({ ...base, event: { message: { text: 'reply DONE' } },
+    candidates: [reel('c', '2026-11-01T10:00:00Z')] });
+  assert.strictEqual(action.kind, 'ignore');
+});
+
+test('decide replies with each allowlisted word', () => {
+  for (const word of ['DONE', 'YES', 'SEND', 'LINK', 'GO', '✅']) {
+    const action = decide(fromC({ event: { message: { text: `Reply ${word} to get it` } } }));
+    assert.deepStrictEqual(action, { kind: 'reply', text: word }, word);
+  }
+});
+
+test('decide replies with a bare digit, and not with digits inside other tokens', () => {
+  assert.deepStrictEqual(
+    decide(fromC({ event: { message: { text: 'Reply 1 for the guide' } } })),
+    { kind: 'reply', text: '1' });
+  assert.strictEqual(
+    decide(fromC({ event: { message: { text: 'Join 10,000 readers on v2' } } })).kind, 'park');
+});
+
+test('decide matches allowlist words whole-word and replies in canonical uppercase', () => {
+  assert.deepStrictEqual(
+    decide(fromC({ event: { message: { text: 'just reply done!' } } })),
+    { kind: 'reply', text: 'DONE' });
+  // "ongoing", "linked", "gone" contain allowlist words but are not them.
+  assert.deepStrictEqual(
+    decide(fromC({ event: { message: { text: 'ongoing and linked, then gone' } } })),
+    { kind: 'park', reason: 'freeform_gate' });
+});
+
+test('decide replies with the first allowlist word in the prompt', () => {
+  const action = decide(fromC({ event: { message: { text: 'Send me YES and then DONE' } } }));
+  assert.deepStrictEqual(action, { kind: 'reply', text: 'SEND' });
+});
+
+test('decide still replies on the second attempt and stops on the third', () => {
+  const ev = { message: { text: 'reply DONE' } };
+  const at = (n) => decide(fromC({ event: ev, capture: { sender_username: 'c', reply_attempts: n } }));
+  assert.strictEqual(at(0).kind, 'reply');
+  assert.strictEqual(at(1).kind, 'reply');
+  assert.deepStrictEqual(at(2), { kind: 'park', reason: 'freeform_gate' });
+  assert.strictEqual(at(3).kind, 'park');
+});
+
+test('decide treats a missing reply_attempts as zero', () => {
+  const action = decide(fromC({ event: { message: { text: 'reply DONE' } },
+    capture: { sender_username: 'c' } }));
+  assert.strictEqual(action.kind, 'reply');
+});
+
+test('decide parks follow_gate even once the reply budget is spent', () => {
+  const action = decide(fromC({ event: { message: { text: 'follow me and reply DONE' } },
+    capture: { sender_username: 'c', reply_attempts: 2 } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'follow_gate' });
+});
+
+test('decide replies to a prompt that mentions following but also names a keyword', () => {
+  // Follow gates are mostly unenforced prose (spec risk 3), so the keyword is tried first.
+  const action = decide(fromC({ event: { message: { text: 'Follow me, then reply DONE' } } }));
+  assert.deepStrictEqual(action, { kind: 'reply', text: 'DONE' });
+});
+
+test('decide parks freeform_gate for a prompt with no allowlist word and no follow', () => {
+  const action = decide(fromC({ event: { message: { text: 'What is your biggest challenge right now?' } } }));
+  assert.deepStrictEqual(action, { kind: 'park', reason: 'freeform_gate' });
+});
+
+test('decide parks freeform_gate for an event with no message', () => {
+  assert.deepStrictEqual(decide(fromC({ event: {} })), { kind: 'park', reason: 'freeform_gate' });
+});
+
+test('decide never returns a park reason outside NEEDS_USER_REASONS', () => {
+  const events = [
+    'https://linktr.ee/c', 'https://scontent.cdninstagram.com/x.jpg', 'https://example.com/a',
+    'follow me', 'reply DONE', 'hello',
+  ];
+  for (const sender of ['c', 'nobody']) {
+    for (const attempts of [0, 2]) {
+      for (const text of events) {
+        for (const resolvedUrl of [null, 'https://example.com/a']) {
+          const action = decide({ ...base, resolvedUrl, event: { message: { text } },
+            candidates: [reel('c', '2026-11-01T10:00:00Z')],
+            capture: { sender_username: sender, reply_attempts: attempts } });
+          if (action.kind === 'park') assert.ok(NEEDS_USER_REASONS.includes(action.reason), action.reason);
+        }
+      }
+    }
+  }
+});
+
+test('decide performs no I/O and does not mutate its input', () => {
+  const input = fromC({ event: { message: { text: 'reply DONE' } } });
+  const snapshot = JSON.stringify(input);
+  const result = decide(input);
+  assert.strictEqual(JSON.stringify(input), snapshot);
+  assert.strictEqual(typeof result.then, 'undefined'); // a plain object, not a promise
+});
+
+test('decide attaches only when a url resolved: resolvedUrl wins over gate text', () => {
+  const action = decide(fromC({
+    event: { message: { text: 'reply DONE https://example.com/a' } },
+    resolvedUrl: 'https://example.com/a' }));
+  assert.strictEqual(action.kind, 'attach');
+});
