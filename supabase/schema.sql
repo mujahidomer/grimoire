@@ -462,7 +462,7 @@ begin
      set processed_message_ids = processed_message_ids || to_jsonb(p_message_id)
    where id = p_capture_id
      and user_id = p_user_id
-     and not (processed_message_ids ? p_message_id);
+     and not jsonb_exists(processed_message_ids, p_message_id);
   get diagnostics n = row_count;
   if n = 0 and not exists (
     select 1 from dm_captures where id = p_capture_id and user_id = p_user_id

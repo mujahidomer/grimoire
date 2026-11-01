@@ -99,3 +99,44 @@ test('isUniqueViolation recognises only Postgres 23505', () => {
   assert.strictEqual(isUniqueViolation({ code: '23503' }), false);
   assert.strictEqual(isUniqueViolation(null), false);
 });
+
+// The tenant guard: dm_captures holds every user's conversations and the
+// service-role client bypasses RLS, so a missing userId must throw before any
+// query is built. The guard runs before getSupabase(), so no database is needed.
+test('every query function refuses a falsy userId', async () => {
+  const c = require('../lib/instagram/captures');
+  const calls = {
+    findActiveCapture: (u) => c.findActiveCapture(u, 'igsid-1'),
+    createCapture: (u) => c.createCapture(u, { senderIgsid: 'igsid-1' }),
+    updateCapture: (u) => c.updateCapture('cap-1', { state: 'matched' }, u),
+    findPendingCaptures: (u) => c.findPendingCaptures(u, 'someone'),
+    expireStaleCaptures: (u) => c.expireStaleCaptures(u),
+    recordProcessedMessage: (u) => c.recordProcessedMessage('cap-1', 'mid.AAA', u),
+  };
+  for (const [name, call] of Object.entries(calls)) {
+    for (const bad of [null, undefined, '']) {
+      await assert.rejects(() => call(bad), /requires a userId/, `${name}(${JSON.stringify(bad)})`);
+    }
+  }
+});
+
+test('ACTIVE_STATES is the one list of live states, exported', () => {
+  const { ACTIVE_STATES } = require('../lib/instagram/captures');
+  assert.deepStrictEqual([...ACTIVE_STATES].sort(), ['awaiting_link', 'needs_user', 'replied']);
+});
+
+test('toUpdateError turns the one-active-capture violation into a named error', () => {
+  const { toUpdateError, CaptureConflictError } = require('../lib/instagram/captures');
+  const raw = { code: '23505', message: 'duplicate key value violates unique constraint "dm_captures_one_active_idx"' };
+  const err = toUpdateError(raw);
+  assert.ok(err instanceof CaptureConflictError);
+  assert.strictEqual(err.code, 'active_capture_exists');
+  assert.doesNotMatch(err.message, /duplicate key/);
+});
+
+test('toUpdateError leaves any other database error as a plain failure', () => {
+  const { toUpdateError, CaptureConflictError } = require('../lib/instagram/captures');
+  const err = toUpdateError({ code: '23503', message: 'foreign key violation' });
+  assert.ok(!(err instanceof CaptureConflictError));
+  assert.match(err.message, /updateCapture failed: foreign key violation/);
+});
