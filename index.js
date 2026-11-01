@@ -156,6 +156,8 @@ async function runPipeline(rawText, sourceUrl, hashtags, parts = {}, userId) {
   // by upsertItem, so canonicalization has to land before that write, same as
   // reconcileSubcategory() does for topic_subcategory inside processContent().
   for (const item of items) await resolveEntities(item.entities);
+  // Creator handle comes from extraction, not the classifier -- set it here.
+  for (const item of items) item.source_author = parts.author || null;
   const saved = [];
   for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
   return saved;
@@ -177,7 +179,7 @@ async function saveFromUrl(url, userId) {
   }
 
   return runPipeline(extracted.text, url, extracted.hashtags,
-    { caption: extracted.caption, transcript: extracted.transcript }, userId);
+    { caption: extracted.caption, transcript: extracted.transcript, author: extracted.author }, userId);
 }
 
 // Runs the actual extract → classify → save pipeline for POST /api/save AFTER
@@ -363,7 +365,7 @@ app.post('/process-url', requireAuth(async (req, res) => {
     const extracted = await extractContent(url);
     if (!extracted.text) return res.json({ success: false, error: 'no_transcript', message: 'No transcript available — paste text manually' });
     const saved = await runPipeline(extracted.text, url, extracted.hashtags,
-      { caption: extracted.caption, transcript: extracted.transcript }, req.userId);
+      { caption: extracted.caption, transcript: extracted.transcript, author: extracted.author }, req.userId);
     res.json({ success: true, count: saved.length, items: saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });

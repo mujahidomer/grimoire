@@ -158,6 +158,11 @@ alter table items add column if not exists artifact_subcategory text;
 
 create index if not exists items_top_category_idx on items (user_id, top_category);
 
+-- Creator handle (Instagram ownerUsername / X author) so an incoming Instagram
+-- DM can be matched to the reel it came from. No backfill: only new saves.
+alter table items add column if not exists source_author text;
+create index if not exists items_source_author_idx on items (user_id, source_author);
+
 -- ⚠️  MANUAL STEP FOR MUJI: run this block in the Supabase SQL editor alongside
 --     the category-dashboard migration above (idempotent, safe to re-run).
 -- Data-driven top categories. The 13-value list is no longer hardcoded — it
