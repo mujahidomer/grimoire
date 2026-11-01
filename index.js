@@ -19,6 +19,7 @@ const { defaultUserId } = require('./lib/supabase');
 const { refreshTopCategories } = require('./lib/topCategories');
 const { requireAuth, logAuthMode } = require('./lib/request-auth');
 const { seedUserLibrary } = require('./lib/seed');
+const { runPreflight, lastPreflight } = require('./lib/preflight');
 
 const app = express();
 // CORS for the web UI (Doc B paste-box + chat panel). The throwaway viewer runs
@@ -220,7 +221,14 @@ async function processSaveInBackground(itemId, url, userId) {
 }
 
 // ─── REST API ─────────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => res.json({ status: 'ok', user: !!USER_ID }));
+// `providers` is null until the startup probes finish (a second or two after
+// the port opens) — it reports the LAST check, not a live one, so hitting
+// /health does not spend a provider call per request.
+app.get('/health', (req, res) => res.json({
+  status: 'ok',
+  user: !!USER_ID,
+  providers: lastPreflight(),
+}));
 
 // Retrieval + chat API (Doc A item 5): GET /api/items, GET /api/items/:id, POST /api/chat.
 registerApiRoutes(app);
@@ -387,6 +395,11 @@ async function start() {
   app.listen(PORT, () => {
     const supadata = process.env.SUPADATA_API_KEY?.trim() ? 'configured' : 'missing';
     console.log(`🔮 Grimoire running on port ${PORT} (Supadata: ${supadata})`);
+
+    // After listen, not before: a provider having a slow minute must not hold
+    // the port shut and fail the deployment's health check. Non-fatal by
+    // design — see lib/preflight.js.
+    runPreflight().catch(err => console.error('[preflight] check itself failed:', err));
   });
 }
 
