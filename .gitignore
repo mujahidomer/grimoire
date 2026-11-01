@@ -147,3 +147,6 @@ scripts/dry-run-assignments.txt
 
 # Pre-write DB snapshots taken before destructive maintenance scripts
 scripts/backups/
+
+# Scratch files from agent sessions (one-off scripts, dry-run output)
+._*
