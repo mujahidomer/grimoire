@@ -2,10 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { extractContent } = require('./lib/extractor');
-const { processContent, researchUrl, processLinkedResource, extractEntities } = require('./lib/classifier');
+const { processContent, researchUrl } = require('./lib/classifier');
 const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
-  upsertItem, upsertItemTags, upsertLinkedResource, mergeItemEntities, getItemById,
+  upsertItem, upsertItemTags, upsertLinkedResource, getItemById,
   promotedArtifactUrl, updateItemStatus, getSubcategoryVocabulary
 } = require('./lib/repository');
 const { normalizeUrl } = require('./lib/url');
