@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { extractUrls, isHubPage, isMediaUrl, pickBestUrl, resolveUrl } = require('../lib/instagram/links');
+const { extractUrls, unwrapLink, isHubPage, isMediaUrl, pickBestUrl, resolveUrl } = require('../lib/instagram/links');
 
 test('extractUrls finds a url in message text', () => {
   const ev = { message: { text: 'Here you go https://mnch.at/abc123 enjoy' } };
@@ -267,12 +267,12 @@ test('pickBestUrl returns the chosen candidate exactly as given', () => {
 
 // The regression: pickBestUrl used to normalize, which stripped the query and
 // destroyed a wrapper link's destination before resolveUrl saw it.
-test('a wrapper link keeps its query from extractUrls through pickBestUrl to resolveUrl', async () => {
-  const wrapper = 'https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.com%2Fthe-article&h=AT0abc';
+test('an unlisted wrapper link keeps its whole query from extractUrls through pickBestUrl to resolveUrl', async () => {
+  const wrapper = 'https://go.example.net/r?u=https%3A%2F%2Fexample.com%2Fthe-article&h=AT0abc';
   const ev = { message: { text: `read this ${wrapper} (via a friend)` } };
 
   const extracted = extractUrls(ev);
-  assert.deepStrictEqual(extracted, [wrapper]);
+  assert.deepStrictEqual(extracted, [wrapper], 'not a known wrapper host, so left exactly as found');
   const picked = pickBestUrl(extracted);
   assert.strictEqual(picked, wrapper);
 
@@ -283,6 +283,19 @@ test('a wrapper link keeps its query from extractUrls through pickBestUrl to res
   const result = await resolve(picked, { fetchImpl });
   assert.deepStrictEqual(fetchImpl.calls[0], wrapper, 'resolveUrl is handed the full wrapper, query and all');
   assert.deepStrictEqual(result, { url: 'https://example.com/the-article?utm_source=fb', hops: 1 });
+});
+
+test('a known wrapper is unwrapped and the destination keeps its own query through to resolveUrl', async () => {
+  const wrapper = 'https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.com%2Fthe-article%3Fid%3D7%26ref%3Dig&h=AT0abc';
+  const inner = 'https://example.com/the-article?id=7&ref=ig';
+  const extracted = extractUrls({ message: { text: `read this ${wrapper} (via a friend)` } });
+  assert.deepStrictEqual(extracted, [inner]);
+  const picked = pickBestUrl(extracted);
+  assert.strictEqual(picked, inner);
+
+  const fetchImpl = fakeFetch({ [inner]: finalPage() });
+  assert.deepStrictEqual(await resolve(picked, { fetchImpl }), { url: inner, hops: 0 });
+  assert.deepStrictEqual(fetchImpl.calls, [inner], 'no wrapper redirect hop is spent');
 });
 
 test('resolveUrl does not force https on the final url', async () => {
@@ -411,4 +424,99 @@ test('resolveUrl truncates and quotes a hostile url in the log', async () => {
   assert.strictEqual(logImpl.lines.length, 1);
   assert.ok(!logImpl.lines[0].includes('\n'), 'no raw newline reaches the log');
   assert.ok(logImpl.lines[0].length < 450);
+});
+
+// --- link wrappers (l.instagram.com etc.) ---
+
+const wrap = (host, inner, extra = '') => `https://${host}/${host === 'l.instagram.com' ? '' : 'l.php'}?u=${encodeURIComponent(inner)}${extra}`;
+
+test('unwrapLink yields the article behind each known wrapper host', () => {
+  const article = 'https://example.com/the-article?id=7&ref=ig';
+  for (const host of ['l.instagram.com', 'l.facebook.com', 'lm.facebook.com']) {
+    assert.strictEqual(unwrapLink(wrap(host, article, '&e=AT0xyz')), article, host);
+  }
+  assert.strictEqual(unwrapLink('HTTPS://L.Instagram.com/?u=https%3A%2F%2Fexample.com%2Fa'), 'https://example.com/a');
+});
+
+test('a wrapper around a real article survives pickBestUrl even though l.instagram.com is a hub', () => {
+  const article = 'https://example.com/the-article';
+  const wrapper = wrap('l.instagram.com', article, '&e=AT0xyz');
+  assert.strictEqual(isHubPage(wrapper), true, 'the wrapper itself is an instagram.com url');
+  const extracted = extractUrls({ message: { text: `get it here ${wrapper}` } });
+  assert.deepStrictEqual(extracted, [article]);
+  assert.strictEqual(pickBestUrl(extracted), article);
+});
+
+test('a wrapper around a Linktree is still skipped as a hub', () => {
+  const extracted = extractUrls({ message: { text: wrap('l.instagram.com', 'https://linktr.ee/thecreator') } });
+  assert.deepStrictEqual(extracted, ['https://linktr.ee/thecreator']);
+  assert.strictEqual(pickBestUrl(extracted), null);
+  // ...and a wrapper around an instagram profile likewise
+  assert.strictEqual(pickBestUrl(extractUrls({ message: { text: wrap('l.facebook.com', 'https://instagram.com/thecreator') } })), null);
+});
+
+test('a wrapper whose u is a non-http scheme is rejected (returned unchanged, never unwrapped)', () => {
+  for (const bad of ['javascript:alert(1)', 'file:///etc/passwd', 'data:text/html,hi', 'ftp://example.com/a', 'example.com/no-scheme']) {
+    const wrapper = wrap('l.facebook.com', bad);
+    assert.strictEqual(unwrapLink(wrapper), wrapper, bad);
+  }
+  const igWrapper = wrap('l.instagram.com', 'javascript:alert(1)');
+  assert.strictEqual(unwrapLink(igWrapper), igWrapper);
+  assert.strictEqual(pickBestUrl([igWrapper]), null, 'and an instagram wrapper that stays a wrapper is still a hub');
+});
+
+test('a wrapper with no usable u passes through unchanged', () => {
+  for (const url of [
+    'https://l.instagram.com/',
+    'https://l.instagram.com/?e=AT0xyz',
+    'https://l.instagram.com/?u=',
+    'https://l.instagram.com/?url=https%3A%2F%2Fexample.com%2Fa', // only `u` is read
+    'https://l.facebook.com/l.php?uu=https%3A%2F%2Fexample.com%2Fa',
+    'https://l.facebook.com/l.php?u=%E0%A4%A', // undecodable
+  ]) {
+    assert.strictEqual(unwrapLink(url), url, url);
+  }
+});
+
+test('unwrapLink leaves non-wrapper hosts alone, even with a u parameter', () => {
+  for (const url of [
+    'https://example.com/?u=https%3A%2F%2Fother.example%2Fa',
+    'https://l.instagram.com.evil.example/?u=https%3A%2F%2Fother.example%2Fa',
+    'https://notl.instagram.com/?u=https%3A%2F%2Fother.example%2Fa',
+    'https://instagram.com/?u=https%3A%2F%2Fother.example%2Fa',
+    'https://www.l.facebook.com/l.php?u=https%3A%2F%2Fother.example%2Fa',
+    'https://l.instagram.com@evil.example/?u=https%3A%2F%2Fother.example%2Fa',
+  ]) {
+    assert.strictEqual(unwrapLink(url), url, url);
+  }
+});
+
+test('unwrapLink returns non-url input unchanged', () => {
+  for (const v of [null, undefined, '', 'not a url', 42]) assert.strictEqual(unwrapLink(v), v);
+});
+
+test('unwrapLink decodes u exactly once', () => {
+  // u=https%3A%2F%2Fexample.com%2Fa%2520b : one decode leaves a literal %20 in the path
+  assert.strictEqual(unwrapLink('https://l.instagram.com/?u=https%3A%2F%2Fexample.com%2Fa%2520b'),
+    'https://example.com/a%20b');
+  // a double-encoded url is not an absolute url after one decode, so it is not unwrapped
+  const doubly = 'https://l.instagram.com/?u=https%253A%252F%252Fexample.com%252Fa';
+  assert.strictEqual(unwrapLink(doubly), doubly);
+  // '+' is a literal plus in a path, not a space
+  assert.strictEqual(unwrapLink('https://l.instagram.com/?u=https%3A%2F%2Fexample.com%2Fa+b'), 'https://example.com/a+b');
+});
+
+test('unwrapLink follows nested wrappers at most twice', () => {
+  const article = 'https://example.com/the-article';
+  const one = wrap('l.facebook.com', article);
+  const two = wrap('l.instagram.com', one);
+  const three = wrap('lm.facebook.com', two);
+  assert.strictEqual(unwrapLink(one), article);
+  assert.strictEqual(unwrapLink(two), article);
+  assert.strictEqual(unwrapLink(three), one, 'three deep: two layers peeled, the third left as it is');
+});
+
+test('unwrapLink only reads the first u parameter', () => {
+  assert.strictEqual(unwrapLink('https://l.instagram.com/?u=https%3A%2F%2Fexample.com%2Fa&u=https%3A%2F%2Fother.example%2Fb'),
+    'https://example.com/a');
 });
