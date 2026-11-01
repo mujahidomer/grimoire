@@ -1,7 +1,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const {
-  handleEvent, sendReply, lookupUsername, rematchPendingCaptures, resolveIgUserId, isInstagramUrl,
+  handleEvent, sendReply, lookupUsername, rematchPendingCaptures, rematchInBackground, resolveIgUserId,
+  isInstagramUrl,
 } = require('../lib/instagram/capture');
 const { buildCapturePatch } = require('../lib/instagram/captures');
 
@@ -638,4 +639,43 @@ test('lookupUsername does not retry a 200 whose body is not JSON', async () => {
   assert.deepStrictEqual(result, { ok: false, error: 'invalid_json_response' });
   assert.strictEqual(n, 1);
   assert.deepStrictEqual(slept, []);
+});
+
+test('lookupUsername tells a JSON null body apart from a body that is not JSON', async () => {
+  const nullBody = await lookupUsername('igsid-1', { token: 't', sleepImpl: async () => {},
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => null }) });
+  assert.deepStrictEqual(nullBody, { ok: false, error: 'no_username_in_response' });
+  const noField = await lookupUsername('igsid-1', { token: 't', sleepImpl: async () => {},
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ id: '1' }) }) });
+  assert.deepStrictEqual(noField, { ok: false, error: 'no_username_in_response' });
+  const notJson = await lookupUsername('igsid-1', { token: 't', sleepImpl: async () => {},
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('x'); } }) });
+  assert.deepStrictEqual(notJson, { ok: false, error: 'invalid_json_response' });
+});
+
+const settle = async () => { for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r)); };
+
+test('rematchInBackground reports a failure through the injected sink and never rejects', async () => {
+  const errors = [];
+  const logs = [];
+  const unhandled = [];
+  const onUnhandled = (e) => unhandled.push(e);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const d = rematchDeps([], { logError: (m) => errors.push(m), log: (m) => logs.push(m),
+      findPendingCaptures: async () => { throw new Error('db down'); } });
+    assert.strictEqual(rematchInBackground(USER, 'thecreator', { deps: d }), undefined);
+    await settle();
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /rematch failed: Error: db down/);
+    assert.deepStrictEqual(unhandled, []);
+  } finally { process.off('unhandledRejection', onUnhandled); }
+});
+
+test('rematchInBackground reports a success through the injected log sink', async () => {
+  const logs = [];
+  const d = rematchDeps([waiting()], { log: (m) => logs.push(m), logError: () => assert.fail('no error expected') });
+  rematchInBackground(USER, 'thecreator', { deps: d });
+  await settle();
+  assert.deepStrictEqual(logs, ['[ig-capture] rematched 1 waiting capture(s)']);
 });
