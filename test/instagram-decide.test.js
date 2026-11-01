@@ -198,14 +198,6 @@ test('decide replies with each allowlisted word', () => {
   }
 });
 
-test('decide replies with a bare digit, and not with digits inside other tokens', () => {
-  assert.deepStrictEqual(
-    decide(fromC({ event: { message: { text: 'Reply 1 for the guide' } } })),
-    { kind: 'reply', text: '1' });
-  assert.strictEqual(
-    decide(fromC({ event: { message: { text: 'Join 10,000 readers on v2' } } })).kind, 'park');
-});
-
 test('decide matches allowlist words whole-word and replies in canonical uppercase', () => {
   assert.deepStrictEqual(
     decide(fromC({ event: { message: { text: 'just reply done!' } } })),
@@ -295,11 +287,14 @@ test('decide: a resolvedUrl takes precedence over gate text in the same message'
 
 const replyTo = (text, extra) => decide(fromC({ event: { message: { text } }, ...extra }));
 
-test('decide does not echo a long digit run (a code, a card number) back to the sender', () => {
-  for (const text of ['your code is 4111111111111111, reply with it', 'reply 123', 'Reply 2026 to enter']) {
+test('decide never replies with a digit: no number is ever sent back', () => {
+  // The bare-digit pass was removed: no captured gate has shown a numbered menu,
+  // and a 1-2 digit number after a noun-sense verb is an ordinary quantifier
+  // ("Type 2 diabetes"). Restore it only against a captured real gate.
+  for (const text of ['your code is 4111111111111111, reply with it', 'reply 123', 'Reply 2026 to enter',
+    'Reply 12 for the guide', 'Reply 1 for the guide', 'type 2 to continue', 'Type 1', "I'm 25"]) {
     assert.notStrictEqual(replyTo(text).kind, 'reply', text);
   }
-  assert.deepStrictEqual(replyTo('Reply 12 for the guide'), { kind: 'reply', text: '12' });
 });
 
 test('decide does not answer a bare uppercase keyword: case is not evidence of a gate', () => {
@@ -341,16 +336,9 @@ test('decide does not answer ordinary English that happens to contain a keyword'
   }
 });
 
-test('decide prefers a keyword to a digit, wherever the digit sits', () => {
+test('decide answers the keyword even when digits are in the message', () => {
   assert.deepStrictEqual(replyTo('In 2026, reply DONE'), { kind: 'reply', text: 'DONE' });
-  assert.deepStrictEqual(replyTo('Reply 1 or just reply DONE'), { kind: 'reply', text: 'DONE' });
-});
-
-test('decide answers a bare digit only after an instruction verb', () => {
-  assert.deepStrictEqual(replyTo('Reply 1 for the guide'), { kind: 'reply', text: '1' });
-  assert.deepStrictEqual(replyTo('type 2 to continue'), { kind: 'reply', text: '2' });
-  assert.strictEqual(replyTo("I'm 25").kind, 'park');
-  assert.strictEqual(replyTo('Join 10 readers').kind, 'park');
+  assert.deepStrictEqual(replyTo('1. Follow me 2. Reply DONE'), { kind: 'reply', text: 'DONE' });
 });
 
 test('decide answers a check mark only after an instruction verb', () => {
@@ -402,6 +390,30 @@ const PARKS = [
   'the reply DONE button is broken',
   "I'll comment done when I post it",
   'Did the DM send? yes',
+  // Round 4: a keyword must CLOSE its instruction, only "me"/"with" may sit
+  // between verb and keyword, and there is no digit pass.
+  'Type 2 diabetes is reversible',
+  'Type 2 diabetes',
+  'Type 1 diabetes awareness month',
+  'Comment 2 said the same thing',
+  'Reply 2 was the one that stung',
+  'Send 2 of those over whenever',
+  'Send 3 and I will pick one',
+  'DM sent ✅',
+  'Comment posted ✅',
+  'Reply received ✅',
+  'Comment pinned ✅',
+  "I'll take a look and send link",
+  "I'll check with the team and reply yes or no",
+  'let me look into it and send link tomorrow',
+  'Send us LINK',
+  'Send them LINK',
+  'Send one LINK',
+  'Send both LINK',
+  'Send me 2 or 3 examples of what you tried',
+  'Comment below ✅',
+  'Reply 1 for the guide',
+  'type 2 to continue',
 ];
 
 const REPLIES = [
@@ -421,20 +433,18 @@ const REPLIES = [
   ['Follow + reply DONE', 'DONE'],
   ['1. Follow me 2. Reply DONE', 'DONE'],
   ['To unlock, send DONE', 'DONE'],
-  ['Reply 1 for the guide', '1'],
-  ['type 2 to continue', '2'],
   ['reply\nDONE', 'DONE'],
 ];
 
 test('PARKS table: ordinary DM prose containing a keyword never draws a reply', () => {
-  assert.strictEqual(PARKS.length, 15);
+  assert.strictEqual(PARKS.length, 37);
   for (const text of PARKS) {
     assert.deepStrictEqual(replyTo(text), { kind: 'park', reason: 'freeform_gate' }, JSON.stringify(text));
   }
 });
 
 test('REPLIES table: real gate wording is still answered, with the right word', () => {
-  assert.strictEqual(REPLIES.length, 19);
+  assert.strictEqual(REPLIES.length, 17);
   for (const [text, word] of REPLIES) {
     assert.deepStrictEqual(replyTo(text), { kind: 'reply', text: word }, JSON.stringify(text));
   }
@@ -459,4 +469,27 @@ test('the verb must open the instruction: a noun use of reply/comment/DM does no
   assert.strictEqual(replyTo('my reply: yes').kind, 'park');
   assert.strictEqual(replyTo('your comment says go').kind, 'park');
   assert.strictEqual(replyTo('Send the link to me').kind, 'park');
+});
+
+test('a keyword must close its instruction: followed by more words it is a noun phrase', () => {
+  assert.strictEqual(replyTo('Send LINK tomorrow').kind, 'park');
+  assert.strictEqual(replyTo('Reply YES or NO').kind, 'park');
+  assert.strictEqual(replyTo('Reply DONE below').kind, 'reply');
+  assert.strictEqual(replyTo('Reply DONE to get it').kind, 'reply');
+  assert.strictEqual(replyTo('Reply DONE for access').kind, 'reply');
+  assert.strictEqual(replyTo('Reply DONE, thanks').kind, 'reply');
+  assert.strictEqual(replyTo('Reply DONE\nand enjoy').kind, 'reply');
+});
+
+test('only "me" and "with" may sit between verb and keyword', () => {
+  for (const gap of ['me', 'with']) assert.strictEqual(replyTo(`Reply ${gap} DONE`).kind, 'reply', gap);
+  for (const gap of ['us', 'them', 'him', 'her', 'one', 'any', 'both', 'all', 'the', 'a', 'posted', 'received']) {
+    assert.strictEqual(replyTo(`Send ${gap} LINK`).kind, 'park', gap);
+  }
+});
+
+test('and/then end a clause but never open an instruction', () => {
+  assert.strictEqual(replyTo('Follow me and reply DONE').kind, 'park');
+  assert.strictEqual(replyTo('Follow me, then reply DONE').kind, 'reply');
+  assert.strictEqual(replyTo('Follow me. Then reply DONE').kind, 'reply');
 });
