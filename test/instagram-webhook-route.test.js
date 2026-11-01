@@ -73,6 +73,7 @@ test('verifySignature returns false (does not throw) for malformed headers', () 
   const good = sign(body);
   const bad = [
     '', 'sha256=', 'sha256=zz', 'sha256=' + 'g'.repeat(64), // not hex
+    good.toUpperCase().replace('SHA256=', 'sha256='),         // Meta sends lowercase hex
     good.slice(0, -2), good + '00',                          // wrong length
     good.replace('sha256=', 'sha1='), good.replace('sha256=', ''),
     42, null, {}, [good],

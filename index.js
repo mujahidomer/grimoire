@@ -34,7 +34,12 @@ app.use(cors({
 // The verify hook keeps the raw bytes: Meta's webhook signature is an HMAC of the
 // exact body, which express.json() would otherwise consume and discard. Used by
 // lib/instagram/webhook.js. Do not remove, or every Instagram POST is rejected.
-app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
+// limit: express.json() defaults to 100kb and rejects bigger bodies with a 413
+// during read, BEFORE any route (so before the webhook's 200-first handling).
+// Meta batches events and retries on any non-2xx, so a signed batch over 100kb
+// would be refused forever and its events lost. 2mb is well above any plausible
+// batch and still bounded. Do not lower it back to the default.
+app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 // Reported by /health so a deployment can be checked for a complete env. No
 // route resolves a user from this any more: callers authenticate with a Supabase
