@@ -18,6 +18,7 @@ const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 const { refreshTopCategories } = require('./lib/topCategories');
 const { requireAuth, logAuthMode } = require('./lib/request-auth');
+const { attachLinkedResource, attachResourceEntities } = require('./lib/linkedResources');
 const { seedUserLibrary } = require('./lib/seed');
 const { runPreflight, lastPreflight } = require('./lib/preflight');
 
@@ -80,41 +81,6 @@ async function saveItem(item, sourceUrl, userId) {
 
   return { itemId, title: item.title, category: item.category, type: item.type,
     summary: item.summary, has_lead_magnet_cta: item.has_lead_magnet_cta };
-}
-
-// ─── Linked-resource digest entries ───────────────────────────────────────────
-// A linked resource is an extension of the save it hangs off, not an item of
-// its own (Muji 2026-07-25): it gets the same extraction → entity → canonical
-// resolution → verification/geocoding treatment as a save, but its entities
-// land on the PARENT item's blob, so they show up in that item's Digest tab
-// and in the global Digest. Its summary/takeaways are not kept — only the
-// digest entries.
-//
-// Never throws: failing to mine entities out of a follow-up link must not fail
-// the attach (or the save) that triggered it.
-async function attachResourceEntities(itemId, userId, sourceUrl, text) {
-  if (!text || !text.trim()) return 0;
-  try {
-    const subcategoryVocab = await getSubcategoryVocabulary();
-    const entities = await extractEntities(text, sourceUrl, subcategoryVocab);
-    if (entities.length === 0) return 0;
-
-    // Canonicalize before the write, same ordering constraint as the main
-    // pipeline: `entities` is one jsonb blob, so resolution has to land
-    // before it's persisted, not after.
-    await resolveEntities(entities);
-    const { added } = await mergeItemEntities(itemId, userId, entities);
-    if (added > 0) {
-      verifyItemEntitiesInBackground(itemId, userId);
-      geocodeItemEntitiesInBackground(itemId, userId);
-      resolveEntityUrlsInBackground(entities);
-    }
-    console.log(`[linkedResource] ${sourceUrl} → ${added} new entit${added === 1 ? 'y' : 'ies'} on item ${itemId}`);
-    return added;
-  } catch (err) {
-    console.error(`[linkedResource] entity extraction failed for ${sourceUrl}:`, err.message);
-    return 0;
-  }
 }
 
 // Same treatment for linked resources that arrived with the original save
@@ -330,22 +296,8 @@ app.post('/api/items/:id/linked-resources', requireAuth(async (req, res) => {
     const item = await getItemById(req.params.id, userId);
     if (!item) return res.status(404).json({ error: 'not_found' });
 
-    let extracted = null;
-    try { extracted = await extractContent(url); }
-    catch (err) { console.error('Linked resource extraction failed:', err.message); }
-
-    const processed = await processLinkedResource(extracted?.text || '', extracted?.title);
-    await upsertLinkedResource(item.id, userId, {
-      source_url: url,
-      title: processed.title,
-      type: processed.resource_type,
-      body_content: processed.content
-    });
-
-    await attachResourceEntities(item.id, userId, url, extracted?.text);
-
-    const refreshed = await getItemById(item.id, userId);
-    res.json({ success: true, linked_resources: refreshed.linked_resources || [] });
+    const { linked_resources } = await attachLinkedResource(item.id, userId, url);
+    res.json({ success: true, linked_resources });
   } catch (err) {
     console.error('POST /api/items/:id/linked-resources error:', err);
     res.status(500).json({ success: false, error: err.message });
