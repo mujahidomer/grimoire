@@ -302,12 +302,28 @@ test('decide does not echo a long digit run (a code, a card number) back to the 
   assert.deepStrictEqual(replyTo('Reply 12 for the guide'), { kind: 'reply', text: '12' });
 });
 
-test('decide answers an uppercase keyword on its own, with or without an instruction verb', () => {
-  assert.deepStrictEqual(replyTo('Tap DONE when you are ready'), { kind: 'reply', text: 'DONE' });
-  assert.deepStrictEqual(replyTo('Almost there... YES'), { kind: 'reply', text: 'YES' });
+test('decide does not answer a bare uppercase keyword: case is not evidence of a gate', () => {
+  // Previously an uppercase token replied on its own. That path is removed on
+  // purpose: "LET'S GO" from a human is the same failure as "let's go".
+  for (const text of ["LET'S GO", 'DONE', 'Tap DONE when you are ready', 'Almost there... YES',
+    'WE SEND THE LINK TOMORROW', 'YES!!!', 'GO GO GO']) {
+    assert.deepStrictEqual(replyTo(text), { kind: 'park', reason: 'freeform_gate' }, text);
+  }
 });
 
-test('decide answers a lowercase keyword only right after an instruction verb', () => {
+test('decide answers an uppercase keyword when an instruction verb precedes it', () => {
+  for (const text of ['Reply DONE', 'Comment DONE', 'Type YES', 'DM me GO', 'Just reply LINK to get it']) {
+    assert.strictEqual(replyTo(text).kind, 'reply', text);
+  }
+  assert.deepStrictEqual(replyTo('Comment DONE'), { kind: 'reply', text: 'DONE' });
+});
+
+test('decide needs the instruction verb within two words, whatever the case', () => {
+  assert.strictEqual(replyTo('reply to this with DONE').kind, 'park');
+  assert.strictEqual(replyTo('Reply with DONE').kind, 'reply');
+});
+
+test('decide answers a lowercase keyword right after an instruction verb', () => {
   assert.deepStrictEqual(replyTo('just reply done!'), { kind: 'reply', text: 'DONE' });
   assert.deepStrictEqual(replyTo('type yes to get it'), { kind: 'reply', text: 'YES' });
   assert.deepStrictEqual(replyTo('comment link below'), { kind: 'reply', text: 'LINK' });
@@ -318,7 +334,8 @@ test('decide answers a lowercase keyword only right after an instruction verb', 
 test('decide does not answer ordinary English that happens to contain a keyword', () => {
   for (const text of [
     "sure, I'll send it", "let's go", "yes, I'm 25", 'yes', 'go for it',
-    "I'll send you the link tomorrow", 'the link is in my bio', 'Done and dusted',
+    "I'll send you the link tomorrow", "I'll send the link tomorrow", 'send it go', 'the link is in my bio',
+    'Done and dusted',
   ]) {
     assert.deepStrictEqual(replyTo(text), { kind: 'park', reason: 'freeform_gate' }, text);
   }
