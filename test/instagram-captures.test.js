@@ -50,9 +50,9 @@ test('buildCapturePatch rejects an unknown state', () => {
   assert.throws(() => buildCapturePatch({ state: 'done' }), /unknown state/);
 });
 
-test('buildCapturePatch accepts all five needs_user reasons and null', () => {
+test('buildCapturePatch accepts all seven needs_user reasons and null', () => {
   assert.deepStrictEqual(NEEDS_USER_REASONS,
-    ['follow_gate', 'freeform_gate', 'hub_page', 'unusable_link', 'no_match']);
+    ['follow_gate', 'freeform_gate', 'hub_page', 'unusable_link', 'no_match', 'reply_failed', 'unknown_sender']);
   for (const reason of [...NEEDS_USER_REASONS, null]) {
     assert.deepStrictEqual(buildCapturePatch({ needs_user_reason: reason }), { needs_user_reason: reason });
   }

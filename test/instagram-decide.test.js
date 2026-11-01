@@ -529,3 +529,39 @@ test('a check mark is answered only after "reply"', () => {
     assert.strictEqual(replyTo(`${verb} ✅`).kind, 'park', verb);
   }
 });
+
+// ─── A resolved url that is itself not an article ─────────────────────────────
+// A short link reveals that it is a Linktree or an Instagram page only AFTER
+// resolution, so decide() judges where the link ended up with the same mapping
+// it applies to the links that came in. Matched creator or not.
+
+const resolvedAs = (resolvedUrl, extra = {}) => decide({ ...fromC({ resolvedUrl }), event: { message: { text: 'x' } }, ...extra });
+
+test('decide parks hub_page when the RESOLVED url is a linktree, even for a matched creator', () => {
+  assert.deepStrictEqual(resolvedAs('https://linktr.ee/thecreator'), { kind: 'park', reason: 'hub_page' });
+});
+
+test('decide parks hub_page when the RESOLVED url is an instagram.com page', () => {
+  assert.deepStrictEqual(resolvedAs('https://www.instagram.com/thecreator/'), { kind: 'park', reason: 'hub_page' });
+});
+
+test('decide parks unusable_link when the RESOLVED url is a cdninstagram.com media file', () => {
+  assert.deepStrictEqual(resolvedAs('https://scontent.cdninstagram.com/v/x.jpg'), { kind: 'park', reason: 'unusable_link' });
+  assert.deepStrictEqual(resolvedAs('https://scontent.fbcdn.net/v/x.mp4'), { kind: 'park', reason: 'unusable_link' });
+});
+
+test('decide parks unusable_link, not hub_page, when the RESOLVED url is a wrapper that never unwrapped', () => {
+  assert.deepStrictEqual(resolvedAs('https://l.instagram.com/?u=junk'), { kind: 'park', reason: 'unusable_link' });
+});
+
+test('decide judges a RESOLVED hub before the creator: unsaved creator is hub_page, not no_match', () => {
+  const unsaved = decide({ ...base, capture: { ...base.capture, sender_username: 'nobody' },
+    candidates: [reel('c', '2026-11-01T10:00:00Z')], resolvedUrl: 'https://beacons.ai/nobody',
+    event: { message: { text: 'x' } } });
+  assert.deepStrictEqual(unsaved, { kind: 'park', reason: 'hub_page' });
+});
+
+test('decide still attaches an ordinary RESOLVED article, and a hub-looking path on a real host is fine', () => {
+  assert.strictEqual(resolvedAs('https://example.com/linktr.ee/guide').kind, 'attach');
+  assert.strictEqual(resolvedAs('https://notinstagram.com/guide').kind, 'attach');
+});

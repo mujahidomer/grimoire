@@ -2,7 +2,6 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const {
   handleEvent, sendReply, lookupUsername, rematchPendingCaptures, resolveIgUserId, isInstagramUrl,
-  UsernameLookupError,
 } = require('../lib/instagram/capture');
 
 const USER = '00000000-0000-0000-0000-000000000001';
@@ -188,6 +187,21 @@ test('a short link that resolves to a hub page parks as hub_page and attaches no
   assert.deepStrictEqual(d.calls.attached, []);
 });
 
+test('the hub verdict is decide()\'s: capture.js passes the resolved url through untouched', async () => {
+  const seen = [];
+  const d = deps({ resolveUrl: async () => ({ url: 'https://linktr.ee/thecreator', hops: 2 }),
+    recentInstagramItems: async () => { seen.push('candidates'); return [reel]; } });
+  const action = await handleEvent(dm('https://mnch.at/abc'), { userId: USER, deps: d });
+  assert.strictEqual(action.reason, 'hub_page');
+  assert.deepStrictEqual(seen, ['candidates'], 'the orchestrator no longer short-circuits before decide()');
+});
+
+test('a hub resolved url does not leave a resolved_url on the parked capture', async () => {
+  const d = deps({ resolveUrl: async () => ({ url: 'https://linktr.ee/thecreator', hops: 2 }) });
+  await handleEvent(dm('https://mnch.at/abc'), { userId: USER, deps: d });
+  assert.strictEqual(d.calls.updated[0][1].resolved_url, null);
+});
+
 test('a short link that resolves to a media file parks as unusable_link', async () => {
   const d = deps({ resolveUrl: async () => ({ url: 'https://scontent.cdninstagram.com/v/x.jpg', hops: 1 }) });
   const action = await handleEvent(dm('https://mnch.at/abc'), { userId: USER, deps: d });
@@ -217,11 +231,13 @@ test('reply: success moves the capture to replied', async () => {
   assert.strictEqual(d.calls.updated.at(-1)[1].state, 'replied');
 });
 
-test('reply: a failed send is parked as a visible needs_user entry, not thrown', async () => {
+test('reply: a failed send is parked as reply_failed, not thrown and not freeform_gate', async () => {
   const d = deps({ sendReply: async () => ({ ok: false, error: 'http_400 code=10' }) });
   const action = await handleEvent(dm('reply DONE', 'mid.C'), { userId: USER, deps: d });
-  assert.deepStrictEqual([action.kind, action.reason, action.cause], ['park', 'freeform_gate', 'reply_failed']);
-  assert.strictEqual(d.calls.updated.at(-1)[1].state, 'needs_user');
+  assert.deepStrictEqual([action.kind, action.reason, action.error], ['park', 'reply_failed', 'http_400 code=10']);
+  const last = d.calls.updated.at(-1)[1];
+  assert.deepStrictEqual([last.state, last.needs_user_reason], ['needs_user', 'reply_failed']);
+  assert.deepStrictEqual(d.calls.recorded, [['cap-1', 'mid.C']], 'parked visibly, so the message is handled');
   assert.strictEqual(d.calls.updated.some(([, p]) => p.reply_attempts === 1), true, 'the attempt still counts');
 });
 
@@ -255,24 +271,67 @@ test('with no capture the username is looked up and the new row carries it', asy
   assert.strictEqual(d.calls.created[0].senderUsername, 'thecreator', 'normalized before the row is written');
 });
 
-test('lookup failure: throws, writes no capture, sends nothing, records nothing', async () => {
+test('lookup failure: the DM is parked as unknown_sender with a null username, not thrown away', async () => {
   const d = deps({ findActiveCapture: async () => null,
     lookupUsername: async () => ({ ok: false, error: 'http_503' }) });
-  await assert.rejects(
-    handleEvent(dm('https://example.com/guide', 'mid.X'), { userId: USER, deps: d }),
-    (err) => err instanceof UsernameLookupError && /mid\.X/.test(err.message) && /http_503/.test(err.message)
-  );
-  assert.deepStrictEqual(d.calls.created, []);
-  assert.deepStrictEqual(d.calls.updated, []);
-  assert.deepStrictEqual(d.calls.recorded, []);
+  const action = await handleEvent(dm('https://example.com/guide', 'mid.X'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason, action.cause], ['park', 'unknown_sender', 'username_lookup_failed']);
+  assert.strictEqual(action.error, 'http_503');
+  assert.strictEqual(d.calls.created.length, 1);
+  assert.strictEqual(d.calls.created[0].senderUsername, null);
+  assert.strictEqual(d.calls.created[0].senderIgsid, 'igsid-1');
+  const [id, patch] = d.calls.updated[0];
+  assert.strictEqual(id, 'cap-new');
+  assert.deepStrictEqual([patch.state, patch.needs_user_reason], ['needs_user', 'unknown_sender']);
+  assert.deepStrictEqual(patch.links_seen, ['https://example.com/guide']);
+  assert.strictEqual(patch.resolved_url, 'https://example.com/guide', 'a real article stays attachable from the tray');
+  assert.deepStrictEqual(d.calls.recorded, [['cap-new', 'mid.X']], 'visibly parked, so handled');
+  assert.deepStrictEqual(d.calls.replied, [], 'never a reply to a sender we cannot name');
+  assert.deepStrictEqual(d.calls.attached, [], 'and never an attach: no handle, no match');
+});
+
+test('lookup failure does not keep a hub url as resolved_url', async () => {
+  const d = deps({ findActiveCapture: async () => null,
+    lookupUsername: async () => ({ ok: false, error: 'http_503' }),
+    resolveUrl: async () => ({ url: 'https://linktr.ee/thecreator', hops: 1 }) });
+  await handleEvent(dm('https://mnch.at/abc'), { userId: USER, deps: d });
+  assert.strictEqual('resolved_url' in d.calls.updated[0][1], false);
+});
+
+test('lookup failure on a link-less DM still parks it rather than dropping it', async () => {
+  const d = deps({ findActiveCapture: async () => null,
+    lookupUsername: async () => ({ ok: false, error: 'http_503' }) });
+  const action = await handleEvent(dm('reply DONE', 'mid.Y'), { userId: USER, deps: d });
+  assert.strictEqual(action.reason, 'unknown_sender');
   assert.deepStrictEqual(d.calls.replied, []);
 });
 
-test('lookup returning an empty handle is a failure too, never a null-username capture', async () => {
+test('lookup returning an empty handle is a failure too: parked, never a silent null-username capture', async () => {
   const d = deps({ findActiveCapture: async () => null,
     lookupUsername: async () => ({ ok: true, username: '  @ ' }) });
-  await assert.rejects(handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d }), UsernameLookupError);
+  const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.strictEqual(action.reason, 'unknown_sender');
+  assert.strictEqual(d.calls.updated[0][1].needs_user_reason, 'unknown_sender');
+});
+
+test('lookup failure on an existing handle-less capture updates it instead of creating a second', async () => {
+  const d = deps({ findActiveCapture: async () => liveCapture({ sender_username: null }),
+    lookupUsername: async () => ({ ok: false, error: 'http_503' }) });
+  const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
+  assert.strictEqual(action.reason, 'unknown_sender');
   assert.deepStrictEqual(d.calls.created, []);
+  assert.strictEqual(d.calls.updated[0][0], 'cap-1');
+});
+
+test('lookup failure after real retries still ends in a parked capture, not a throw', async () => {
+  let attempts = 0;
+  const failing = async () => { attempts += 1; throw new Error('socket hang up'); };
+  const d = deps({ findActiveCapture: async () => null,
+    lookupUsername: (igsid) => lookupUsername(igsid, { fetchImpl: failing, token: 't', sleepImpl: async () => {} }) });
+  const action = await handleEvent(dm('https://example.com/guide', 'mid.Z'), { userId: USER, deps: d });
+  assert.strictEqual(attempts, 3);
+  assert.strictEqual(action.reason, 'unknown_sender');
+  assert.match(action.error, /socket hang up/);
 });
 
 test('an existing capture with no username is backfilled once the lookup works', async () => {
