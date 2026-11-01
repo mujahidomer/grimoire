@@ -209,7 +209,7 @@ test('decide matches allowlist words whole-word and replies in canonical upperca
 });
 
 test('decide replies with the first qualifying allowlist word in the prompt', () => {
-  const action = decide(fromC({ event: { message: { text: 'Send me YES and then DONE' } } }));
+  const action = decide(fromC({ event: { message: { text: 'Reply YES and then DONE' } } }));
   assert.deepStrictEqual(action, { kind: 'reply', text: 'YES' });
 });
 
@@ -414,6 +414,25 @@ const PARKS = [
   'Comment below ✅',
   'Reply 1 for the guide',
   'type 2 to continue',
+  // Round 5: a determinerless "send link" is how a person asks for a link, not
+  // a gate; and a check mark is paired only with "reply".
+  'send link',
+  'Send link',
+  'send me link',
+  'Send me LINK',
+  'dm me link',
+  'DM me LINK',
+  'DM link',
+  'send link to me',
+  'pls send link',
+  'ok, send link',
+  'now send link',
+  'send link for me',
+  'send link to the group',
+  'Comment ✅',
+  'Send ✅',
+  'DM ✅',
+  'Type ✅',
 ];
 
 const REPLIES = [
@@ -437,7 +456,7 @@ const REPLIES = [
 ];
 
 test('PARKS table: ordinary DM prose containing a keyword never draws a reply', () => {
-  assert.strictEqual(PARKS.length, 37);
+  assert.strictEqual(PARKS.length, 54);
   for (const text of PARKS) {
     assert.deepStrictEqual(replyTo(text), { kind: 'park', reason: 'freeform_gate' }, JSON.stringify(text));
   }
@@ -492,4 +511,21 @@ test('and/then end a clause but never open an instruction', () => {
   assert.strictEqual(replyTo('Follow me and reply DONE').kind, 'park');
   assert.strictEqual(replyTo('Follow me, then reply DONE').kind, 'reply');
   assert.strictEqual(replyTo('Follow me. Then reply DONE').kind, 'reply');
+});
+
+test('send+keyword pairs that are ordinary English park; reply+link stays reachable', () => {
+  // "Send me YES and then DONE" used to reply YES; the send+yes pair is now rejected.
+  for (const text of ['Send me YES and then DONE', 'send yes', 'Send GO', 'send send']) {
+    assert.strictEqual(replyTo(text).kind, 'park', text);
+  }
+  // reply+link cannot be rejected: "Reply 'LINK' and I'll send it over" is a real gate.
+  assert.deepStrictEqual(replyTo("Reply 'LINK' and I'll send it over"), { kind: 'reply', text: 'LINK' });
+  assert.deepStrictEqual(replyTo('comment link below'), { kind: 'reply', text: 'LINK' });
+});
+
+test('a check mark is answered only after "reply"', () => {
+  assert.deepStrictEqual(replyTo('reply ✅ to continue'), { kind: 'reply', text: '✅' });
+  for (const verb of ['Comment', 'Send', 'DM', 'Type']) {
+    assert.strictEqual(replyTo(`${verb} ✅`).kind, 'park', verb);
+  }
 });
