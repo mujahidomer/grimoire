@@ -168,6 +168,8 @@ test('resolveUrl rejects loopback, private, link-local, unique-local and unspeci
     'http://[::2]/', 'http://[::7f00:1]/', // ::/96 IPv4-compatible
     'http://[64:ff9b::7f00:1]/', // NAT64 wrapping 127.0.0.1
     'http://[fec0::1]/', 'http://[ff02::1]/', // site-local, multicast
+    'http://[2002:7f00:1::1]/', 'http://[2002:a9fe:a9fe::1]/', // 6to4 wrapping 127.0.0.1 / 169.254.169.254
+    'http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/', 'http://[2001::1]/', // Teredo
   ]) {
     const fetchImpl = await assertRejected(url);
     assert.strictEqual(fetchImpl.calls.length, 0, `${url} must not be fetched`);
@@ -175,7 +177,7 @@ test('resolveUrl rejects loopback, private, link-local, unique-local and unspeci
 });
 
 test('resolveUrl accepts addresses just outside the blocked ranges', async () => {
-  for (const host of ['172.15.0.1', '172.32.0.1', '11.0.0.1', '192.169.0.1', '169.253.0.1', '192.0.1.1', '198.17.255.255', '198.20.0.1', '223.255.255.255', '8.8.8.8']) {
+  for (const host of ['[2001:4860:4860::8888]', '[2606:4700:4700::1111]', '[2003::1]', '[2001:1::1]', '172.15.0.1', '172.32.0.1', '11.0.0.1', '192.169.0.1', '169.253.0.1', '192.0.1.1', '198.17.255.255', '198.20.0.1', '223.255.255.255', '8.8.8.8']) {
     const fetchImpl = fakeFetch({ [`http://${host}/`]: finalPage() });
     assert.deepStrictEqual(await resolve(`http://${host}/`, { fetchImpl }),
       { url: `http://${host}/`, hops: 0 }, host);

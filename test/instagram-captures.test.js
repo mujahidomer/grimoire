@@ -50,9 +50,10 @@ test('buildCapturePatch rejects an unknown state', () => {
   assert.throws(() => buildCapturePatch({ state: 'done' }), /unknown state/);
 });
 
-test('buildCapturePatch accepts all seven needs_user reasons and null', () => {
+test('buildCapturePatch accepts all eight needs_user reasons and null', () => {
   assert.deepStrictEqual(NEEDS_USER_REASONS,
-    ['follow_gate', 'freeform_gate', 'hub_page', 'unusable_link', 'no_match', 'reply_failed', 'unknown_sender']);
+    ['follow_gate', 'freeform_gate', 'hub_page', 'unusable_link', 'no_match', 'reply_failed', 'unknown_sender',
+      'reply_exhausted']);
   for (const reason of [...NEEDS_USER_REASONS, null]) {
     assert.deepStrictEqual(buildCapturePatch({ needs_user_reason: reason }), { needs_user_reason: reason });
   }
@@ -110,6 +111,7 @@ test('every query function refuses a falsy userId', async () => {
     createCapture: (u) => c.createCapture(u, { senderIgsid: 'igsid-1' }),
     updateCapture: (u) => c.updateCapture('cap-1', { state: 'matched' }, u),
     findPendingCaptures: (u) => c.findPendingCaptures(u, 'someone'),
+    findRecentlyMatchedCapture: (u) => c.findRecentlyMatchedCapture(u, 'igsid-1'),
     expireStaleCaptures: (u) => c.expireStaleCaptures(u),
     recordProcessedMessage: (u) => c.recordProcessedMessage('cap-1', 'mid.AAA', u),
   };

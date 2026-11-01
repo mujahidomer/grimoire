@@ -428,7 +428,7 @@ create table if not exists dm_captures (
   links_seen      jsonb not null default '[]',   -- raw URLs, pre-resolution
   resolved_url    text,
   matched_item_id uuid references items(id) on delete set null,
-  needs_user_reason text,  -- follow_gate | freeform_gate | hub_page | unusable_link | no_match | reply_failed | unknown_sender
+  needs_user_reason text,  -- follow_gate | freeform_gate | hub_page | unusable_link | no_match | reply_failed | unknown_sender | reply_exhausted
   last_message_id text,    -- Meta's message id; idempotency key
   last_message_at timestamptz,
   created_at      timestamptz default now(),

@@ -4,7 +4,7 @@ const {
   handleEvent, sendReply, lookupUsername, rematchPendingCaptures, rematchInBackground, resolveIgUserId,
   isInstagramUrl,
 } = require('../lib/instagram/capture');
-const { buildCapturePatch } = require('../lib/instagram/captures');
+const { buildCapturePatch, normalizeUsername, ACTIVE_STATES } = require('../lib/instagram/captures');
 
 const USER = '00000000-0000-0000-0000-000000000001';
 const reel = { id: 'item-1', source_author: 'thecreator',
@@ -20,6 +20,7 @@ function deps(over = {}) {
     log: (m) => calls.logs.push(m),
     logError: (m) => calls.errors.push(m),
     findActiveCapture: async (u) => { calls.users.push(u); return liveCapture(); },
+    findRecentlyMatchedCapture: async () => null,
     createCapture: async (u, c) => { calls.users.push(u); calls.created.push(c); calls.order.push('create');
       return { id: 'cap-new', ...c, sender_username: c.senderUsername, reply_attempts: 0, processed_message_ids: [] }; },
     updateCapture: async (id, patch, u) => { calls.users.push(u); calls.updated.push([id, patch]);
@@ -678,4 +679,138 @@ test('rematchInBackground reports a success through the injected log sink', asyn
   rematchInBackground(USER, 'thecreator', { deps: d });
   await settle();
   assert.deepStrictEqual(logs, ['[ig-capture] rematched 1 waiting capture(s)']);
+});
+
+// ─── What happens on the NEXT message after a delivery ────────────────────────
+// Every test above stops at the first terminal action. These run several
+// messages through an in-memory dm_captures that enforces what the database
+// does: findActiveCapture sees only the live states (so a matched capture is
+// invisible to it), at most one live row per sender, and every write passes
+// through the real buildCapturePatch.
+
+function world() {
+  const rows = [];
+  let n = 0;
+  const live = (r) => ACTIVE_STATES.includes(r.state);
+  const find = (id) => rows.find((r) => r.id === id);
+  return { rows, fakes: {
+    findActiveCapture: async (_u, igsid) => rows.find((r) => r.sender_igsid === igsid && live(r)) || null,
+    createCapture: async (_u, c) => {
+      if (rows.some((r) => r.sender_igsid === c.senderIgsid && live(r))) throw new Error('one live capture per sender');
+      const row = { id: `cap-${++n}`, sender_igsid: c.senderIgsid, sender_username: normalizeUsername(c.senderUsername),
+        state: 'awaiting_link', reply_attempts: 0, links_seen: [], resolved_url: null, matched_item_id: null,
+        needs_user_reason: null, processed_message_ids: [] };
+      rows.push(row);
+      return row;
+    },
+    updateCapture: async (id, patch) => {
+      const fields = buildCapturePatch(patch);
+      const row = find(id);
+      if (fields.state && ACTIVE_STATES.includes(fields.state)
+          && rows.some((o) => o !== row && o.sender_igsid === row.sender_igsid && live(o))) throw new Error('one live capture per sender');
+      return Object.assign(row, fields);
+    },
+    recordProcessedMessage: async (id, mid) => { find(id).processed_message_ids.push(mid); return true; },
+    findRecentlyMatchedCapture: async (_u, igsid) => [...rows].reverse().find((r) => r.sender_igsid === igsid && r.state === 'matched') || null,
+  } };
+}
+
+async function delivered(w, d) {
+  const first = await handleEvent(dm('https://example.com/the-article', 'mid.1'), { userId: USER, deps: d });
+  assert.strictEqual(first.kind, 'attach');
+  assert.strictEqual(w.rows[0].state, 'matched');
+  assert.strictEqual(await w.fakes.findActiveCapture(USER, 'igsid-1'), null, 'a matched capture is not live');
+}
+
+test('after delivery: a trailing "Enjoy!" is ignored and opens no tray card', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await delivered(w, d);
+  const action = await handleEvent(dm('Enjoy! Let me know what you think', 'mid.2'), { userId: USER, deps: d });
+  assert.deepStrictEqual(action, { kind: 'ignore', reason: 'after_delivery' });
+  assert.strictEqual(w.rows.length, 1, 'no second row');
+  assert.deepStrictEqual(w.rows.filter((r) => r.state === 'needs_user'), [], 'nothing in the tray');
+  assert.deepStrictEqual(d.calls.replied, []);
+});
+
+test('after delivery: a trailing follow-me message is ignored too', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await delivered(w, d);
+  const action = await handleEvent(dm("Don't forget to follow me for more!", 'mid.2'), { userId: USER, deps: d });
+  assert.deepStrictEqual(action, { kind: 'ignore', reason: 'after_delivery' });
+  assert.strictEqual(w.rows.length, 1);
+});
+
+test('after delivery: a second article still opens a new capture and attaches', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await delivered(w, d);
+  const action = await handleEvent(dm('Here is the second one: https://example.com/part-two', 'mid.2'), { userId: USER, deps: d });
+  assert.strictEqual(action.kind, 'attach');
+  assert.strictEqual(w.rows.length, 2);
+  assert.deepStrictEqual(w.rows.map((r) => r.state), ['matched', 'matched']);
+  assert.deepStrictEqual(d.calls.attached.map(([, url]) => url),
+    ['https://example.com/the-article', 'https://example.com/part-two']);
+});
+
+test('after delivery: a hub link beside a follow prompt is still captured, with the follow_gate reason', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await delivered(w, d);
+  const action = await handleEvent(dm('Follow me https://instagram.com/thecreator and reply DONE', 'mid.2'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason], ['park', 'follow_gate']);
+  assert.strictEqual(w.rows.length, 2, 'a message with a link opens a capture');
+  assert.deepStrictEqual(d.calls.replied, [], 'and is never answered');
+});
+
+test('after delivery: a new gate prompt that decide would answer proceeds normally', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await delivered(w, d);
+  const action = await handleEvent(dm('Reply DONE to get part two', 'mid.2'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.text], ['reply', 'DONE']);
+  assert.deepStrictEqual(d.calls.replied, [['igsid-1', 'DONE']]);
+  assert.deepStrictEqual(w.rows.map((r) => r.state), ['matched', 'replied']);
+});
+
+test('after delivery: a redelivery of the trailing message is still ignored', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await delivered(w, d);
+  for (let i = 0; i < 2; i++) {
+    const action = await handleEvent(dm('Enjoy!', 'mid.2'), { userId: USER, deps: d });
+    assert.strictEqual(action.kind, 'ignore');
+  }
+  assert.strictEqual(w.rows.length, 1);
+});
+
+test('a chatter message with NO recent delivery still parks (the ignore needs a completed conversation)', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  const action = await handleEvent(dm('what is your favourite colour?', 'mid.1'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason], ['park', 'freeform_gate']);
+  assert.strictEqual(w.rows.length, 1);
+});
+
+test('a sender with a LIVE parked capture is not subject to the after-delivery ignore', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await handleEvent(dm('https://mnch.at/x', 'mid.1'), { userId: USER, deps: { ...d,
+    resolveUrl: async () => ({ url: 'https://linktr.ee/c', hops: 1 }) } });
+  assert.strictEqual(w.rows[0].state, 'needs_user');
+  const action = await handleEvent(dm('Enjoy!', 'mid.2'), { userId: USER, deps: d });
+  assert.deepStrictEqual([action.kind, action.reason], ['park', 'freeform_gate']);
+  assert.strictEqual(w.rows.length, 1, 'updates the live row rather than opening another');
+});
+
+test('a reply that exhausts the budget lands as reply_exhausted in a live capture', async () => {
+  const w = world();
+  const d = deps({ ...w.fakes, lookupUsername: async () => ({ ok: true, username: 'thecreator' }) });
+  await handleEvent(dm('reply DONE', 'mid.1'), { userId: USER, deps: d });
+  await handleEvent(dm('reply DONE', 'mid.2'), { userId: USER, deps: d });
+  const third = await handleEvent(dm('reply DONE', 'mid.3'), { userId: USER, deps: d });
+  assert.deepStrictEqual([third.kind, third.reason], ['park', 'reply_exhausted']);
+  assert.deepStrictEqual([w.rows[0].state, w.rows[0].needs_user_reason, w.rows[0].reply_attempts], ['needs_user', 'reply_exhausted', 2]);
+  assert.strictEqual(d.calls.replied.length, 2, 'two replies and no third');
 });

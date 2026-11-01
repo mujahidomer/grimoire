@@ -218,8 +218,8 @@ test('decide still replies on the second attempt and stops on the third', () => 
   const at = (n) => decide(fromC({ event: ev, capture: { sender_username: 'c', reply_attempts: n } }));
   assert.strictEqual(at(0).kind, 'reply');
   assert.strictEqual(at(1).kind, 'reply');
-  assert.deepStrictEqual(at(2), { kind: 'park', reason: 'freeform_gate' });
-  assert.strictEqual(at(3).kind, 'park');
+  assert.deepStrictEqual(at(2), { kind: 'park', reason: 'reply_exhausted' });
+  assert.deepStrictEqual(at(3), { kind: 'park', reason: 'reply_exhausted' });
 });
 
 test('decide treats a missing reply_attempts as zero', () => {
@@ -564,4 +564,87 @@ test('decide judges a RESOLVED hub before the creator: unsaved creator is hub_pa
 test('decide still attaches an ordinary RESOLVED article, and a hub-looking path on a real host is fine', () => {
   assert.strictEqual(resolvedAs('https://example.com/linktr.ee/guide').kind, 'attach');
   assert.strictEqual(resolvedAs('https://notinstagram.com/guide').kind, 'attach');
+});
+
+// ─── Round: a closer does not swallow the alternative; gates beside hub links ──
+
+const park = (reason) => ({ kind: 'park', reason });
+
+test('decide does not answer "Reply YES/DONE to <a whole sentence>" or a choice', () => {
+  for (const text of [
+    'Reply YES to delete, or NO to keep',
+    'Reply YES to confirm you want me to charge my card',
+    'Reply DONE to confirm you want to cancel your plan',
+    'Reply YES or NO',
+    'Reply DONE or just ignore this',
+    'Reply YES to delete. Or NO to keep',
+  ]) {
+    assert.deepStrictEqual(replyTo(text), park('freeform_gate'), JSON.stringify(text));
+  }
+});
+
+test('decide bounds the tail after a closer at four words', () => {
+  assert.deepStrictEqual(replyTo('Type DONE to receive the free guide'), { kind: 'reply', text: 'DONE' }); // 4
+  assert.deepStrictEqual(replyTo('Type DONE to receive the free guide today'), park('freeform_gate')); // 5
+  assert.deepStrictEqual(replyTo('DM DONE for access'), { kind: 'reply', text: 'DONE' });
+  assert.deepStrictEqual(replyTo('Comment DONE below'), { kind: 'reply', text: 'DONE' });
+  // The tail ends at the clause: a long second clause after it is not the tail.
+  assert.deepStrictEqual(replyTo('Type DONE to get it, and I will send you the guide right away'), { kind: 'reply', text: 'DONE' });
+});
+
+test('decide keeps "or" a non-boundary: Reply YES or NO must not close at YES', () => {
+  // Pinning the choice of fix. Treating "or" as a clause boundary makes the
+  // keyword close at YES and answers a choice.
+  assert.notStrictEqual(replyTo('Reply YES or NO').kind, 'reply');
+});
+
+test('decide gives a follow gate that carries the creator profile link the follow_gate reason', () => {
+  assert.deepStrictEqual(replyTo('Follow me https://instagram.com/thecreator and reply DONE'), park('follow_gate'));
+  assert.deepStrictEqual(replyTo('Make sure you follow https://www.instagram.com/thecreator/ first'), park('follow_gate'));
+  assert.deepStrictEqual(replyTo('Follow me on https://linktr.ee/thecreator then reply DONE'), park('follow_gate'));
+});
+
+test('decide never answers a message that carries a link, even a gate beside a hub', () => {
+  for (const text of [
+    'Follow me https://instagram.com/thecreator and reply DONE',
+    'Reply DONE to get it: https://instagram.com/thecreator',
+  ]) assert.notStrictEqual(replyTo(text).kind, 'reply', text);
+});
+
+test('decide: a reply-word gate beside a hub link parks as freeform_gate, not hub_page', () => {
+  assert.deepStrictEqual(replyTo('Reply DONE to get it: https://instagram.com/thecreator'), park('freeform_gate'));
+});
+
+test('decide: a hub link with no gate in the text is still hub_page', () => {
+  assert.deepStrictEqual(replyTo('here you go https://linktr.ee/thecreator'), park('hub_page'));
+  assert.deepStrictEqual(replyTo('https://instagram.com/thecreator'), park('hub_page'));
+  assert.deepStrictEqual(replyTo('Click the link in my bio https://beacons.ai/thecreator'), park('hub_page'));
+});
+
+test('decide: the gate exception is for hubs only; an unresolved article link stays unusable_link', () => {
+  assert.deepStrictEqual(replyTo('Follow me and grab it https://example.com/guide'), park('unusable_link'));
+});
+
+test('decide: a RESOLVED article still attaches whatever the text says', () => {
+  assert.strictEqual(replyTo('Follow me and grab it https://example.com/guide',
+    { resolvedUrl: 'https://example.com/guide' }).kind, 'attach');
+});
+
+test('decide parks reply_exhausted once a gate has been answered the allowed number of times', () => {
+  for (const attempts of [2, 3, 10]) {
+    assert.deepStrictEqual(replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: attempts } }),
+      park('reply_exhausted'), `attempts=${attempts}`);
+  }
+});
+
+test('decide: reply_exhausted is only for an evidenced gate whose budget is spent', () => {
+  const spent = { capture: { sender_username: 'c', reply_attempts: 2 } };
+  assert.deepStrictEqual(replyTo('What is your biggest challenge?', spent), park('freeform_gate'));
+  assert.deepStrictEqual(replyTo('follow me and reply DONE', spent), park('follow_gate'));
+  for (const corrupt of [null, 'abc', -5, 1.5, NaN]) {
+    assert.deepStrictEqual(replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: corrupt } }),
+      park('freeform_gate'), `corrupt=${String(corrupt)}`);
+  }
+  assert.deepStrictEqual(replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: 1 } }),
+    { kind: 'reply', text: 'DONE' });
 });

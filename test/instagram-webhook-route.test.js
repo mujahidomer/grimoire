@@ -1,6 +1,6 @@
 // The Instagram webhook route, exercised over real HTTP on an ephemeral
 // localhost port: no database, no external network. The express.json() line
-// below mirrors index.js; if index.js loses its verify hook the route answers
+// below mirrors index.js (verify hook AND the 2mb limit); if index.js loses its verify hook the route answers
 // 403 and logs a wiring error (covered here by the "no rawBody" test).
 const { test, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
@@ -40,7 +40,7 @@ const settle = () => new Promise((r) => setTimeout(r, 40));
 
 before(async () => {
   const app = express();
-  app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } })); // same as index.js
+  app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => { req.rawBody = buf; } })); // same as index.js
   registerInstagramWebhook(app, { onEvent: (e) => onEvent(e) });
   server = http.createServer(app);
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -265,4 +265,17 @@ test('the 200 is sent before onEvent finishes', async () => {
 test('registerInstagramWebhook refuses to mount without an onEvent function', () => {
   assert.throws(() => registerInstagramWebhook(express(), {}), TypeError);
   assert.throws(() => registerInstagramWebhook(express()), TypeError);
+});
+
+// index.js raises express.json's 100kb default to 2mb so a large signed batch is
+// not 413'd before the route's 200-first handling can run (Meta would retry it
+// forever). This pins the mirrored limit: remove it above and this fails with 413.
+test('a signed batch over the 100kb json default is acknowledged and delivered', async () => {
+  const padding = 'x'.repeat(150 * 1024);
+  const r = await signedPost({ object: 'instagram', entry: [{ messaging: [
+    { sender: { id: 'igsid-1' }, message: { mid: 'mid.big', text: 'https://example.com/guide', padding } },
+  ] }] });
+  assert.strictEqual(r.status, 200);
+  await settle();
+  assert.deepStrictEqual(received.map((e) => e.message.mid), ['mid.big']);
 });
