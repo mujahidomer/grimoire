@@ -413,11 +413,70 @@ create table if not exists messages (
 );
 alter table messages add column if not exists meta jsonb;
 
+-- ─── dm_captures (Instagram DM capture: one row per in-flight conversation) ───
+-- Written by the webhook pipeline with the service-role key. The row is the
+-- state of one creator conversation, so the flow survives a restart and a
+-- re-delivered webhook cannot do the same work twice (processed_message_ids).
+create table if not exists dm_captures (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users on delete cascade,
+  sender_igsid    text not null,
+  sender_username text,
+  state           text not null default 'awaiting_link',
+    -- awaiting_link | replied | matched | needs_user | expired
+  reply_attempts  int  not null default 0,
+  links_seen      jsonb not null default '[]',   -- raw URLs, pre-resolution
+  resolved_url    text,
+  matched_item_id uuid references items(id) on delete set null,
+  needs_user_reason text,  -- follow_gate | freeform_gate | hub_page | unusable_link | no_match
+  last_message_id text,    -- Meta's message id; idempotency key
+  last_message_at timestamptz,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now(),
+  processed_message_ids jsonb not null default '[]'
+);
+
+create index if not exists dm_captures_user_state_idx
+  on dm_captures (user_id, state);
+
+-- At most one live capture per sender. Terminal states (matched, expired)
+-- are excluded so a later reel from the same creator opens a fresh capture.
+create unique index if not exists dm_captures_one_active_idx
+  on dm_captures (user_id, sender_igsid)
+  where state in ('awaiting_link', 'replied', 'needs_user');
+
+-- Atomically record a processed Meta message id. One UPDATE statement, so two
+-- concurrent deliveries serialize on the row lock: the second re-evaluates its
+-- WHERE against the first's committed row, sees the id, and updates nothing.
+-- Returns true when this call recorded the id (the caller "claimed" the
+-- message), false when it was already recorded. Raises when the capture does
+-- not exist for that user, so a wrong id is not mistaken for a duplicate.
+create or replace function append_dm_capture_message(
+  p_user_id uuid, p_capture_id uuid, p_message_id text
+) returns boolean
+language plpgsql as $$
+declare n int;
+begin
+  update dm_captures
+     set processed_message_ids = processed_message_ids || to_jsonb(p_message_id)
+   where id = p_capture_id
+     and user_id = p_user_id
+     and not (processed_message_ids ? p_message_id);
+  get diagnostics n = row_count;
+  if n = 0 and not exists (
+    select 1 from dm_captures where id = p_capture_id and user_id = p_user_id
+  ) then
+    raise exception 'dm_capture % not found for user %', p_capture_id, p_user_id;
+  end if;
+  return n > 0;
+end;
+$$;
+
 -- ─── updated_at triggers ──────────────────────────────────────────────────────
 do $$
 declare t text;
 begin
-  foreach t in array array['profiles','items','tags','linked_resources']
+  foreach t in array array['profiles','items','tags','linked_resources','dm_captures']
   loop
     execute format(
       'drop trigger if exists set_updated_at on %1$I;
@@ -521,13 +580,14 @@ alter table chats            enable row level security;
 alter table messages         enable row level security;
 alter table query_usage      enable row level security;
 alter table categories       enable row level security;
+alter table dm_captures      enable row level security;
 
 do $$
 declare t text;
 begin
   foreach t in array array[
     'items','tags','item_tags','linked_resources','embeddings',
-    'api_tokens','chats','messages','query_usage'
+    'api_tokens','chats','messages','query_usage','dm_captures'
   ]
   loop
     execute format('drop policy if exists owner_all on %I;', t);
