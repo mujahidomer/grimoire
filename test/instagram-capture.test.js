@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const {
   handleEvent, sendReply, lookupUsername, rematchPendingCaptures, rematchInBackground, resolveIgUserId,
-  isInstagramUrl,
+  isInstagramUrl, fetchAttachmentUrls,
 } = require('../lib/instagram/capture');
 const { buildCapturePatch, normalizeUsername, ACTIVE_STATES } = require('../lib/instagram/captures');
 
@@ -838,4 +838,59 @@ test('a reply that exhausts the budget lands as reply_exhausted in a live captur
   assert.deepStrictEqual([third.kind, third.reason], ['park', 'reply_exhausted']);
   assert.deepStrictEqual([w.rows[0].state, w.rows[0].needs_user_reason, w.rows[0].reply_attempts], ['needs_user', 'reply_exhausted', 2]);
   assert.strictEqual(d.calls.replied.length, 2, 'two replies and no third');
+});
+
+// Found live, 2026-11-04: Meta delivers a bot's button card over the webhook
+// with no url and no text, so the DM read as content-free and was ignored. The
+// same message read back from the Graph API carries the links.
+const attachmentsBody = (ctas, extra = {}) => ({
+  ok: true, status: 200,
+  json: async () => ({ attachments: { data: [{ generic_template: { title: 'Here is the repo',
+    cta: ctas } }], ...extra } }),
+});
+
+test('fetchAttachmentUrls reads a button card the webhook stripped', async () => {
+  const urls = await fetchAttachmentUrls('mid-1', {
+    token: 't',
+    fetchImpl: async () => attachmentsBody([
+      { title: 'Open repo', url: 'https://zorcha.com/l/4314050b', type: 'web_url' },
+      { title: 'Open web app', url: 'https://zorcha.com/l/92b42ff5', type: 'web_url' },
+    ]),
+  });
+  assert.deepStrictEqual(urls, ['https://zorcha.com/l/4314050b', 'https://zorcha.com/l/92b42ff5']);
+});
+
+// The response's own paging link is on graph.facebook.com. It is ours, not the
+// creator's, and must never be offered as the article.
+test('fetchAttachmentUrls ignores the response paging link', async () => {
+  const urls = await fetchAttachmentUrls('mid-1', {
+    token: 't',
+    fetchImpl: async () => attachmentsBody(
+      [{ url: 'https://zorcha.com/l/abc' }],
+      { paging: { next: 'https://graph.facebook.com/v26.0/mid-1/attachments?after=X' } },
+    ),
+  });
+  assert.deepStrictEqual(urls, ['https://zorcha.com/l/abc']);
+});
+
+test('fetchAttachmentUrls returns no links rather than throwing on failure', async () => {
+  const notOk = await fetchAttachmentUrls('mid-1', {
+    token: 't', fetchImpl: async () => ({ ok: false, status: 400, text: async () => 'nope' }),
+  });
+  assert.deepStrictEqual(notOk, []);
+
+  const threw = await fetchAttachmentUrls('mid-1', {
+    token: 't', fetchImpl: async () => { throw new Error('network down'); },
+  });
+  assert.deepStrictEqual(threw, []);
+
+  assert.deepStrictEqual(await fetchAttachmentUrls('mid-1', { token: '' }), []);
+  assert.deepStrictEqual(await fetchAttachmentUrls(null, { token: 't' }), []);
+});
+
+test('fetchAttachmentUrls returns no links for a message with no attachments', async () => {
+  const urls = await fetchAttachmentUrls('mid-1', {
+    token: 't', fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ id: 'mid-1' }) }),
+  });
+  assert.deepStrictEqual(urls, []);
 });
