@@ -34,6 +34,15 @@ const DRY_RUN = args.includes('--dry-run');
 const limitArg = args.indexOf('--limit');
 const LIMIT = limitArg !== -1 ? Number(args[limitArg + 1]) : Infinity;
 
+const fs = require('node:fs');
+const path = require('node:path');
+
+// Threads already walked, so a later run spends its budget on new ones. Only
+// the expensive part is remembered — reading a thread. Whether a MESSAGE was
+// processed is handleEvent's business, recorded in the database.
+const DONE_FILE = path.join(__dirname, '..', '.instagram-backfill-threads.json');
+const THREAD_PAUSE_MS = 400;
+
 const GRAPH = `https://graph.facebook.com/${process.env.IG_GRAPH_VERSION || 'v26.0'}`;
 const TOKEN = process.env.IG_ACCESS_TOKEN;
 const ACCOUNT = process.env.IG_ACCOUNT_ID;
@@ -44,6 +53,13 @@ const MESSAGES_PER_THREAD = 6;
 // user's account — so the backfill never speaks, whatever decide() concludes.
 const NEVER_REPLY = async () => ({ ok: false, error: 'backfill never replies' });
 
+// Meta rate-limits the whole app, not the call. Once it starts answering
+// "(#4) Application request limit reached" every later request fails too, so
+// this is thrown as its own kind and ends the run: retrying inside it just
+// spends the next hour's budget on 403s. Seen on 2026-11-05, which is why the
+// first full pass stopped after 11 messages.
+class RateLimited extends Error {}
+
 async function graph(path, params) {
   const url = new URL(`${GRAPH}/${path}`);
   for (const [k, v] of Object.entries(params || {})) url.searchParams.set(k, v);
@@ -51,7 +67,13 @@ async function graph(path, params) {
     headers: { Authorization: `Bearer ${TOKEN}` },
     signal: AbortSignal.timeout(30000),
   });
-  if (!response.ok) throw new Error(`graph ${path} failed (${response.status}): ${(await response.text()).slice(0, 200)}`);
+  if (!response.ok) {
+    const body = (await response.text()).slice(0, 300);
+    if (/Application request limit reached|"code":\s*4\b|"code":\s*613\b/.test(body)) {
+      throw new RateLimited(body);
+    }
+    throw new Error(`graph ${path} failed (${response.status}): ${body}`);
+  }
   return response.json();
 }
 
@@ -85,6 +107,7 @@ async function threadMessages(threadId) {
       });
       return (body.messages && body.messages.data) || [];
     } catch (err) {
+      if (err instanceof RateLimited) throw err; // ends the run, not just this thread
       if (attempt === 2) { console.error(`  thread ${threadId.slice(0, 12)}… unreadable: ${err.message}`); return []; }
       await new Promise((r) => setTimeout(r, 1000));
     }
@@ -112,8 +135,11 @@ async function main() {
   }
   console.log(`${saved.size} creator handle(s) in the library`);
 
+  let done = new Set();
+  try { done = new Set(JSON.parse(fs.readFileSync(DONE_FILE, 'utf8'))); } catch { /* first run */ }
+
   const threads = await conversations();
-  console.log(`${threads.length} conversation(s) in the inbox`);
+  console.log(`${threads.length} conversation(s) in the inbox, ${done.size} already walked`);
 
   // Live matching looks back 7 days, which is right for a webhook: a DM
   // arriving now answers a comment left in the last few days. This inbox is
@@ -158,16 +184,31 @@ async function main() {
   };
   let processed = 0; const outcomes = {};
 
+  let rateLimited = false;
+  const save = () => { try { fs.writeFileSync(DONE_FILE, JSON.stringify([...done])); } catch { /* best effort */ } };
+
   for (const thread of threads) {
-    if (processed >= LIMIT) break;
+    if (processed >= LIMIT || rateLimited) break;
     const them = (thread.participants && thread.participants.data || [])
       .find((p) => String(p.id) !== String(ACCOUNT));
     const handle = normalizeUsername(them && them.username);
     if (!handle || !saved.has(handle)) continue;
+    if (done.has(thread.id)) continue;
 
     // Oldest first, so a thread's messages are replayed in the order they
     // happened — the same order a webhook would have delivered them.
-    const messages = [...(await threadMessages(thread.id))].reverse();
+    let fetched;
+    try {
+      fetched = await threadMessages(thread.id);
+    } catch (err) {
+      if (!(err instanceof RateLimited)) throw err;
+      console.error('\nMeta is rate-limiting the app. Stopping here — the threads already '
+        + 'walked are remembered, so running this again later picks up where it left off.');
+      rateLimited = true;
+      break;
+    }
+    await new Promise((r) => setTimeout(r, THREAD_PAUSE_MS));
+    const messages = [...fetched].reverse();
     for (const message of messages) {
       if (processed >= LIMIT) break;
       if (!message.from || String(message.from.id) === String(ACCOUNT)) continue; // ours, not theirs
@@ -201,9 +242,14 @@ async function main() {
       }
       processed += 1;
     }
+
+    done.add(thread.id);
+    save();
   }
+  save();
 
   console.log(`\nmessages processed: ${processed}`);
+  console.log(`threads walked in total: ${done.size}${rateLimited ? ' (stopped early: rate limit)' : ''}`);
   for (const [label, n] of Object.entries(outcomes)) console.log(`  ${label}: ${n}`);
 }
 
