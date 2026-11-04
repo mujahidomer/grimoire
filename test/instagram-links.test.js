@@ -617,3 +617,67 @@ test('isMediaUrl does not mistake a lookalike host for the CDN', () => {
   assert.ok(!isMediaUrl('https://lookaside.fbsbx.com.evil.test/a'));
   assert.ok(!isMediaUrl('https://notlookaside.fbsbx.net/a'));
 });
+
+// Found live, 2026-11-04: v.i.s.h.ai's button card points at zorcha.com, a
+// tracker that answers 200 (no 3xx) and moves the browser on with a meta
+// refresh. resolveUrl stopped there, and the extractor read the page back as
+// "Redirecting • Zorcha" — which is what would have been saved. The tracker
+// also names its destination in a canonical header, which costs no body read.
+const pageWithLink = (link) => ({ ok: true, status: 200, headers: new Headers({ link }) });
+
+test('resolveUrl follows a canonical header that points at another host', async () => {
+  const fetchImpl = fakeFetch({
+    'https://zorcha.com/l/24d98d72':
+      pageWithLink('<https://github.com/Donchitos/Claude-Code-Game-Studios>; rel="canonical"'),
+    'https://github.com/Donchitos/Claude-Code-Game-Studios': finalPage(),
+  });
+  assert.deepStrictEqual(await resolve('https://zorcha.com/l/24d98d72', { fetchImpl }),
+    { url: 'https://github.com/Donchitos/Claude-Code-Game-Studios', hops: 1 });
+});
+
+test('resolveUrl leaves a same-host canonical alone', async () => {
+  const fetchImpl = fakeFetch({
+    'https://example.com/guide?utm_source=ig':
+      pageWithLink('<https://example.com/guide>; rel="canonical"'),
+  });
+  assert.deepStrictEqual(await resolve('https://example.com/guide?utm_source=ig', { fetchImpl }),
+    { url: 'https://example.com/guide?utm_source=ig', hops: 0 });
+});
+
+test('resolveUrl ignores a Link header that is not a canonical', async () => {
+  const fetchImpl = fakeFetch({
+    'https://example.com/a': pageWithLink('<https://cdn.other.test/style.css>; rel="preload"'),
+  });
+  assert.deepStrictEqual(await resolve('https://example.com/a', { fetchImpl }),
+    { url: 'https://example.com/a', hops: 0 });
+});
+
+test('a canonical picked out of several Link entries still has to be cross-host', async () => {
+  const fetchImpl = fakeFetch({
+    'https://t.test/1': pageWithLink(
+      '<https://cdn.test/s.css>; rel="preload", <https://dest.test/article>; rel="canonical"'),
+    'https://dest.test/article': finalPage(),
+  });
+  assert.deepStrictEqual(await resolve('https://t.test/1', { fetchImpl }),
+    { url: 'https://dest.test/article', hops: 1 });
+});
+
+test('a canonical chain is capped like any other redirect chain', async () => {
+  const fetchImpl = fakeFetch({
+    'https://a.test/1': pageWithLink('<https://b.test/2>; rel="canonical"'),
+    'https://b.test/2': pageWithLink('<https://c.test/3>; rel="canonical"'),
+  });
+  assert.strictEqual(await resolve('https://a.test/1', { fetchImpl, maxHops: 1 }), null);
+});
+
+// A tracker whose canonical points somewhere unfetchable must not be followed
+// blindly: every hop goes through the same address guard.
+test('a canonical to a private address is refused like any other hop', async () => {
+  const fetchImpl = fakeFetch({
+    'https://t.test/1': pageWithLink('<http://169.254.169.254/latest/meta-data/>; rel="canonical"'),
+  });
+  const lookupImpl = async (host) => (host === 't.test'
+    ? [{ address: '93.184.216.34', family: 4 }]
+    : [{ address: '169.254.169.254', family: 4 }]);
+  assert.strictEqual(await resolve('https://t.test/1', { fetchImpl, lookupImpl }), null);
+});
