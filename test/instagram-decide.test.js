@@ -648,3 +648,35 @@ test('decide: reply_exhausted is only for an evidenced gate whose budget is spen
   assert.deepStrictEqual(replyTo('reply DONE', { capture: { sender_username: 'c', reply_attempts: 1 } }),
     { kind: 'reply', text: 'DONE' });
 });
+
+// Found live, 2026-11-04: a photo DM from someone whose reel is not saved
+// (dr.adilmoosa_pt) opened a capture and sat in the tray as no_match. An image
+// from a stranger is an ordinary message, not a gate we failed to answer, and
+// the tray is for captures the user can act on.
+test('decide ignores a media-only DM from a sender with no saved reel', () => {
+  const ev = { message: { attachments: [{ type: 'image', payload: {
+    url: 'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=1' } }] } };
+  const action = decide({ ...base, capture: { ...base.capture, sender_username: 'stranger' },
+    event: ev });
+  assert.strictEqual(action.kind, 'ignore');
+});
+
+// The mirror case: the same photo from a creator whose reel we DID save may be
+// the thing they promised, so it still earns a card rather than silence.
+test('decide still parks a media-only DM from a creator whose reel is saved', () => {
+  const ev = { message: { attachments: [{ type: 'image', payload: {
+    url: 'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=1' } }] } };
+  const action = decide(fromC({ event: ev }));
+  assert.strictEqual(action.kind, 'park');
+  assert.ok(NEEDS_USER_REASONS.includes(action.reason));
+});
+
+// A media file beside a real article must not trigger the ignore: the article
+// is the point of the DM.
+test('decide does not ignore when a real link accompanies the media', () => {
+  const ev = { message: { text: 'https://example.com/guide', attachments: [{ type: 'image',
+    payload: { url: 'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=1' } }] } };
+  const action = decide({ ...base, capture: { ...base.capture, sender_username: 'stranger' },
+    event: ev });
+  assert.notStrictEqual(action.kind, 'ignore');
+});

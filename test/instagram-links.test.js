@@ -566,3 +566,54 @@ test('isWrapperUrl is true only for the exact redirect-wrapper hosts', () => {
   assert.strictEqual(isWrapperUrl('not a url ::'), false);
   assert.strictEqual(isWrapperUrl(undefined), false);
 });
+
+// Found live, 2026-11-04: a creator's bot (v.i.s.h.ai) answers the gate with a
+// button card rather than text. The URLs sit in the template, never in
+// message.text, and the reply reads "Here is the repo" with nothing to open.
+// Meta presents that template in more than one shape — generic_template.cta[]
+// on the Conversations API, payload.elements[].buttons[] on the webhook — so
+// extractUrls walks the attachment instead of naming one path.
+test('extractUrls finds urls in a generic template cta (Conversations API shape)', () => {
+  const ev = { message: { text: '', attachments: [{ generic_template: { title: 'Here is the repo', cta: [
+    { title: 'Open repo', url: 'https://zorcha.com/l/4314050b', type: 'web_url' },
+    { title: 'Open web app', url: 'https://zorcha.com/l/92b42ff5', type: 'web_url' },
+  ] } }] } };
+  assert.deepStrictEqual(extractUrls(ev),
+    ['https://zorcha.com/l/4314050b', 'https://zorcha.com/l/92b42ff5']);
+});
+
+test('extractUrls finds urls in a template payload (webhook shape)', () => {
+  const ev = { message: { attachments: [{ type: 'template', payload: { template_type: 'generic',
+    elements: [{ title: 'Here are the links', buttons: [
+      { type: 'web_url', title: 'Github repo', url: 'https://example.com/repo' },
+      { type: 'web_url', title: 'Full workflow guide', url: 'https://example.com/guide' },
+    ] }] } }] } };
+  assert.deepStrictEqual(extractUrls(ev),
+    ['https://example.com/repo', 'https://example.com/guide']);
+});
+
+test('extractUrls keeps the button order the creator sent them in', () => {
+  const ev = { message: { attachments: [{ generic_template: { cta: [
+    { url: 'https://example.com/first' }, { url: 'https://example.com/second' },
+  ] } }] } };
+  assert.deepStrictEqual(extractUrls(ev)[0], 'https://example.com/first');
+});
+
+test('extractUrls ignores non-url fields of a template', () => {
+  const ev = { message: { attachments: [{ generic_template: {
+    title: 'Here is the repo', cta: [{ title: 'Open repo', type: 'web_url' }] } }] } };
+  assert.deepStrictEqual(extractUrls(ev), []);
+});
+
+// Found live, 2026-11-04: a photo DM from dr.adilmoosa_pt resolved to a
+// lookaside.fbsbx.com asset and was treated as an article, because the media
+// host list named only the two CDNs we had seen before.
+test('isMediaUrl recognises the Instagram messaging CDN', () => {
+  assert.ok(isMediaUrl('https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=1'));
+  assert.ok(isMediaUrl('https://lookaside.instagram.com/seo/google_widget/x.jpg'));
+});
+
+test('isMediaUrl does not mistake a lookalike host for the CDN', () => {
+  assert.ok(!isMediaUrl('https://lookaside.fbsbx.com.evil.test/a'));
+  assert.ok(!isMediaUrl('https://notlookaside.fbsbx.net/a'));
+});
