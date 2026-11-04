@@ -680,3 +680,40 @@ test('decide does not ignore when a real link accompanies the media', () => {
     event: ev });
   assert.notStrictEqual(action.kind, 'ignore');
 });
+
+// Once commenting is automated over a backlog, "newest save by that creator"
+// files answers under the wrong reel: comment an old reel of someone whose
+// newer reel you also saved, and their DM lands on the newer one. The comment
+// we left is why the DM exists, so it decides.
+const commented = (author, created, commentedAt) => ({
+  ...reel(author, created), gate_commented_at: commentedAt,
+});
+
+test('matchItem prefers the reel whose gate we commented, over a newer save', () => {
+  const items = [
+    commented('c', '2026-11-03T10:00:00Z', '2026-11-04T20:00:00Z'), // older save, just commented
+    reel('c', '2026-11-04T10:00:00Z'),                               // newer save, never commented
+  ];
+  assert.strictEqual(matchItem(items, 'c').created_at, '2026-11-03T10:00:00Z');
+});
+
+test('matchItem takes the most recently commented of two commented reels', () => {
+  const items = [
+    commented('c', '2026-11-01T10:00:00Z', '2026-11-04T18:00:00Z'),
+    commented('c', '2026-11-02T10:00:00Z', '2026-11-04T21:00:00Z'),
+  ];
+  assert.strictEqual(matchItem(items, 'c').gate_commented_at, '2026-11-04T21:00:00Z');
+});
+
+test('matchItem still falls back to the newest save when nothing was commented', () => {
+  const items = [reel('c', '2026-11-01T10:00:00Z'), reel('c', '2026-11-04T10:00:00Z')];
+  assert.strictEqual(matchItem(items, 'c').created_at, '2026-11-04T10:00:00Z');
+});
+
+test('matchItem ignores an unparseable gate_commented_at rather than preferring it', () => {
+  const items = [
+    { ...reel('c', '2026-11-01T10:00:00Z'), gate_commented_at: 'not a date' },
+    reel('c', '2026-11-04T10:00:00Z'),
+  ];
+  assert.strictEqual(matchItem(items, 'c').created_at, '2026-11-04T10:00:00Z');
+});
