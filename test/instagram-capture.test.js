@@ -842,55 +842,93 @@ test('a reply that exhausts the budget lands as reply_exhausted in a live captur
 
 // Found live, 2026-11-04: Meta delivers a bot's button card over the webhook
 // with no url and no text, so the DM read as content-free and was ignored. The
-// same message read back from the Graph API carries the links.
-const attachmentsBody = (ctas, extra = {}) => ({
+// same message read back from the Graph API carries the links — but asked by
+// the webhook's mid it returned nothing, so the lookup goes by sender instead.
+const conversationBody = (ctas, extra = {}) => ({
   ok: true, status: 200,
-  json: async () => ({ attachments: { data: [{ generic_template: { title: 'Here is the repo',
-    cta: ctas } }], ...extra } }),
+  json: async () => ({ data: [{ messages: { data: [{
+    attachments: { data: [{ generic_template: { title: 'Here is the link', cta: ctas } }], ...extra },
+  }] } }] }),
 });
+const opts = { token: 't', accountId: 'acct-1' };
 
 test('fetchAttachmentUrls reads a button card the webhook stripped', async () => {
-  const urls = await fetchAttachmentUrls('mid-1', {
-    token: 't',
-    fetchImpl: async () => attachmentsBody([
-      { title: 'Open repo', url: 'https://zorcha.com/l/4314050b', type: 'web_url' },
-      { title: 'Open web app', url: 'https://zorcha.com/l/92b42ff5', type: 'web_url' },
-    ]),
+  let asked = null;
+  const urls = await fetchAttachmentUrls('igsid-9', { ...opts,
+    fetchImpl: async (url) => {
+      asked = url;
+      return conversationBody([
+        { title: 'Open repo', url: 'https://zorcha.com/l/4314050b', type: 'web_url' },
+        { title: 'Open web app', url: 'https://zorcha.com/l/92b42ff5', type: 'web_url' },
+      ]);
+    },
   });
   assert.deepStrictEqual(urls, ['https://zorcha.com/l/4314050b', 'https://zorcha.com/l/92b42ff5']);
+  // By sender, not by message id: the mid the webhook gives is not this handle.
+  assert.ok(asked.includes('user_id=igsid-9'), asked);
+  assert.ok(asked.includes('/acct-1/conversations'), asked);
 });
 
-// The response's own paging link is on graph.facebook.com. It is ours, not the
-// creator's, and must never be offered as the article.
-test('fetchAttachmentUrls ignores the response paging link', async () => {
-  const urls = await fetchAttachmentUrls('mid-1', {
-    token: 't',
-    fetchImpl: async () => attachmentsBody(
+// The response's own paging links are on graph.facebook.com. They are ours, not
+// the creator's, and must never be offered as the article.
+test('fetchAttachmentUrls ignores the response paging links', async () => {
+  const urls = await fetchAttachmentUrls('igsid-9', { ...opts,
+    fetchImpl: async () => conversationBody(
       [{ url: 'https://zorcha.com/l/abc' }],
-      { paging: { next: 'https://graph.facebook.com/v26.0/mid-1/attachments?after=X' } },
+      { paging: { next: 'https://graph.facebook.com/v26.0/x/attachments?after=X' } },
     ),
   });
   assert.deepStrictEqual(urls, ['https://zorcha.com/l/abc']);
 });
 
 test('fetchAttachmentUrls returns no links rather than throwing on failure', async () => {
-  const notOk = await fetchAttachmentUrls('mid-1', {
-    token: 't', fetchImpl: async () => ({ ok: false, status: 400, text: async () => 'nope' }),
-  });
-  assert.deepStrictEqual(notOk, []);
-
-  const threw = await fetchAttachmentUrls('mid-1', {
-    token: 't', fetchImpl: async () => { throw new Error('network down'); },
-  });
-  assert.deepStrictEqual(threw, []);
-
-  assert.deepStrictEqual(await fetchAttachmentUrls('mid-1', { token: '' }), []);
-  assert.deepStrictEqual(await fetchAttachmentUrls(null, { token: 't' }), []);
+  assert.deepStrictEqual(await fetchAttachmentUrls('igsid-9', { ...opts,
+    fetchImpl: async () => ({ ok: false, status: 400, text: async () => 'nope' }) }), []);
+  assert.deepStrictEqual(await fetchAttachmentUrls('igsid-9', { ...opts,
+    fetchImpl: async () => { throw new Error('network down'); } }), []);
+  assert.deepStrictEqual(await fetchAttachmentUrls('igsid-9', { token: '', accountId: 'a' }), []);
+  assert.deepStrictEqual(await fetchAttachmentUrls('igsid-9', { token: 't', accountId: '' }), []);
+  assert.deepStrictEqual(await fetchAttachmentUrls(null, opts), []);
 });
 
-test('fetchAttachmentUrls returns no links for a message with no attachments', async () => {
-  const urls = await fetchAttachmentUrls('mid-1', {
-    token: 't', fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ id: 'mid-1' }) }),
+test('fetchAttachmentUrls returns no links for a conversation with no attachments', async () => {
+  assert.deepStrictEqual(await fetchAttachmentUrls('igsid-9', { ...opts,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ data: [] }) }) }), []);
+  assert.deepStrictEqual(await fetchAttachmentUrls('igsid-9', { ...opts,
+    fetchImpl: async () => ({ ok: true, status: 200,
+      json: async () => ({ data: [{ messages: { data: [{}] } }] }) }) }), []);
+});
+
+// Measured live on 2026-11-04: this edge answers in ~11s and sometimes 500s
+// after 30. At the 10s timeout it shared with the username lookup it failed
+// every time, and the card's links were lost with no trace.
+test('fetchAttachmentUrls retries once when the edge times out', async () => {
+  let calls = 0;
+  const urls = await fetchAttachmentUrls('igsid-9', { ...opts, sleepImpl: async () => {},
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls === 1) { const e = new Error('aborted'); e.name = 'TimeoutError'; throw e; }
+      return conversationBody([{ url: 'https://zorcha.com/l/abc' }]);
+    },
   });
+  assert.strictEqual(calls, 2);
+  assert.deepStrictEqual(urls, ['https://zorcha.com/l/abc']);
+});
+
+test('fetchAttachmentUrls retries a 500 but not a 400', async () => {
+  let serverErrors = 0;
+  await fetchAttachmentUrls('igsid-9', { ...opts, sleepImpl: async () => {},
+    fetchImpl: async () => { serverErrors += 1; return { ok: false, status: 500 }; } });
+  assert.strictEqual(serverErrors, 2);
+
+  let badRequests = 0;
+  await fetchAttachmentUrls('igsid-9', { ...opts, sleepImpl: async () => {},
+    fetchImpl: async () => { badRequests += 1; return { ok: false, status: 400 }; } });
+  assert.strictEqual(badRequests, 1, 'a 400 is the same answer however often it is asked');
+});
+
+test('fetchAttachmentUrls gives up quietly once its attempts are spent', async () => {
+  const urls = await fetchAttachmentUrls('igsid-9', { ...opts, sleepImpl: async () => {},
+    fetchImpl: async () => { throw new Error('network down'); } });
   assert.deepStrictEqual(urls, []);
 });
