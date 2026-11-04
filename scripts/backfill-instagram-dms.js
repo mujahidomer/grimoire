@@ -134,6 +134,15 @@ async function main() {
   // are filtered to that, and the existing matcher's "most recent wins" then
   // picks exactly it. A DM older than every saved reel by that creator matches
   // nothing and parks, which is the honest answer.
+  // ...and saved not too long before it. A creator sends their freebie within
+  // minutes of the comment, and the comment follows the save by days at most.
+  // Without an earliest bound, every DM a creator ever sent still collapses
+  // onto whichever of their reels happens to be the newest one that predates
+  // it: 30 matched captures landed on 11 reels in the first run. A DM with no
+  // reel saved in the fortnight before it parks as no_match, which is the
+  // honest answer — better an empty tray card than someone else's article
+  // filed under this reel.
+  const NEAREST_SAVE_MS = 14 * 24 * 60 * 60 * 1000;
   let messageAt = Infinity;
   const deps = {
     ...base,
@@ -142,7 +151,8 @@ async function main() {
       const all = await base.recentInstagramItems(uid, { ...options, days: 400 });
       return all.filter((item) => {
         const saved = Date.parse(item && item.created_at);
-        return Number.isNaN(saved) ? false : saved <= messageAt;
+        if (Number.isNaN(saved)) return false;
+        return saved <= messageAt && saved >= messageAt - NEAREST_SAVE_MS;
       });
     },
   };
