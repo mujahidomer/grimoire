@@ -398,7 +398,7 @@ test('lookupUsername sends the token as a header, never in the url', async () =>
 test('sendReply posts the recipient and the word, with the token in a header', async () => {
   let seen;
   const fetchImpl = async (url, init) => { seen = { url, init }; return { ok: true, status: 200 }; };
-  const result = await sendReply('igsid-1', 'DONE', { fetchImpl, token: 'SECRET' });
+  const result = await sendReply('igsid-1', 'DONE', { fetchImpl, token: 'SECRET', accountId: 'ig-acct-1' });
   assert.deepStrictEqual(result, { ok: true });
   assert.strictEqual(seen.init.method, 'POST');
   assert.deepStrictEqual(JSON.parse(seen.init.body), { recipient: { id: 'igsid-1' }, message: { text: 'DONE' } });
@@ -406,20 +406,45 @@ test('sendReply posts the recipient and the word, with the token in a header', a
   assert.ok(!seen.url.includes('SECRET'));
 });
 
+// Against the live API, graph.instagram.com answers 401 for this token shape
+// and `me/messages` is not a real edge for a system-user token. Both of those
+// cost a round trip to discover, so pin them here.
+test('sendReply posts to the Instagram account id on graph.facebook.com, never to me', async () => {
+  let seen;
+  const fetchImpl = async (url, init) => { seen = url; return { ok: true, status: 200 }; };
+  await sendReply('igsid-1', 'DONE', { fetchImpl, token: 't', accountId: '17841401242000624', version: 'v26.0' });
+  assert.strictEqual(seen, 'https://graph.facebook.com/v26.0/17841401242000624/messages');
+  assert.ok(!seen.includes('/me/'));
+});
+
+test('lookupUsername reads the handle from graph.facebook.com', async () => {
+  let seen;
+  const fetchImpl = async (url) => { seen = url; return { ok: true, status: 200, json: async () => ({ username: 'creator' }) }; };
+  const result = await lookupUsername('igsid-9', { fetchImpl, token: 't', version: 'v26.0' });
+  assert.deepStrictEqual(result, { ok: true, username: 'creator' });
+  assert.strictEqual(seen, 'https://graph.facebook.com/v26.0/igsid-9?fields=username');
+});
+
+test('sendReply with no Instagram account id fails without a request', async () => {
+  const fetchImpl = async () => { throw new Error('must not be called'); };
+  assert.deepStrictEqual(await sendReply('igsid-1', 'DONE', { fetchImpl, token: 't', accountId: '' }),
+    { ok: false, error: 'no_account_id' });
+});
+
 test('sendReply returns ok:false for a closed messaging window instead of throwing', async () => {
   const fetchImpl = async () => ({ ok: false, status: 400,
     json: async () => ({ error: { code: 10, error_subcode: 2534022, message: 'outside of allowed window' } }) });
-  const result = await sendReply('igsid-1', 'DONE', { fetchImpl, token: 'SECRET' });
+  const result = await sendReply('igsid-1', 'DONE', { fetchImpl, token: 'SECRET', accountId: 'a' });
   assert.strictEqual(result.ok, false);
   assert.match(result.error, /http_400 code=10\/2534022 outside of allowed window/);
   assert.ok(!result.error.includes('SECRET'));
 });
 
 test('sendReply returns ok:false when the network throws, and when the body is not JSON', async () => {
-  const thrown = await sendReply('igsid-1', 'DONE', { fetchImpl: async () => { throw new Error('ECONNRESET'); }, token: 't' });
+  const thrown = await sendReply('igsid-1', 'DONE', { fetchImpl: async () => { throw new Error('ECONNRESET'); }, token: 't', accountId: 'a' });
   assert.strictEqual(thrown.ok, false);
   assert.match(thrown.error, /ECONNRESET/);
-  const notJson = await sendReply('igsid-1', 'DONE', { token: 't',
+  const notJson = await sendReply('igsid-1', 'DONE', { token: 't', accountId: 'a',
     fetchImpl: async () => ({ ok: false, status: 502, json: async () => { throw new SyntaxError('x'); } }) });
   assert.deepStrictEqual(notJson, { ok: false, error: 'http_502' });
 });
@@ -620,12 +645,12 @@ test('errors fall back to the log sink when no logError is injected', async () =
 });
 
 test('a non-Error rejection keeps its text instead of "undefined: undefined"', async () => {
-  const fromSend = await sendReply('igsid-1', 'DONE', { token: 't', fetchImpl: async () => { throw 'ECONNRESET string'; } });
+  const fromSend = await sendReply('igsid-1', 'DONE', { token: 't', accountId: 'a', fetchImpl: async () => { throw 'ECONNRESET string'; } });
   assert.deepStrictEqual(fromSend, { ok: false, error: 'ECONNRESET string' });
   const fromLookup = await lookupUsername('igsid-1', { token: 't', attempts: 1, fetchImpl: async () => { throw { code: 'E_ODD' }; } });
   assert.strictEqual(fromLookup.ok, false);
   assert.ok(!/undefined/.test(fromLookup.error), fromLookup.error);
-  assert.deepStrictEqual(await sendReply('igsid-1', 'DONE', { token: 't', fetchImpl: async () => { throw undefined; } }),
+  assert.deepStrictEqual(await sendReply('igsid-1', 'DONE', { token: 't', accountId: 'a', fetchImpl: async () => { throw undefined; } }),
     { ok: false, error: 'undefined' });
   const d = deps({ attachLinkedResource: async () => { throw 'plain string'; } });
   await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
