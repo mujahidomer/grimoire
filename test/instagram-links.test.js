@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { extractUrls, unwrapLink, isHubPage, isMediaUrl, isWrapperUrl, pickBestUrl, resolveUrl } = require('../lib/instagram/links');
+const { extractUrls, unwrapLink, isHubPage, isMediaUrl, isWrapperUrl, isRedirectorUrl, pickBestUrl, resolveUrl } = require('../lib/instagram/links');
 
 test('extractUrls finds a url in message text', () => {
   const ev = { message: { text: 'Here you go https://mnch.at/abc123 enjoy' } };
@@ -680,4 +680,25 @@ test('a canonical to a private address is refused like any other hop', async () 
     ? [{ address: '93.184.216.34', family: 4 }]
     : [{ address: '169.254.169.254', family: 4 }]);
   assert.strictEqual(await resolve('https://t.test/1', { fetchImpl, lookupImpl }), null);
+});
+
+// Found live, 2026-11-04: a sanjai.builds DM delivered its article through
+// replyrush.link, which answers 200 with a stub and redirects in JavaScript —
+// no 3xx, no meta refresh, no canonical header. The capture attached a
+// resource titled "ReplyRush Redirect Link" instead of the WEB Pack.
+test('a javascript-only tracker is never picked as the article', () => {
+  assert.ok(isRedirectorUrl('https://replyrush.link/sanjai_builds/nZwtZKc2qz'));
+  assert.strictEqual(
+    pickBestUrl(['https://replyrush.link/sanjai_builds/nZwtZKc2qz']), null);
+});
+
+test('a real article beside a tracker still wins', () => {
+  assert.strictEqual(
+    pickBestUrl(['https://replyrush.link/x/abc', 'https://example.com/guide']),
+    'https://example.com/guide');
+});
+
+test('a tracker lookalike host is not a tracker', () => {
+  assert.ok(!isRedirectorUrl('https://replyrush.link.evil.test/a'));
+  assert.ok(!isRedirectorUrl('https://example.com/replyrush.link'));
 });
