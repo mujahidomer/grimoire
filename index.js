@@ -2,10 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { extractContent } = require('./lib/extractor');
-const { processContent, researchUrl, processLinkedResource, extractEntities } = require('./lib/classifier');
+const { processContent, researchUrl } = require('./lib/classifier');
 const { normalizeTagsPg } = require('./lib/tags-pg');
 const {
-  upsertItem, upsertItemTags, upsertLinkedResource, mergeItemEntities, getItemById,
+  upsertItem, upsertItemTags, upsertLinkedResource, getItemById,
   promotedArtifactUrl, updateItemStatus, getSubcategoryVocabulary
 } = require('./lib/repository');
 const { normalizeUrl } = require('./lib/url');
@@ -18,8 +18,14 @@ const { registerApiRoutes } = require('./lib/routes');
 const { defaultUserId } = require('./lib/supabase');
 const { refreshTopCategories } = require('./lib/topCategories');
 const { requireAuth, logAuthMode } = require('./lib/request-auth');
+const { attachLinkedResource, attachResourceEntities } = require('./lib/linkedResources');
 const { seedUserLibrary } = require('./lib/seed');
 const { runPreflight, lastPreflight } = require('./lib/preflight');
+const { registerInstagramWebhook } = require('./lib/instagram/webhook');
+const {
+  handleEvent: handleInstagramEvent, resolveIgUserId, defaultDeps: instagramDeps,
+  rematchInBackground, isInstagramUrl,
+} = require('./lib/instagram/capture');
 
 const app = express();
 // CORS for the web UI (Doc B paste-box + chat panel). The throwaway viewer runs
@@ -29,7 +35,15 @@ app.use(cors({
   origin: process.env.WEB_ORIGIN || true,
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
 }));
-app.use(express.json());
+// The verify hook keeps the raw bytes: Meta's webhook signature is an HMAC of the
+// exact body, which express.json() would otherwise consume and discard. Used by
+// lib/instagram/webhook.js. Do not remove, or every Instagram POST is rejected.
+// limit: express.json() defaults to 100kb and rejects bigger bodies with a 413
+// during read, BEFORE any route (so before the webhook's 200-first handling).
+// Meta batches events and retries on any non-2xx, so a signed batch over 100kb
+// would be refused forever and its events lost. 2mb is well above any plausible
+// batch and still bounded. Do not lower it back to the default.
+app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 // Reported by /health so a deployment can be checked for a complete env. No
 // route resolves a user from this any more: callers authenticate with a Supabase
@@ -82,41 +96,6 @@ async function saveItem(item, sourceUrl, userId) {
     summary: item.summary, has_lead_magnet_cta: item.has_lead_magnet_cta };
 }
 
-// ─── Linked-resource digest entries ───────────────────────────────────────────
-// A linked resource is an extension of the save it hangs off, not an item of
-// its own (Muji 2026-07-25): it gets the same extraction → entity → canonical
-// resolution → verification/geocoding treatment as a save, but its entities
-// land on the PARENT item's blob, so they show up in that item's Digest tab
-// and in the global Digest. Its summary/takeaways are not kept — only the
-// digest entries.
-//
-// Never throws: failing to mine entities out of a follow-up link must not fail
-// the attach (or the save) that triggered it.
-async function attachResourceEntities(itemId, userId, sourceUrl, text) {
-  if (!text || !text.trim()) return 0;
-  try {
-    const subcategoryVocab = await getSubcategoryVocabulary();
-    const entities = await extractEntities(text, sourceUrl, subcategoryVocab);
-    if (entities.length === 0) return 0;
-
-    // Canonicalize before the write, same ordering constraint as the main
-    // pipeline: `entities` is one jsonb blob, so resolution has to land
-    // before it's persisted, not after.
-    await resolveEntities(entities);
-    const { added } = await mergeItemEntities(itemId, userId, entities);
-    if (added > 0) {
-      verifyItemEntitiesInBackground(itemId, userId);
-      geocodeItemEntitiesInBackground(itemId, userId);
-      resolveEntityUrlsInBackground(entities);
-    }
-    console.log(`[linkedResource] ${sourceUrl} → ${added} new entit${added === 1 ? 'y' : 'ies'} on item ${itemId}`);
-    return added;
-  } catch (err) {
-    console.error(`[linkedResource] entity extraction failed for ${sourceUrl}:`, err.message);
-    return 0;
-  }
-}
-
 // Same treatment for linked resources that arrived with the original save
 // (URLs the classifier pulled out of the content). Detached and sequential:
 // each URL is a full extractContent (Supadata/Apify — seconds to minutes, and
@@ -156,8 +135,17 @@ async function runPipeline(rawText, sourceUrl, hashtags, parts = {}, userId) {
   // by upsertItem, so canonicalization has to land before that write, same as
   // reconcileSubcategory() does for topic_subcategory inside processContent().
   for (const item of items) await resolveEntities(item.entities);
+  // Creator handle comes from extraction, not the classifier -- set it here.
+  for (const item of items) item.source_author = parts.author || null;
   const saved = [];
   for (const item of items) saved.push(await saveItem(item, sourceUrl, userId));
+  // A DM article that arrived before this reel was saved is waiting under the
+  // creator's handle (comment first, save later). Detached and logged: this must
+  // never fail or delay a save.
+  if (userId && isInstagramUrl(sourceUrl)) {
+    const authors = new Set(items.map((item) => item.source_author).filter(Boolean));
+    for (const author of authors) rematchInBackground(userId, author);
+  }
   return saved;
 }
 
@@ -177,7 +165,7 @@ async function saveFromUrl(url, userId) {
   }
 
   return runPipeline(extracted.text, url, extracted.hashtags,
-    { caption: extracted.caption, transcript: extracted.transcript }, userId);
+    { caption: extracted.caption, transcript: extracted.transcript, author: extracted.author }, userId);
 }
 
 // Runs the actual extract → classify → save pipeline for POST /api/save AFTER
@@ -232,6 +220,18 @@ app.get('/health', (req, res) => res.json({
 
 // Retrieval + chat API (Doc A item 5): GET /api/items, GET /api/items/:id, POST /api/chat.
 registerApiRoutes(app);
+
+// Instagram DM capture front door (GET handshake + signed POST). Rejects
+// everything until IG_APP_SECRET / IG_WEBHOOK_VERIFY_TOKEN are set. Each inbound
+// event goes to lib/instagram/capture.js. The user id is resolved here, per
+// event, from IG_USER_ID (falling back to GRIMOIRE_USER_ID) because Meta's
+// payload carries none; it throws if neither is set, and the webhook logs that.
+registerInstagramWebhook(app, {
+  onEvent: async (event) => {
+    const action = await handleInstagramEvent(event, { userId: resolveIgUserId(), deps: instagramDeps() });
+    console.log(`[ig-webhook] event handled: ${action.kind}${action.reason ? ` (${action.reason})` : ''}`);
+  },
+});
 
 // POST /api/save — the web paste-box + iOS Shortcut/share-sheet save flow
 // (Doc B). Body: { url }. Responds fast (target <500ms): validates the URL and
@@ -328,22 +328,8 @@ app.post('/api/items/:id/linked-resources', requireAuth(async (req, res) => {
     const item = await getItemById(req.params.id, userId);
     if (!item) return res.status(404).json({ error: 'not_found' });
 
-    let extracted = null;
-    try { extracted = await extractContent(url); }
-    catch (err) { console.error('Linked resource extraction failed:', err.message); }
-
-    const processed = await processLinkedResource(extracted?.text || '', extracted?.title);
-    await upsertLinkedResource(item.id, userId, {
-      source_url: url,
-      title: processed.title,
-      type: processed.resource_type,
-      body_content: processed.content
-    });
-
-    await attachResourceEntities(item.id, userId, url, extracted?.text);
-
-    const refreshed = await getItemById(item.id, userId);
-    res.json({ success: true, linked_resources: refreshed.linked_resources || [] });
+    const { linked_resources } = await attachLinkedResource(item.id, userId, url);
+    res.json({ success: true, linked_resources });
   } catch (err) {
     console.error('POST /api/items/:id/linked-resources error:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -363,7 +349,7 @@ app.post('/process-url', requireAuth(async (req, res) => {
     const extracted = await extractContent(url);
     if (!extracted.text) return res.json({ success: false, error: 'no_transcript', message: 'No transcript available — paste text manually' });
     const saved = await runPipeline(extracted.text, url, extracted.hashtags,
-      { caption: extracted.caption, transcript: extracted.transcript }, req.userId);
+      { caption: extracted.caption, transcript: extracted.transcript, author: extracted.author }, req.userId);
     res.json({ success: true, count: saved.length, items: saved.map(i => ({ id: i.itemId, title: i.title, category: i.category, type: i.type })) });
   } catch (err) {
     res.status(500).json({ error: err.message });

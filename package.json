@@ -8,7 +8,8 @@
     "dev": "nodemon index.js",
     "dev:local": "bash scripts/dev-local.sh",
     "dev:stop": "bash scripts/dev-stop.sh",
-    "migrate": "node scripts/migrate-drive-to-postgres.js"
+    "migrate": "node scripts/migrate-drive-to-postgres.js",
+    "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
