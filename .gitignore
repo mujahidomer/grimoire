@@ -151,3 +151,4 @@ scripts/backups/
 # Scratch files from agent sessions (one-off scripts, dry-run output)
 ._*
 .instagram-backfill-threads.json
+dropped-cross-creator-resources.json

@@ -134,6 +134,25 @@ test('reply: the attempt is reserved before the send, the id recorded after both
   assert.deepStrictEqual(d.calls.order, ['update:attempt', 'send', 'update:replied', 'record']);
 });
 
+// A refused attach is not a failed one: nothing was written, and trying again
+// would refuse it the same way. Both reasons come from the dango tracker that
+// landed on sixteen creators' reels (2026-11-05).
+test('a refused attach parks the capture for a human instead of reporting a match', async () => {
+  for (const skipped of ['blocked_page', 'other_creator']) {
+    const d = deps({ attachLinkedResource: async () => ({ skipped, content_extracted: false }) });
+    const action = await handleEvent(dm('https://dango.kit.com/workout-to-lose-belly-fat'), { userId: USER, deps: d });
+    assert.strictEqual(action.kind, 'park');
+    assert.strictEqual(action.reason, 'unusable_link');
+    assert.strictEqual(action.cause, skipped);
+    const [, patch] = d.calls.updated[0];
+    assert.strictEqual(patch.state, 'needs_user');
+    assert.strictEqual(patch.needs_user_reason, 'unusable_link');
+    assert.strictEqual(patch.resolved_url, 'https://dango.kit.com/workout-to-lose-belly-fat');
+    assert.deepStrictEqual(d.calls.recorded, [['cap-1', 'mid.A']],
+      'a redelivery would refuse it again, so the message is done with');
+  }
+});
+
 test('a crash during the work leaves the message id unrecorded so a redelivery redoes it', async () => {
   const d = deps({ attachLinkedResource: async () => { throw new Error('db down'); } });
   const action = await handleEvent(dm('https://example.com/guide'), { userId: USER, deps: d });
@@ -490,6 +509,18 @@ function rematchDeps(captures, over = {}) {
 }
 const waiting = (over = {}) => ({ id: 'cap-9', sender_username: 'thecreator', state: 'needs_user',
   needs_user_reason: 'no_match', resolved_url: 'https://example.com/guide', ...over });
+
+test('rematch leaves the capture waiting when the attach refuses the link', async () => {
+  const errors = [];
+  const d = rematchDeps([waiting()], {
+    attachLinkedResource: async () => ({ skipped: 'other_creator', content_extracted: false }),
+    logError: (m) => errors.push(m),
+  });
+  const n = await rematchPendingCaptures(USER, 'thecreator', { deps: d });
+  assert.strictEqual(n, 0);
+  assert.deepStrictEqual(d.calls.updated, [], 'a refused link never marks the capture matched');
+  assert.match(errors[0], /rematch refused \(capture cap-9, item item-1\): other_creator/);
+});
 
 test('rematch attaches a waiting no_match article once the reel is saved', async () => {
   const d = rematchDeps([waiting()]);
