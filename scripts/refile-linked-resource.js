@@ -7,10 +7,16 @@
 // guess puts the article under the wrong reel of theirs — visible, and until
 // now only fixable by hand in the database.
 //
+// Once the right copy is on the right reel, the wrong one is a duplicate, and
+// --drop removes it. It refuses to drop the only copy of a URL: a resource with
+// no twin elsewhere is the article itself, however badly filed, and the answer
+// there is a move.
+//
 // Usage:
 //   node scripts/refile-linked-resource.js --list <item-id>
 //   node scripts/refile-linked-resource.js --resource <id> --to <item-id>
 //   node scripts/refile-linked-resource.js --resource <id> --to <item-id> --dry-run
+//   node scripts/refile-linked-resource.js --drop <id> [--dry-run]
 //
 // Requires: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GRIMOIRE_USER_ID.
 //
@@ -40,9 +46,38 @@ async function main() {
     return;
   }
 
+  const dropping = flag('--drop');
+  if (dropping) {
+    const { data: rows, error } = await sb.from('linked_resources')
+      .select('id,item_id,title,source_url').eq('user_id', userId).eq('id', dropping);
+    if (error) throw new Error(`select failed: ${error.message}`);
+    const resource = rows && rows[0];
+    if (!resource) throw new Error('no such resource for this user');
+
+    const { data: twins, error: twinErr } = await sb.from('linked_resources')
+      .select('id,item_id').eq('user_id', userId).eq('source_url', resource.source_url);
+    if (twinErr) throw new Error(`duplicate check failed: ${twinErr.message}`);
+    const elsewhere = (twins || []).filter((t) => t.id !== resource.id);
+    if (!elsewhere.length) {
+      throw new Error(`${resource.source_url} exists only here — move it instead of dropping it`);
+    }
+
+    console.log(`${resource.source_url}\n  dropping the copy on item ${resource.item_id}`);
+    for (const t of elsewhere) console.log(`  kept on item ${t.item_id}`);
+    if (DRY_RUN) return;
+
+    const { error: deleteErr } = await sb.from('linked_resources')
+      .delete().eq('user_id', userId).eq('id', dropping);
+    if (deleteErr) throw new Error(`delete failed: ${deleteErr.message}`);
+    console.log('dropped');
+    return;
+  }
+
   const resourceId = flag('--resource');
   const target = flag('--to');
-  if (!resourceId || !target) throw new Error('need --resource <id> --to <item-id>, or --list <item-id>');
+  if (!resourceId || !target) {
+    throw new Error('need --resource <id> --to <item-id>, or --list <item-id>, or --drop <id>');
+  }
 
   const { data: rows, error } = await sb.from('linked_resources')
     .select('id,item_id,title,source_url').eq('user_id', userId).eq('id', resourceId);

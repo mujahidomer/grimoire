@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kitabi.instagram-commenter</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/mujahidomer/.nvm/versions/node/v24.16.0/bin/node</string>
+    <string>/Users/mujahidomer/Documents/my-grimoire/grimoire/tools/instagram-commenter/comment-gates.js</string>
+    <string>--count</string>
+    <string>8</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/mujahidomer/Documents/my-grimoire/grimoire/tools/instagram-commenter</string>
+
+  <!-- Three small batches spread across the day, at minutes nobody would
+       pick on purpose. Eight comments a run is twenty-four a day: the whole
+       backlog in under a week, at a pace that looks like a person using
+       Instagram rather than a script draining a list. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>42</integer></dict>
+    <dict><key>Hour</key><integer>14</integer><key>Minute</key><integer>17</integer></dict>
+    <dict><key>Hour</key><integer>19</integer><key>Minute</key><integer>31</integer></dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>/Users/mujahidomer/Documents/my-grimoire/grimoire/tools/instagram-commenter/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/mujahidomer/Documents/my-grimoire/grimoire/tools/instagram-commenter/launchd.err.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
