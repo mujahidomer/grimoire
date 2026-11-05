@@ -121,6 +121,19 @@ async function pendingGates(sb, userId) {
   return (data || []).filter((row) => shortcodeOf(row.source_url));
 }
 
+// How many gates are waiting in all, which is NOT what pendingGates returns —
+// that one fetches a window of COUNT * 3 so a run has spares when a reel turns
+// out to have no shortcode. Reporting the window as the queue made a run with
+// 141 waiting print "3 pending", which reads as nearly finished.
+async function pendingTotal(sb, userId) {
+  const { count, error } = await sb.from('items')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .not('gate_keyword', 'is', null)
+    .is('gate_commented_at', null);
+  return error ? null : count;
+}
+
 async function openBrowser() {
   if (!fs.existsSync(CHROME)) {
     throw new Error(`Chrome not found at ${CHROME} — set IG_BOT_CHROME`);
@@ -274,7 +287,8 @@ async function main() {
   const queue = await pendingGates(sb, userId);
   if (!queue.length) { log('nothing pending'); return; }
 
-  log(`run starting — ${queue.length} pending, taking up to ${COUNT}`);
+  const total = await pendingTotal(sb, userId);
+  log(`run starting — ${total === null ? queue.length : total} gate(s) waiting, taking up to ${COUNT}`);
   const context = await openBrowser();
   const page = context.pages()[0] || await context.newPage();
 
